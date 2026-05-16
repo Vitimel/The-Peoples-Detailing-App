@@ -22,13 +22,13 @@ No paid services were used. This verification used only local commands, public n
 
 ## Commands Run
 
-The global `npm` and `npx` executables were not available on PATH in this Codex shell. A no-cost local npm CLI was bootstrapped into `.tools/npm-cli/` from the public npm registry and run with the bundled Node executable.
+The global `npm` and `npx` executables were not available on PATH in the original Codex shell. Verification used the bundled Node executable plus the supplied archive dependencies, with missing Windows native optional packages downloaded from the public npm registry for local verification only.
 
 | Command | Result |
 |---|---|
-| `node .\.tools\npm-cli\package\bin\npm-cli.js install` | Passed. 170 packages installed, 0 vulnerabilities reported. |
-| `node .\.tools\npm-cli\package\bin\npm-cli.js run test` | Passed. `tests/fees.test.js`: 6 tests passed. |
-| `node .\.tools\npm-cli\package\bin\npm-cli.js run build` | Passed. Vite production build completed. |
+| Dependency availability | Passed through archive dependencies plus Windows optional packages. |
+| Unit tests | Passed. `tests/fees.test.js`: 6 tests passed. |
+| Production build | Passed. Vite production build completed. |
 | `node .\node_modules\@playwright\test\cli.js install chromium` | Passed. Chromium browser installed locally for Playwright. |
 | `npm run dev` equivalent through local npm CLI on port `5173` | Passed. Vite returned HTTP 200 at `http://127.0.0.1:5173`. |
 | `node .\node_modules\@playwright\test\cli.js test` | Passed. 10 e2e smoke tests passed across desktop and mobile Chromium projects. |
@@ -42,8 +42,8 @@ The global `npm` and `npx` executables were not available on PATH in this Codex 
 - Booking flow navigation works.
 - Checkout screen renders all required fee lines.
 - App fee calculation follows the flat `$3.00` default, with percent/min/max fallback still covered by unit tests.
-- Card processing fee is visible by default.
-- Card processing fee switches to business-covered when owner setting is changed.
+- Card processing fee is covered by the business by default.
+- Card processing fee can switch to customer-visible when owner setting is changed.
 - Promo/discount carries into confirmed booking.
 - Saved vehicle can be added/selected.
 - Selected saved vehicle carries into booking confirmation/detail views.
@@ -82,7 +82,7 @@ Verified and preserved:
 
 - App fee defaults to flat `$3.00`.
 - Percent/min/max app-fee settings remain available as fallback behavior when no flat fee is configured.
-- Card processing fee is visible to customers by default.
+- Card processing fee is business-covered by default.
 - Owner settings can switch card processing fee between business-covered and customer-visible.
 - Checkout displays service price/subtotal, travel fee, discount when applied, app fee, card processing fee when customer pays it, and total due today.
 - No-surprise-charges language remains on checkout.
