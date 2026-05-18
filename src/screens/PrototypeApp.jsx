@@ -946,17 +946,18 @@ const LocationStep = (p) => {
       <HeaderBar title="Location & Travel Fee" subtitle="Step 2 of 3" onBack={()=> p.setScreen("book")} />
       <Stepper step={1} />
       <div className="px-5">
-        <div className="card map-bg h-44 relative overflow-hidden p-0">
-          <svg viewBox="0 0 350 180" className="absolute inset-0 w-full h-full">
-            <path d="M30 150 Q 100 80 180 100 T 320 40" className="route-dash" />
-            <circle cx="30" cy="150" r="6" fill="#9FB3C8" />
-            <circle cx="320" cy="40" r="7" fill="#FF6A00" />
-            <text x="40" y="170" fill="#9FB3C8" fontSize="10">Our base</text>
-            <text x="240" y="35" fill="#FF6A00" fontSize="10" fontWeight="700">Your location</text>
-          </svg>
-          <div className="absolute top-3 right-3 bg-[#0c2238]/90 border border-[#1f3b5c] rounded-full px-3 py-1.5 text-[10px] flex items-center gap-1.5">
-            <Icon name="locate" className="w-3 h-3 text-[var(--orange)]" />
-            <span>We come to you</span>
+        <div className="card">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 shrink-0 rounded-2xl bg-[var(--orange)]/15 border border-[var(--orange)]/35 text-[var(--orange)] flex items-center justify-center">
+              <Icon name="locate" className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="label-up mb-1">Service Location</div>
+              <div className="text-sm font-semibold">Check the address before checkout</div>
+              <div className="text-xs text-[#9FB3C8] mt-1">
+                Enter a city, ZIP, or service address so the app can show the travel fee on this step.
+              </div>
+            </div>
           </div>
         </div>
 

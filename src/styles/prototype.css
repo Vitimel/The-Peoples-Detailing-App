@@ -67,22 +67,6 @@
   .step-dot.active{background:var(--orange);box-shadow:0 0 0 4px rgba(255,106,0,.18);}
   .step-line{height:2px;flex:1;background:#2a466a;}
   .step-line.active{background:var(--orange);}
-  .map-bg{
-    background:
-      radial-gradient(circle at 30% 30%, #16365B 0%, transparent 40%),
-      radial-gradient(circle at 70% 60%, #1d4675 0%, transparent 40%),
-      linear-gradient(135deg,#102A43 0%,#0B1F33 100%);
-    position:relative;overflow:hidden;
-  }
-  .map-bg::before{
-    content:"";position:absolute;inset:0;
-    background-image:
-      linear-gradient(rgba(159,179,200,.07) 1px,transparent 1px),
-      linear-gradient(90deg,rgba(159,179,200,.07) 1px,transparent 1px);
-    background-size:30px 30px;
-  }
-  .route-dash{stroke:var(--orange);stroke-width:3;fill:none;stroke-dasharray:6 6;animation:dash 18s linear infinite;}
-  @keyframes dash{to{stroke-dashoffset:-200;}}
   .glow-orange{box-shadow:0 0 0 4px rgba(255,106,0,.12), 0 8px 22px rgba(255,106,0,.25);}
   .role-toggle{
     background:#0d2236;border:1px solid #1f3b5c;border-radius:999px;padding:4px;
