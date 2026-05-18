@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import LOGO_DATA_URI from '../assets/The_Peoples_Detailing_Primary_Crest_Logo.webp';
 import MASCOT_DATA_URI from '../assets/Booking_App_Hero_Concept_Mascot_Car_Logo.png';
 import { calculateCheckoutTotals } from '../utils/fees.js';
+import { calculateTravelFeeCents, estimateMilesFromAddress, milesBetween, MURFREESBORO_BASE } from '../utils/travel.js';
 import { decodeVinSample, lookupVinDetails, normalizeVin } from '../utils/vin.js';
 
 import {
@@ -82,19 +83,6 @@ const ownerActiveTab = (screen) => {
 };
 
 const isReadyExternalUrl = (url) => /^https?:\/\//i.test(url || "");
-
-const murfreesboroBase = { lat: 35.8456, lng: -86.3903 };
-
-const milesBetween = (a, b) => {
-  const toRad = value => value * Math.PI / 180;
-  const earthMiles = 3958.8;
-  const dLat = toRad(b.lat - a.lat);
-  const dLng = toRad(b.lng - a.lng);
-  const lat1 = toRad(a.lat);
-  const lat2 = toRad(b.lat);
-  const h = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
-  return earthMiles * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
-};
 
 const BottomNavShell = ({ role, screen, setScreen }) => {
   if (role === "customer" && CUSTOMER_NAV_SCREENS.includes(screen)) {
@@ -850,11 +838,11 @@ const LocationStep = (p) => {
   const [useGps, setUseGps] = useState(false);
   const [miles, setMiles] = useState(p.draft?.travelMiles || 0);
   const [gpsStatus, setGpsStatus] = useState("");
+  const [addressStatus, setAddressStatus] = useState("");
 
   const radius = p.settings.freeTravelRadiusMiles;
   const travelFeeCents = useMemo(() => {
-    if (miles <= radius) return 0;
-    return Math.round((miles - radius) * p.settings.perMileFeeCents);
+    return calculateTravelFeeCents(miles, p.settings);
   }, [miles, radius, p.settings.perMileFeeCents]);
 
   const useCurrentLocation = () => {
@@ -865,6 +853,7 @@ const LocationStep = (p) => {
       setAddress("Current location (demo fallback) · 218 Demo Ave, Murfreesboro, TN");
       setMiles(12.4);
       setGpsStatus("Demo location used because browser GPS was unavailable.");
+      setAddressStatus("");
       p.showToast("Using demo location");
     };
 
@@ -876,10 +865,11 @@ const LocationStep = (p) => {
     navigator.geolocation.getCurrentPosition(
       ({ coords }) => {
         const customerLocation = { lat: coords.latitude, lng: coords.longitude };
-        const estimatedMiles = milesBetween(murfreesboroBase, customerLocation);
+        const estimatedMiles = milesBetween(MURFREESBORO_BASE, customerLocation);
         setAddress(`GPS location captured · ${coords.latitude.toFixed(5)}, ${coords.longitude.toFixed(5)}`);
         setMiles(Number(estimatedMiles.toFixed(1)));
         setGpsStatus(`Browser GPS captured. Distance is estimated from ${p.settings.baseAddress || SETTINGS.baseAddress}.`);
+        setAddressStatus("");
         p.showToast("GPS location captured");
       },
       () => useDemoLocation(),
@@ -888,7 +878,29 @@ const LocationStep = (p) => {
   };
 
   const next = () => {
-    p.setDraft({...p.draft, address: address || "123 Demo St, Murfreesboro, TN 37130", travelMiles: miles, travelFeeCents });
+    const cleanAddress = address.trim();
+    if (!cleanAddress) {
+      setAddressStatus("Enter a service address or use current location before checkout.");
+      return;
+    }
+
+    let finalMiles = miles;
+    let finalAddress = cleanAddress;
+    if (finalMiles === 0) {
+      const estimate = estimateMilesFromAddress(cleanAddress);
+      if (!estimate) {
+        setAddressStatus("I could not estimate that address yet. Try a nearby city like Nashville, Smyrna, or La Vergne, or use current location.");
+        return;
+      }
+
+      finalMiles = estimate.miles;
+      finalAddress = estimate.label === cleanAddress ? cleanAddress : `${cleanAddress} (${estimate.label})`;
+      setMiles(finalMiles);
+      setAddressStatus(`Estimated from ${estimate.label}. Dane can confirm exact travel rules before production.`);
+    }
+
+    const finalTravelFeeCents = calculateTravelFeeCents(finalMiles, p.settings);
+    p.setDraft({...p.draft, address: finalAddress, travelMiles: finalMiles, travelFeeCents: finalTravelFeeCents });
     p.setScreen("checkout");
   };
 
@@ -913,12 +925,13 @@ const LocationStep = (p) => {
 
         <div className="mt-4">
           <div className="text-xs uppercase tracking-wider text-[#9FB3C8] mb-2">Service Address</div>
-          <input className="input" placeholder="Enter address" value={address} onChange={e=> setAddress(e.target.value)} />
+          <input className="input" placeholder="Enter address or city, like Nashville, TN" value={address} onChange={e=> { setAddress(e.target.value); setAddressStatus(""); if (miles !== 0) setMiles(0); }} />
           <button className="btn-secondary mt-2 flex items-center justify-center gap-2" onClick={useCurrentLocation}>
             <Icon name="locate" className="w-4 h-4" />
             <span>Use my current location</span>
           </button>
           {gpsStatus && <div className="text-[11px] text-[#9FB3C8] mt-2">{gpsStatus}</div>}
+          {addressStatus && <div className="text-[11px] text-[#fed7aa] mt-2">{addressStatus}</div>}
         </div>
 
         <div className="mt-5 grid grid-cols-3 gap-2">
