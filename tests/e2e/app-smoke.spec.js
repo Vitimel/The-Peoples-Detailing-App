@@ -122,11 +122,23 @@ test('typed Nashville service address estimates travel fee before checkout', asy
   await page.getByRole('button', { name: /Deluxe Detail/i }).click();
   await page.getByRole('button', { name: /Book Deluxe Detail/i }).click();
   await page.getByRole('button', { name: /Continue to Location & Travel Fee/i }).click();
-  await page.getByPlaceholder(/Enter address or city/i).fill('Nashville, Tennessee');
+  await page.getByPlaceholder(/Enter address, city, or ZIP/i).fill('Nashville, Tennessee');
   await page.getByRole('button', { name: /Continue to Checkout/i }).click();
   await expect(page.getByRole('heading', { name: 'Checkout' })).toBeVisible();
   await expect(page.getByText(/Nashville, Tennessee/i)).toBeVisible();
   await expect(page.getByText('$37.50')).toBeVisible();
+});
+
+test('typed exact Franklin address estimates travel fee before checkout', async ({ page }) => {
+  await resetAndEnterHome(page);
+  await page.getByRole('button', { name: /Deluxe Detail/i }).click();
+  await page.getByRole('button', { name: /Book Deluxe Detail/i }).click();
+  await page.getByRole('button', { name: /Continue to Location & Travel Fee/i }).click();
+  await page.getByPlaceholder(/Enter address, city, or ZIP/i).fill('405 Main St, Franklin, TN 37064');
+  await page.getByRole('button', { name: /Continue to Checkout/i }).click();
+  await expect(page.getByRole('heading', { name: 'Checkout' })).toBeVisible();
+  await expect(page.getByText(/405 Main St, Franklin, TN 37064/i)).toBeVisible();
+  await expect(page.getByText('$42.00')).toBeVisible();
 });
 
 test('promo and saved vehicle carry into confirmed booking', async ({ page }) => {

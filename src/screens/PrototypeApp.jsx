@@ -901,14 +901,14 @@ const LocationStep = (p) => {
     if (finalMiles === 0) {
       const estimate = estimateMilesFromAddress(cleanAddress);
       if (!estimate) {
-        setAddressStatus("I could not estimate that address yet. Try a nearby city like Nashville, Smyrna, or La Vergne, or use current location.");
+        setAddressStatus("I could not estimate that address yet. Add a supported city or ZIP like Franklin, TN 37064, or use current location.");
         return;
       }
 
       finalMiles = estimate.miles;
       finalAddress = estimate.label === cleanAddress ? cleanAddress : `${cleanAddress} (${estimate.label})`;
       setMiles(finalMiles);
-      setAddressStatus(`Estimated from ${estimate.label}. Dane can confirm exact travel rules before production.`);
+      setAddressStatus(`Estimated from ${estimate.label} using the city or ZIP in the typed address. Dane can confirm exact travel rules before production.`);
     }
 
     const finalTravelFeeCents = calculateTravelFeeCents(finalMiles, p.settings);
@@ -937,7 +937,7 @@ const LocationStep = (p) => {
 
         <div className="mt-4">
           <div className="text-xs uppercase tracking-wider text-[#9FB3C8] mb-2">Service Address</div>
-          <input className="input" placeholder="Enter address or city, like Nashville, TN" value={address} onChange={e=> { setAddress(e.target.value); setAddressStatus(""); if (miles !== 0) setMiles(0); }} />
+          <input className="input" placeholder="Enter address, city, or ZIP, like 405 Main St, Franklin, TN 37064" value={address} onChange={e=> { setAddress(e.target.value); setAddressStatus(""); if (miles !== 0) setMiles(0); }} />
           <button className="btn-secondary mt-2 flex items-center justify-center gap-2" onClick={useCurrentLocation}>
             <Icon name="locate" className="w-4 h-4" />
             <span>Use my current location</span>
