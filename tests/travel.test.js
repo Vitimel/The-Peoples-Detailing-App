@@ -9,6 +9,24 @@ describe('travel estimate helpers', () => {
     });
   });
 
+  it('recognizes exact typed addresses when they include a supported city or ZIP', () => {
+    expect(estimateMilesFromAddress('405 Main St, Franklin, TN 37064')).toMatchObject({
+      label: 'Franklin, TN',
+      miles: 38,
+      source: 'typed address city estimate',
+    });
+
+    expect(estimateMilesFromAddress('Cool Springs address 37067')).toMatchObject({
+      label: 'Franklin, TN',
+      miles: 38,
+      source: 'ZIP estimate',
+    });
+  });
+
+  it('does not guess from unsupported street-only addresses', () => {
+    expect(estimateMilesFromAddress('123 Main Street, TN')).toBeNull();
+  });
+
   it('keeps Murfreesboro inside the free travel radius', () => {
     expect(estimateMilesFromAddress('Murfreesboro, TN')).toMatchObject({
       label: 'Murfreesboro, TN',
