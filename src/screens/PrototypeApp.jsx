@@ -1118,7 +1118,7 @@ const Checkout = (p) => {
 
         <div className="flex items-center gap-2 text-xs text-[#9FB3C8] mt-3">
           <Icon name="shield" className="w-4 h-4 text-[#4ade80]" />
-          <span>Secure Checkout · Stripe (mock) · Full total shown before payment</span>
+          <span>Secure checkout placeholder - Stripe can be connected later - Full total shown before payment</span>
         </div>
 
         <div className="mt-5">
@@ -1418,7 +1418,7 @@ const CustomerProfile = (p) => (
 
       <div className="mt-4 flex flex-col gap-2">
         <ProfileRow icon="car" title="My Vehicles" hint={`${vehicleLabel(p.activeVehicle)} (selected)`} onClick={()=> p.setScreen("vehicles")} />
-        <ProfileRow icon="receipt" title="Payment Methods" hint="Visa •••• 4242" />
+        <ProfileRow icon="receipt" title="Payment Methods" hint="Add securely with Stripe later" />
         <ProfileRow icon="bell" title="Notifications" hint="Email & SMS" />
         <ProfileRow icon="shield" title="Privacy" hint="Live location off when not booking" />
         <ProfileRow icon="msg" title="Support" hint="Call (931) 334-0730" />

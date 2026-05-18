@@ -25,6 +25,7 @@ test('app loads, home renders, and bottom navigation works', async ({ page }) =>
   await expect(page.getByRole('heading', { name: 'My Bookings' })).toBeVisible();
   await page.getByRole('button', { name: /Profile/i }).click();
   await expect(page.getByRole('heading', { name: 'Profile' })).toBeVisible();
+  await expect(page.getByText('Add securely with Stripe later')).toBeVisible();
 });
 
 test('home notification bell opens messages', async ({ page }) => {
