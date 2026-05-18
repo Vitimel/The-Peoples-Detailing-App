@@ -122,6 +122,8 @@ test('typed Nashville service address estimates travel fee before checkout', asy
   await page.getByRole('button', { name: /Deluxe Detail/i }).click();
   await page.getByRole('button', { name: /Book Deluxe Detail/i }).click();
   await page.getByRole('button', { name: /Continue to Location & Travel Fee/i }).click();
+  await expect(page.getByText(/Check the address before checkout/i)).toBeVisible();
+  await expect(page.locator('.map-bg')).toHaveCount(0);
   await page.getByPlaceholder(/Enter address, city, or ZIP/i).fill('Nashville, Tennessee');
   await page.getByRole('button', { name: /Check travel fee/i }).click();
   await expect(page.getByText('$37.50')).toBeVisible();
