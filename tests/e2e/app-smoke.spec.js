@@ -27,6 +27,12 @@ test('app loads, home renders, and bottom navigation works', async ({ page }) =>
   await expect(page.getByRole('heading', { name: 'Profile' })).toBeVisible();
 });
 
+test('home notification bell opens messages', async ({ page }) => {
+  await resetAndEnterHome(page);
+  await page.getByRole('button', { name: /Open messages and notifications/i }).click();
+  await expect(page.getByRole('heading', { name: 'Messages' })).toBeVisible();
+});
+
 test('browse services opens the complete price list', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('button', { name: /reset demo/i }).click();
