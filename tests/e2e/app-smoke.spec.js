@@ -106,6 +106,18 @@ test('service selection and booking flow reach checkout with all fee lines', asy
   await expect(page.getByText(/No surprise charges/i)).toBeVisible();
 });
 
+test('typed Nashville service address estimates travel fee before checkout', async ({ page }) => {
+  await resetAndEnterHome(page);
+  await page.getByRole('button', { name: /Deluxe Detail/i }).click();
+  await page.getByRole('button', { name: /Book Deluxe Detail/i }).click();
+  await page.getByRole('button', { name: /Continue to Location & Travel Fee/i }).click();
+  await page.getByPlaceholder(/Enter address or city/i).fill('Nashville, Tennessee');
+  await page.getByRole('button', { name: /Continue to Checkout/i }).click();
+  await expect(page.getByRole('heading', { name: 'Checkout' })).toBeVisible();
+  await expect(page.getByText(/Nashville, Tennessee/i)).toBeVisible();
+  await expect(page.getByText('$37.50')).toBeVisible();
+});
+
 test('promo and saved vehicle carry into confirmed booking', async ({ page }) => {
   await resetAndEnterHome(page);
   await page.getByRole('button', { name: /Deluxe Detail/i }).click();
