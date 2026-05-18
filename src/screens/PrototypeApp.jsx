@@ -82,6 +82,12 @@ const ownerActiveTab = (screen) => {
   return "dash";
 };
 
+const TRACKER_STEPS = [
+  { id:"on_my_way", label:"On the Way", icon:"truck", estimate:"22", customerMessage:"Dane is on the way." },
+  { id:"arrived", label:"I'm Here", icon:"locate", estimate:"0", customerMessage:"Dane has arrived." },
+  { id:"complete", label:"Completed", icon:"check", estimate:"Done", customerMessage:"The job is marked complete." },
+];
+
 const isReadyExternalUrl = (url) => /^https?:\/\//i.test(url || "");
 
 const BottomNavShell = ({ role, screen, setScreen }) => {
@@ -1296,6 +1302,9 @@ const BookingDetail = (p) => {
       </div>
     );
   }
+  const trackerStatus = b.trackerStatus || "on_my_way";
+  const trackerIdx = Math.max(0, TRACKER_STEPS.findIndex(step => step.id === trackerStatus));
+  const trackerCurrent = TRACKER_STEPS[trackerIdx] || TRACKER_STEPS[0];
 
   const toggleShare = () => {
     if (share) {
@@ -1376,21 +1385,17 @@ const BookingDetail = (p) => {
             <div className="flex items-center justify-between gap-3">
               <div>
                 <div className="label-up mb-1">Arrival Tracker</div>
-                <div className="text-sm font-semibold">Status updates, not live GPS</div>
-                <div className="text-xs text-[#9FB3C8] mt-1">Dane can send simple progress updates when he is on the way, arrives, and completes the job.</div>
+                <div className="text-sm font-semibold">{trackerCurrent.customerMessage}</div>
+                <div className="text-xs text-[#9FB3C8] mt-1">Status updates from the owner side, not live GPS.</div>
               </div>
               <div className="text-right">
-                <div className="text-2xl font-extrabold price-orange">22</div>
-                <div className="text-[10px] uppercase tracking-wider text-[#9FB3C8]">min estimate</div>
+                <div className="text-2xl font-extrabold price-orange">{trackerCurrent.estimate}</div>
+                <div className="text-[10px] uppercase tracking-wider text-[#9FB3C8]">{trackerCurrent.id === "complete" ? "status" : "min estimate"}</div>
               </div>
             </div>
             <div className="grid grid-cols-3 gap-2 mt-4">
-              {[
-                { label:"On the Way", active:true },
-                { label:"I'm Here", active:false },
-                { label:"Completed", active:false },
-              ].map(step => (
-                <div key={step.label} className={`rounded-xl border px-2 py-2 text-center text-[11px] font-semibold ${step.active ? "border-[var(--orange)] bg-[var(--orange)]/10 text-white" : "border-[#1f3b5c] bg-[#0d2236] text-[#9FB3C8]"}`}>
+              {TRACKER_STEPS.map((step, index) => (
+                <div key={step.id} className={`rounded-xl border px-2 py-2 text-center text-[11px] font-semibold ${index === trackerIdx ? "border-[var(--orange)] bg-[var(--orange)]/10 text-white" : index < trackerIdx ? "border-[#22c55e]/50 bg-[#22c55e]/10 text-[#bbf7d0]" : "border-[#1f3b5c] bg-[#0d2236] text-[#9FB3C8]"}`}>
                   {step.label}
                 </div>
               ))}
@@ -1843,12 +1848,7 @@ const OwnerTracker = (p) => {
   if (!active) return <div className="p-6 text-sm">No active jobs to track.</div>;
 
   const status = active.trackerStatus || "idle";
-  const STEPS = [
-    { id:"on_my_way", label:"On the Way", icon:"truck" },
-    { id:"arrived", label:"I'm Here", icon:"locate" },
-    { id:"complete", label:"Completed", icon:"check" },
-  ];
-  const idx = STEPS.findIndex(s => s.id===status);
+  const idx = TRACKER_STEPS.findIndex(s => s.id===status);
 
   const handleTrack = step => {
     if (step==="complete") { p.completeJob(active.id); return; }
@@ -1870,7 +1870,7 @@ const OwnerTracker = (p) => {
         </div>
 
         <div className="grid grid-cols-3 gap-2 mt-4">
-          {STEPS.map((s,i) => {
+          {TRACKER_STEPS.map((s,i) => {
             const isActive = i === idx;
             const isDone = i < idx || status==="complete";
             return (

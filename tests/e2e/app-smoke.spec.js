@@ -97,7 +97,7 @@ test('booking detail reschedule updates the existing booking time', async ({ pag
   await page.getByRole('button', { name: /Deluxe Detail/i }).click();
   await expect(page.getByText('Arrival Tracker')).toBeVisible();
   await expect(page.getByText('min estimate')).toBeVisible();
-  await expect(page.getByText(/Status updates, not live GPS/i)).toBeVisible();
+  await expect(page.getByText(/Status updates from the owner side/i)).toBeVisible();
   await page.getByRole('button', { name: 'Reschedule' }).click();
   await expect(page.getByRole('heading', { name: 'Reschedule Booking' })).toBeVisible();
   await page.getByRole('button', { name: '12:00 PM' }).click();
@@ -173,6 +173,19 @@ test('owner settings can absorb card fee and tracker statuses render', async ({ 
   await expect(page.getByRole('button', { name: /On the Way/i })).toBeVisible();
   await expect(page.getByRole('button', { name: /I'm Here/i })).toBeVisible();
   await expect(page.getByRole('button', { name: /Completed/i })).toBeVisible();
+  await page.getByRole('button', { name: /On the Way/i }).click();
+  await page.getByRole('button', { name: /^Customer$/i }).click();
+  await page.getByRole('button', { name: /Bookings/i }).click();
+  await page.getByRole('button', { name: /Deluxe Detail/i }).click();
+  await expect(page.getByText('Dane is on the way.')).toBeVisible();
+
+  await page.getByRole('button', { name: /^Owner$/i }).click();
+  await page.locator('button.card').filter({ hasText: 'Tracker' }).click();
+  await page.getByRole('button', { name: /I'm Here/i }).click();
+  await page.getByRole('button', { name: /^Customer$/i }).click();
+  await page.getByRole('button', { name: /Bookings/i }).click();
+  await page.getByRole('button', { name: /Deluxe Detail/i }).click();
+  await expect(page.getByText('Dane has arrived.')).toBeVisible();
 });
 
 test('BrandNew attribution remains in the app fee popup', async ({ page }) => {
