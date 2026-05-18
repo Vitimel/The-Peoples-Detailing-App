@@ -96,8 +96,9 @@ test('booking detail reschedule updates the existing booking time', async ({ pag
   await page.getByRole('button', { name: /Bookings/i }).click();
   await page.getByRole('button', { name: /Deluxe Detail/i }).click();
   await expect(page.getByText('Arrival Tracker')).toBeVisible();
-  await expect(page.getByText('min estimate')).toBeVisible();
+  await expect(page.getByText('owner update')).toBeVisible();
   await expect(page.getByText(/Status updates from the owner side/i)).toBeVisible();
+  await expect(page.getByText(/No ETA is shown until Dane adds one manually/i)).toBeVisible();
   await page.getByRole('button', { name: 'Reschedule' }).click();
   await expect(page.getByRole('heading', { name: 'Reschedule Booking' })).toBeVisible();
   await page.getByRole('button', { name: '12:00 PM' }).click();

@@ -83,9 +83,9 @@ const ownerActiveTab = (screen) => {
 };
 
 const TRACKER_STEPS = [
-  { id:"on_my_way", label:"On the Way", icon:"truck", estimate:"22", customerMessage:"Dane is on the way." },
-  { id:"arrived", label:"I'm Here", icon:"locate", estimate:"0", customerMessage:"Dane has arrived." },
-  { id:"complete", label:"Completed", icon:"check", estimate:"Done", customerMessage:"The job is marked complete." },
+  { id:"on_my_way", label:"On the Way", icon:"truck", customerMessage:"Dane is on the way." },
+  { id:"arrived", label:"I'm Here", icon:"locate", customerMessage:"Dane has arrived." },
+  { id:"complete", label:"Completed", icon:"check", customerMessage:"The job is marked complete." },
 ];
 
 const isReadyExternalUrl = (url) => /^https?:\/\//i.test(url || "");
@@ -1389,8 +1389,10 @@ const BookingDetail = (p) => {
                 <div className="text-xs text-[#9FB3C8] mt-1">Status updates from the owner side, not live GPS.</div>
               </div>
               <div className="text-right">
-                <div className="text-2xl font-extrabold price-orange">{trackerCurrent.estimate}</div>
-                <div className="text-[10px] uppercase tracking-wider text-[#9FB3C8]">{trackerCurrent.id === "complete" ? "status" : "min estimate"}</div>
+                <div className="w-10 h-10 ml-auto rounded-2xl bg-[var(--orange)]/15 border border-[var(--orange)]/40 text-[var(--orange)] flex items-center justify-center">
+                  <Icon name={trackerCurrent.icon} className="w-5 h-5" />
+                </div>
+                <div className="text-[10px] uppercase tracking-wider text-[#9FB3C8] mt-1">owner update</div>
               </div>
             </div>
             <div className="grid grid-cols-3 gap-2 mt-4">
@@ -1401,7 +1403,7 @@ const BookingDetail = (p) => {
               ))}
             </div>
             <div className="mt-3 text-[11px] text-[#9FB3C8]">
-              The minute estimate is a demo placeholder until real routing or manual owner updates are approved.
+              No ETA is shown until Dane adds one manually or real routing is approved.
             </div>
           </div>
         )}
