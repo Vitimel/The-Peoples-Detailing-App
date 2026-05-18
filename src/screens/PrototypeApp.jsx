@@ -1372,16 +1372,32 @@ const BookingDetail = (p) => {
         </div>
 
         {b.status==="confirmed" && (
-          <div className="card map-bg mt-3 h-32 relative overflow-hidden p-0">
-            <svg viewBox="0 0 350 130" className="absolute inset-0 w-full h-full">
-              <path d="M20 110 Q 100 50 200 80 T 330 40" className="route-dash" />
-              <circle cx="20" cy="110" r="6" fill="#FF6A00" />
-              <circle cx="330" cy="40" r="6" fill="#9FB3C8" />
-              <text x="32" y="125" fill="#FF6A00" fontSize="10" fontWeight="700">Detailer en route</text>
-              <text x="240" y="36" fill="#9FB3C8" fontSize="10">{share ? "You (shared)" : "You"}</text>
-            </svg>
-            <div className="absolute bottom-2 right-3 bg-[#0c2238]/90 border border-[#1f3b5c] rounded-full px-3 py-1.5 text-[10px]">{share ? "ETA demo ~22 min" : "Demo route preview"}</div>
-            {!share && <div className="absolute top-2 left-3 bg-[#0c2238]/90 border border-[#1f3b5c] rounded-full px-3 py-1.5 text-[10px] text-[#9FB3C8]">Live location off</div>}
+          <div className="card mt-3">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <div className="label-up mb-1">Arrival Tracker</div>
+                <div className="text-sm font-semibold">Status updates, not live GPS</div>
+                <div className="text-xs text-[#9FB3C8] mt-1">Dane can send simple progress updates when he is on the way, arrives, and completes the job.</div>
+              </div>
+              <div className="text-right">
+                <div className="text-2xl font-extrabold price-orange">22</div>
+                <div className="text-[10px] uppercase tracking-wider text-[#9FB3C8]">min estimate</div>
+              </div>
+            </div>
+            <div className="grid grid-cols-3 gap-2 mt-4">
+              {[
+                { label:"On the Way", active:true },
+                { label:"I'm Here", active:false },
+                { label:"Completed", active:false },
+              ].map(step => (
+                <div key={step.label} className={`rounded-xl border px-2 py-2 text-center text-[11px] font-semibold ${step.active ? "border-[var(--orange)] bg-[var(--orange)]/10 text-white" : "border-[#1f3b5c] bg-[#0d2236] text-[#9FB3C8]"}`}>
+                  {step.label}
+                </div>
+              ))}
+            </div>
+            <div className="mt-3 text-[11px] text-[#9FB3C8]">
+              The minute estimate is a demo placeholder until real routing or manual owner updates are approved.
+            </div>
           </div>
         )}
 
