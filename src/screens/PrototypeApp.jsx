@@ -849,6 +849,7 @@ const LocationStep = (p) => {
   const [address, setAddress] = useState(p.draft?.address || "");
   const [useGps, setUseGps] = useState(false);
   const [miles, setMiles] = useState(p.draft?.travelMiles || 0);
+  const [travelChecked, setTravelChecked] = useState(Boolean(p.draft?.address));
   const [gpsStatus, setGpsStatus] = useState("");
   const [addressStatus, setAddressStatus] = useState("");
 
@@ -864,6 +865,7 @@ const LocationStep = (p) => {
     const useDemoLocation = () => {
       setAddress("Current location (demo fallback) · 218 Demo Ave, Murfreesboro, TN");
       setMiles(12.4);
+      setTravelChecked(true);
       setGpsStatus("Demo location used because browser GPS was unavailable.");
       setAddressStatus("");
       p.showToast("Using demo location");
@@ -880,6 +882,7 @@ const LocationStep = (p) => {
         const estimatedMiles = milesBetween(MURFREESBORO_BASE, customerLocation);
         setAddress(`GPS location captured · ${coords.latitude.toFixed(5)}, ${coords.longitude.toFixed(5)}`);
         setMiles(Number(estimatedMiles.toFixed(1)));
+        setTravelChecked(true);
         setGpsStatus(`Browser GPS captured. Distance is estimated from ${p.settings.baseAddress || SETTINGS.baseAddress}.`);
         setAddressStatus("");
         p.showToast("GPS location captured");
@@ -889,6 +892,34 @@ const LocationStep = (p) => {
     );
   };
 
+  const checkTravelFee = () => {
+    const cleanAddress = address.trim();
+    if (!cleanAddress) {
+      setAddressStatus("Enter a service address or use current location before checking the travel fee.");
+      return null;
+    }
+
+    if (useGps && miles > 0) {
+      setTravelChecked(true);
+      setAddressStatus("Travel fee checked from the current location estimate.");
+      return { finalMiles: miles, finalAddress: cleanAddress };
+    }
+
+    const estimate = estimateMilesFromAddress(cleanAddress);
+    if (!estimate) {
+      setTravelChecked(false);
+      setAddressStatus("I could not estimate that address yet. Add a supported city or ZIP like Franklin, TN 37064, or use current location.");
+      return null;
+    }
+
+    const finalMiles = estimate.miles;
+    const finalAddress = estimate.label === cleanAddress ? cleanAddress : `${cleanAddress} (${estimate.label})`;
+    setMiles(finalMiles);
+    setTravelChecked(true);
+    setAddressStatus(`Travel fee checked from ${estimate.label} using the city or ZIP in the typed address.`);
+    return { finalMiles, finalAddress };
+  };
+
   const next = () => {
     const cleanAddress = address.trim();
     if (!cleanAddress) {
@@ -896,21 +927,15 @@ const LocationStep = (p) => {
       return;
     }
 
-    let finalMiles = miles;
-    let finalAddress = cleanAddress;
-    if (finalMiles === 0) {
-      const estimate = estimateMilesFromAddress(cleanAddress);
-      if (!estimate) {
-        setAddressStatus("I could not estimate that address yet. Add a supported city or ZIP like Franklin, TN 37064, or use current location.");
-        return;
-      }
-
-      finalMiles = estimate.miles;
-      finalAddress = estimate.label === cleanAddress ? cleanAddress : `${cleanAddress} (${estimate.label})`;
-      setMiles(finalMiles);
-      setAddressStatus(`Estimated from ${estimate.label} using the city or ZIP in the typed address. Dane can confirm exact travel rules before production.`);
+    if (!travelChecked) {
+      setAddressStatus("Check the travel fee before continuing to checkout.");
+      return;
     }
 
+    const checked = useGps ? { finalMiles: miles, finalAddress: cleanAddress } : checkTravelFee();
+    if (!checked) return;
+
+    const { finalMiles, finalAddress } = checked;
     const finalTravelFeeCents = calculateTravelFeeCents(finalMiles, p.settings);
     p.setDraft({...p.draft, address: finalAddress, travelMiles: finalMiles, travelFeeCents: finalTravelFeeCents });
     p.setScreen("checkout");
@@ -937,7 +962,11 @@ const LocationStep = (p) => {
 
         <div className="mt-4">
           <div className="text-xs uppercase tracking-wider text-[#9FB3C8] mb-2">Service Address</div>
-          <input className="input" placeholder="Enter address, city, or ZIP, like 405 Main St, Franklin, TN 37064" value={address} onChange={e=> { setAddress(e.target.value); setAddressStatus(""); if (miles !== 0) setMiles(0); }} />
+          <input className="input" placeholder="Enter address, city, or ZIP, like 405 Main St, Franklin, TN 37064" value={address} onChange={e=> { setAddress(e.target.value); setAddressStatus(""); setGpsStatus(""); setUseGps(false); setTravelChecked(false); if (miles !== 0) setMiles(0); }} />
+          <button className="btn-primary mt-2 flex items-center justify-center gap-2" onClick={checkTravelFee}>
+            <Icon name="check" className="w-4 h-4" />
+            <span>Check travel fee</span>
+          </button>
           <button className="btn-secondary mt-2 flex items-center justify-center gap-2" onClick={useCurrentLocation}>
             <Icon name="locate" className="w-4 h-4" />
             <span>Use my current location</span>
@@ -949,15 +978,15 @@ const LocationStep = (p) => {
         <div className="mt-5 grid grid-cols-3 gap-2">
           <div className="card text-center">
             <div className="text-[10px] uppercase tracking-wider text-[#9FB3C8]">Distance</div>
-            <div className="text-base font-bold mt-1">{miles > 0 ? `${miles.toFixed(1)} mi` : "—"}</div>
+            <div className="text-base font-bold mt-1">{travelChecked ? `${miles.toFixed(1)} mi` : "—"}</div>
           </div>
           <div className="card text-center">
             <div className="text-[10px] uppercase tracking-wider text-[#9FB3C8]">ETA</div>
-            <div className="text-base font-bold mt-1">{miles > 0 ? `${Math.round(miles*1.5)} min` : "—"}</div>
+            <div className="text-base font-bold mt-1">{travelChecked ? `${Math.round(miles*1.5)} min` : "—"}</div>
           </div>
           <div className="card text-center">
             <div className="text-[10px] uppercase tracking-wider text-[#9FB3C8]">Travel Fee</div>
-            <div className="text-base font-bold mt-1 price-orange">{miles === 0 ? "Pending" : travelFeeCents === 0 ? "Free" : cents(travelFeeCents)}</div>
+            <div className="text-base font-bold mt-1 price-orange">{!travelChecked ? "Pending" : travelFeeCents === 0 ? "Free" : cents(travelFeeCents)}</div>
           </div>
         </div>
 
@@ -2128,3 +2157,4 @@ const OwnerBottomNav = ({ active, setScreen }) => (
 );
 
 export default App;
+
