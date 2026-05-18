@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import LOGO_DATA_URI from '../assets/The_Peoples_Detailing_Primary_Crest_Logo.webp';
 import MASCOT_DATA_URI from '../assets/Booking_App_Hero_Concept_Mascot_Car_Logo.png';
 import { calculateCheckoutTotals } from '../utils/fees.js';
+import { decodeVinSample, lookupVinDetails, normalizeVin } from '../utils/vin.js';
 
 import {
   LS_KEY,
@@ -9,7 +10,6 @@ import {
   SERVICES,
   SETTINGS,
   cents,
-  demoDecodeVin,
   isoToDay,
   isoToTime,
   loadState,
@@ -64,7 +64,7 @@ const Icon = ({ name, className="w-5 h-5", strokeWidth=2 }) => {
 };
 
 /* ==== BOTTOM NAV (rendered outside scroll-area) ==== */
-const CUSTOMER_NAV_SCREENS = ["home","serviceDetail","myBookings","bookingDetail","messages","profile"];
+const CUSTOMER_NAV_SCREENS = ["home","priceList","serviceDetail","myBookings","bookingDetail","messages","profile"];
 const OWNER_NAV_SCREENS = ["ownerDash","ownerJobs","ownerJobDetail","ownerTracker","ownerReports","ownerServices","ownerSettings"];
 
 const customerActiveTab = (screen) => {
@@ -200,6 +200,50 @@ const App = () => {
     setScreen("book");
   };
 
+  const beginReschedule = bookingId => {
+    const booking = bookings.find(b => b.id === bookingId);
+    if (!booking || booking.status !== "confirmed") {
+      showToast("Only confirmed bookings can be rescheduled");
+      return;
+    }
+    const svc = services.find(s => s.id === booking.serviceId) || services[0];
+    setDraft({
+      rescheduleBookingId: booking.id,
+      serviceId: booking.serviceId,
+      serviceTitle: booking.serviceTitle,
+      priceCents: booking.priceCents || svc.priceCents,
+      date: booking.startIso,
+      address: booking.address,
+      lat: null, lng: null,
+      liveLocationOptIn: booking.liveLocationOptIn,
+      vehicleId: activeVehicle?.id || "vehicle-demo-1",
+      vehicleLabel: booking.customer?.vehicle || vehicleLabel(activeVehicle),
+      travelMiles: booking.travelMiles || 0,
+      travelFeeCents: booking.travelFeeCents || 0,
+      promoCode: booking.promoCode || "",
+      discountCents: booking.discountCents || 0,
+    });
+    setActiveBookingId(booking.id);
+    setScreen("book");
+    showToast("Pick a new date or time");
+  };
+
+  const finishReschedule = ({ date, liveLocationOptIn, vehicleLabel }) => {
+    const bookingId = draft?.rescheduleBookingId;
+    if (!bookingId) return;
+    setBookings(bs => bs.map(b => b.id === bookingId ? {
+      ...b,
+      startIso: date,
+      liveLocationOptIn,
+      customer: { ...b.customer, vehicle: vehicleLabel || b.customer?.vehicle },
+      rescheduledAt: Date.now(),
+    } : b));
+    setActiveBookingId(bookingId);
+    setDraft(null);
+    setScreen("bookingDetail");
+    showToast("Booking rescheduled");
+  };
+
   const confirmBooking = (draftOverride = null) => {
     const finalDraft = draftOverride || draft;
     if (!finalDraft) {
@@ -267,7 +311,7 @@ const App = () => {
     activeBookingId, setActiveBookingId,
     settings, setSettings,
     vehicles, setVehicles, activeVehicleId, setActiveVehicleId, activeVehicle,
-    confirmBooking, startBooking,
+    confirmBooking, startBooking, beginReschedule, finishReschedule,
     updateTracker, completeJob, cancelBooking,
     resetApp, showToast,
   };
@@ -328,6 +372,7 @@ const Screen = (p) => {
     switch (p.screen) {
       case "splash": return <Splash {...p} />;
       case "home": return <Home {...p} />;
+      case "priceList": return <PriceList {...p} />;
       case "serviceDetail": return <ServiceDetail {...p} />;
       case "book": return <BookForm {...p} />;
       case "location": return <LocationStep {...p} />;
@@ -362,13 +407,13 @@ const Splash = ({ setScreen }) => (
       <div className="text-[11px] tracking-[.2em] text-[#9FB3C8] uppercase mt-1">EST. 2018</div>
     </div>
     <div className="flex-1 flex items-center">
-      <img src={MASCOT_DATA_URI} alt="" className="w-72 max-h-72 object-contain drop-shadow-[0_20px_30px_rgba(0,0,0,.5)]" />
+      <img src={MASCOT_DATA_URI} alt="The Peoples Detailing mascot" className="w-72 max-h-72 object-contain drop-shadow-[0_20px_30px_rgba(0,0,0,.5)]" />
     </div>
     <div className="w-full flex flex-col gap-2 items-center">
       <h1 className="text-3xl font-extrabold tracking-tight">The Peoples Detailing</h1>
       <p className="text-[#9FB3C8] text-sm mb-4">Mobile car detailing — we come to you</p>
       <button className="btn-primary" onClick={()=> setScreen("home")}>Book Now</button>
-      <button className="btn-secondary mt-2" onClick={()=> setScreen("home")}>Browse Services</button>
+      <button className="btn-secondary mt-2" onClick={()=> setScreen("priceList")}>Browse Services</button>
     </div>
   </div>
 );
@@ -408,8 +453,8 @@ const Home = (p) => (
     <TopBrandHeader />
 
     <div className="px-5 pt-2">
-      <div className="gradient-hero rounded-2xl p-5 flex items-center gap-3 border border-[#1a3553]">
-        <img src={MASCOT_DATA_URI} alt="" className="w-20 h-20 object-contain" />
+      <div className="gradient-hero rounded-2xl p-5 min-h-[150px] flex items-center gap-4 border border-[#1a3553] overflow-hidden">
+        <img src={MASCOT_DATA_URI} alt="The Peoples Detailing mascot" className="w-28 h-32 shrink-0 object-contain object-bottom drop-shadow-[0_12px_20px_rgba(0,0,0,.45)]" />
         <div className="flex-1">
           <div className="text-[11px] uppercase tracking-wider text-[var(--orange)] font-semibold">{p.settings.homeTaglineKicker}</div>
           <div className="text-lg font-bold leading-tight mt-1">{p.settings.homeTagline}</div>
@@ -453,6 +498,44 @@ const Home = (p) => (
     </div>
 
     </div>
+);
+
+const PriceList = (p) => (
+  <div className="pb-6">
+    <HeaderBar title="Price List" subtitle="Saved service menu" onBack={()=> p.setScreen("splash")} />
+    <div className="px-5">
+      <div className="card">
+        <div className="text-sm font-semibold">Detailing packages</div>
+        <div className="text-xs text-[#9FB3C8] mt-1">
+          These are the saved package prices used by checkout. Travel, discounts, and the app fee are shown before payment.
+        </div>
+      </div>
+
+      <div className="mt-4 flex flex-col gap-3">
+        {p.services.filter(s=>s.visible!==false).map(svc => (
+          <div key={svc.id} className="card">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <div className="text-base font-bold">{svc.title}</div>
+                <div className="text-xs text-[#9FB3C8] mt-1">{svc.durationHours} hrs · {svc.cadence}</div>
+              </div>
+              <div className="price-orange text-lg whitespace-nowrap">{cents(svc.priceCents)}{svc.badge && <span className="text-xs">{svc.badge}</span>}</div>
+            </div>
+            <div className="text-xs text-[#9FB3C8] mt-2">{svc.blurb}</div>
+            <div className="mt-3 grid gap-1.5">
+              {svc.bullets.map(item => (
+                <div key={item} className="flex gap-2 text-xs text-[#d8e3ee]">
+                  <Icon name="check" className="w-3.5 h-3.5 text-[var(--orange)] flex-shrink-0 mt-0.5" />
+                  <span>{item}</span>
+                </div>
+              ))}
+            </div>
+            <button className="btn-secondary mt-4" onClick={()=> p.startBooking(svc.id)}>Book {svc.title}</button>
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
 );
 
 const ServiceDetail = (p) => {
@@ -511,6 +594,7 @@ const BookForm = (p) => {
   const [time, setTime] = useState(() => new Date(p.draft?.date || Date.now()));
   const [shareLive, setShareLive] = useState(p.draft?.liveLocationOptIn ?? false);
   const [showCal, setShowCal] = useState(false);
+  const isReschedule = Boolean(p.draft?.rescheduleBookingId);
   const slots = ["8:00 AM","10:00 AM","12:00 PM","2:00 PM","4:00 PM"];
 
   // Build availability map from existing bookings (same source as the calendar overlay)
@@ -538,6 +622,14 @@ const BookForm = (p) => {
 
   const next = () => {
     const currentVehicle = p.vehicles.find(v => v.id === p.activeVehicleId) || p.vehicles[0];
+    if (isReschedule) {
+      p.finishReschedule({
+        date: time.toISOString(),
+        liveLocationOptIn: shareLive,
+        vehicleLabel: p.draft?.vehicleLabel || vehicleLabel(currentVehicle),
+      });
+      return;
+    }
     p.setDraft({...p.draft, date: time.toISOString(), liveLocationOptIn: shareLive, vehicleId: currentVehicle?.id, vehicleLabel: vehicleLabel(currentVehicle) });
     p.setScreen("location");
   };
@@ -549,9 +641,15 @@ const BookForm = (p) => {
 
   return (
     <div className="pb-6">
-      <HeaderBar title="Book Appointment" subtitle="Step 1 of 3" onBack={()=> p.setScreen("serviceDetail")} />
-      <Stepper step={0} />
+      <HeaderBar title={isReschedule ? "Reschedule Booking" : "Book Appointment"} subtitle={isReschedule ? "Pick a new date or time" : "Step 1 of 3"} onBack={()=> p.setScreen(isReschedule ? "bookingDetail" : "serviceDetail")} />
+      {!isReschedule && <Stepper step={0} />}
       <div className="px-5">
+        {isReschedule && (
+          <div className="card mb-3 bg-[var(--orange)]/10 border-[var(--orange)]/30">
+            <div className="text-sm font-semibold">No new payment in this prototype.</div>
+            <div className="text-xs text-[#9FB3C8] mt-1">Choose the new date and time, then save it back to this same booking.</div>
+          </div>
+        )}
         <div className="card flex items-center justify-between">
           <div>
             <div className="text-[11px] uppercase tracking-wider text-[#9FB3C8]">Service</div>
@@ -641,7 +739,7 @@ const BookForm = (p) => {
         </div>
 
         <div className="mt-6">
-          <button className="btn-primary" onClick={next}>Continue to Location & Travel Fee</button>
+          <button className="btn-primary" onClick={next}>{isReschedule ? "Save New Date & Time" : "Continue to Location & Travel Fee"}</button>
         </div>
       </div>
       {showCal && (
@@ -1165,6 +1263,11 @@ const MyBookings = (p) => {
 const BookingDetail = (p) => {
   const b = p.bookings.find(x => x.id === p.activeBookingId);
   const [share, setShare] = useState(b?.liveLocationOptIn ?? false);
+  const [shareStatus, setShareStatus] = useState(() => {
+    if (!b?.liveLocationOptIn) return "Off. Turn this on when you want to share day-of location.";
+    if (b?.liveLocationSnapshot) return "GPS location was shared from this browser.";
+    return "On. Exact GPS updates need the app open and browser permission allowed.";
+  });
   if (!b) {
     return (
       <div className="p-6 text-center">
@@ -1176,8 +1279,42 @@ const BookingDetail = (p) => {
   }
 
   const toggleShare = () => {
-    setShare(v=>!v);
-    p.setBookings(bs => bs.map(x => x.id===b.id ? {...x, liveLocationOptIn: !share} : x));
+    if (share) {
+      setShare(false);
+      setShareStatus("Off. Turn this on when you want to share day-of location.");
+      p.setBookings(bs => bs.map(x => x.id===b.id ? {...x, liveLocationOptIn: false} : x));
+      p.showToast("Live location sharing off");
+      return;
+    }
+
+    setShare(true);
+    setShareStatus("Requesting browser GPS permission...");
+    const enableWithoutExactGps = () => {
+      setShareStatus("Sharing is on, but exact GPS is unavailable in this browser. The route below is a demo preview.");
+      p.setBookings(bs => bs.map(x => x.id===b.id ? {...x, liveLocationOptIn: true} : x));
+      p.showToast("Live location sharing on");
+    };
+
+    if (!navigator.geolocation) {
+      enableWithoutExactGps();
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      ({ coords }) => {
+        const snapshot = {
+          lat: coords.latitude,
+          lng: coords.longitude,
+          accuracy: Math.round(coords.accuracy || 0),
+          capturedAt: Date.now(),
+        };
+        setShareStatus(`GPS shared from this browser. Accuracy about ${snapshot.accuracy || "unknown"} meters.`);
+        p.setBookings(bs => bs.map(x => x.id===b.id ? {...x, liveLocationOptIn: true, liveLocationSnapshot: snapshot} : x));
+        p.showToast("Live GPS shared");
+      },
+      () => enableWithoutExactGps(),
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 60_000 },
+    );
   };
 
   return (
@@ -1208,8 +1345,9 @@ const BookingDetail = (p) => {
           <div>
             <div className="text-sm font-semibold">Live Location Sharing</div>
             <div className="text-xs text-[#9FB3C8]">Lets our team find you on day-of.</div>
+            <div className="text-[11px] text-[#9FB3C8] mt-1 max-w-[190px]">{shareStatus}</div>
           </div>
-          <button onClick={toggleShare} className={`w-12 h-7 rounded-full relative ${share?"bg-[var(--orange)]":"bg-[#1f3b5c]"}`}>
+          <button aria-label="Toggle live location sharing" onClick={toggleShare} className={`w-12 h-7 rounded-full relative ${share?"bg-[var(--orange)]":"bg-[#1f3b5c]"}`}>
             <span className="absolute top-0.5 w-6 h-6 bg-white rounded-full transition-all" style={{left: share?"22px":"2px"}} />
           </button>
         </div>
@@ -1221,14 +1359,15 @@ const BookingDetail = (p) => {
               <circle cx="20" cy="110" r="6" fill="#FF6A00" />
               <circle cx="330" cy="40" r="6" fill="#9FB3C8" />
               <text x="32" y="125" fill="#FF6A00" fontSize="10" fontWeight="700">Detailer en route</text>
-              <text x="240" y="36" fill="#9FB3C8" fontSize="10">You</text>
+              <text x="240" y="36" fill="#9FB3C8" fontSize="10">{share ? "You (shared)" : "You"}</text>
             </svg>
-            <div className="absolute bottom-2 right-3 bg-[#0c2238]/90 border border-[#1f3b5c] rounded-full px-3 py-1.5 text-[10px]">ETA ~22 min</div>
+            <div className="absolute bottom-2 right-3 bg-[#0c2238]/90 border border-[#1f3b5c] rounded-full px-3 py-1.5 text-[10px]">{share ? "ETA demo ~22 min" : "Demo route preview"}</div>
+            {!share && <div className="absolute top-2 left-3 bg-[#0c2238]/90 border border-[#1f3b5c] rounded-full px-3 py-1.5 text-[10px] text-[#9FB3C8]">Live location off</div>}
           </div>
         )}
 
         <div className="flex gap-2 mt-4">
-          <button className="btn-secondary" onClick={()=> p.showToast("Reschedule requested (mock)")}>Reschedule</button>
+          <button className="btn-secondary" onClick={()=> p.beginReschedule(b.id)}>Reschedule</button>
           {b.status==="confirmed" && <button className="btn-secondary" onClick={()=> { p.cancelBooking(b.id); p.setScreen("myBookings"); }}>Cancel</button>}
         </div>
 
@@ -1286,39 +1425,54 @@ const ProfileRow = ({ icon, title, hint, onClick }) => {
 const VehicleManager = (p) => {
   const active = p.vehicles.find(v => v.id === p.activeVehicleId) || p.vehicles[0];
   const [form, setForm] = useState(() => ({ ...(active || seedVehicles()[0]) }));
-  const [showDetails, setShowDetails] = useState(false);
-  const [decodeNote, setDecodeNote] = useState("Optional: VIN lookup can help fill year/make/model later. You do not need this for every booking.");
+  const [editingVehicleId, setEditingVehicleId] = useState(null);
+  const [isDecodingVin, setIsDecodingVin] = useState(false);
+  const [decodeNote, setDecodeNote] = useState("VIN is optional. If entered, it can fill year, make, model, and trim from the free NHTSA database.");
   const update = (key, value) => setForm(f => ({...f, [key]: value}));
   const displayName = (v) => v?.nickname || vehicleLabel(v);
+  const requiredVehicleFields = [
+    ["Vehicle name", form.nickname],
+    ["Year", form.year],
+    ["Make", form.make],
+    ["Model", form.model],
+    ["Trim", form.trim],
+    ["Color", form.color],
+  ];
   const saveVehicle = () => {
+    const missing = requiredVehicleFields.find(([, value]) => !(value || "").trim());
+    if (missing) return p.showToast(`Add vehicle ${missing[0].toLowerCase()} first`);
     const hasQuickName = (form.nickname || "").trim();
-    const hasVehicleDetails = [form.year, form.make, form.model].some(x => (x || "").trim());
-    if (!hasQuickName && !hasVehicleDetails) return p.showToast("Add a vehicle name or basic details first");
     const clean = { ...form, id: form.id || uuid(), nickname: hasQuickName || vehicleLabel(form), isDefault: true };
+    const isExistingVehicle = p.vehicles.some(v => v.id === clean.id);
     const next = [clean, ...p.vehicles.filter(v => v.id !== clean.id).map(v => ({...v, isDefault:false}))];
     p.setVehicles(next);
     p.setActiveVehicleId(clean.id);
+    setEditingVehicleId(clean.id);
     if (p.draft) p.setDraft({...p.draft, vehicleId: clean.id, vehicleLabel: displayName(clean)});
-    p.showToast("Vehicle saved. You can pick it next time without re-entering details.");
+    p.showToast(isExistingVehicle ? "Vehicle updated and selected." : "Vehicle saved. You can pick it next time without re-entering details.");
   };
   const addNew = () => {
-    const fresh = { id: uuid(), year:"", make:"", model:"", trim:"", color:"", plate:"", vin:"", nickname:"", source:"manual", isDefault:false };
+    const fresh = { id: uuid(), year:"", make:"", model:"", trim:"", color:"", plate:"", notes:"", vin:"", nickname:"", source:"manual", isDefault:false };
     setForm(fresh);
-    setShowDetails(false);
-    setDecodeNote("Add a quick vehicle name first. Extra details are optional and can be saved for later.");
+    setEditingVehicleId(null);
+    setDecodeNote("VIN is optional. If entered, it can fill year, make, model, and trim from the free NHTSA database.");
   };
   const chooseVehicle = v => {
     p.setActiveVehicleId(v.id);
     p.setVehicles(p.vehicles.map(x => ({...x, isDefault:x.id===v.id})));
     setForm({...v, isDefault:true});
+    setEditingVehicleId(null);
     if (p.draft) p.setDraft({...p.draft, vehicleId:v.id, vehicleLabel:displayName(v)});
     p.showToast("Vehicle selected for this booking");
   };
   const editVehicle = v => {
-    chooseVehicle(v);
+    p.setActiveVehicleId(v.id);
+    p.setVehicles(p.vehicles.map(x => ({...x, isDefault:x.id===v.id})));
     setForm({...v, isDefault:true});
-    setShowDetails(false);
-    setDecodeNote("Editing saved vehicle. Extra details are optional.");
+    setEditingVehicleId(v.id);
+    setDecodeNote("Editing saved vehicle. Plate number and notes are optional.");
+    if (p.draft) p.setDraft({...p.draft, vehicleId:v.id, vehicleLabel:displayName(v)});
+    p.showToast(`Editing ${displayName(v)}`);
   };
   const removeVehicle = id => {
     if (p.vehicles.length <= 1) return p.showToast("Keep at least one vehicle");
@@ -1327,16 +1481,36 @@ const VehicleManager = (p) => {
     const fallback = next[0];
     p.setActiveVehicleId(fallback.id);
     setForm({...fallback});
+    setEditingVehicleId(null);
     p.showToast("Vehicle removed");
   };
-  const decodeVin = () => {
-    const result = demoDecodeVin(form.vin);
-    if (!result) {
-      setDecodeNote("VIN lookup is optional. Production should validate a full 17-character VIN when customers want exact vehicle details.");
+  const applyVinResult = result => {
+    setForm(f => ({...f, ...result, nickname: f.nickname || [result.year, result.make, result.model].filter(Boolean).join(" ")}));
+  };
+  const decodeVin = async () => {
+    const cleanVin = normalizeVin(form.vin);
+    if (cleanVin.length !== 17 || /[IOQ]/.test(cleanVin)) {
+      setDecodeNote("Enter a full 17-character VIN. VINs do not use I, O, or Q.");
       return;
     }
-    setForm(f => ({...f, ...result, nickname: f.nickname || [result.year, result.make, result.model].filter(Boolean).join(" ")}));
-    setDecodeNote("Prototype filled the vehicle from a mock VIN result. In production, call NHTSA vPIC for basic year/make/model/body data, then let the customer confirm trim if the API is uncertain.");
+
+    setIsDecodingVin(true);
+    setDecodeNote("Checking the free NHTSA VIN database...");
+    try {
+      const result = await lookupVinDetails(cleanVin);
+      applyVinResult(result);
+      setDecodeNote("VIN decoded with the free NHTSA vPIC database. Confirm trim and color if the customer wants exact details.");
+    } catch (error) {
+      const sample = decodeVinSample(cleanVin);
+      if (sample) {
+        applyVinResult(sample);
+        setDecodeNote("NHTSA lookup was unavailable, so the app used a saved demo match. Confirm details before relying on it.");
+      } else {
+        setDecodeNote(error?.message || "VIN lookup could not identify this vehicle. The customer can still save the vehicle manually.");
+      }
+    } finally {
+      setIsDecodingVin(false);
+    }
   };
 
   return (
@@ -1378,49 +1552,48 @@ const VehicleManager = (p) => {
         </div>
 
         <div className="card mt-4">
-          <div className="text-xs uppercase tracking-wider text-[#9FB3C8] mb-3">Quick vehicle setup</div>
-          <label className="block text-xs text-[#9FB3C8] mb-1">Vehicle name</label>
-          <input value={form.nickname || ""} onChange={e=>update("nickname", e.target.value)} placeholder="Example: White F-150, wife's SUV, daily driver" className="w-full bg-[#0d2236] border border-[#1f3b5c] rounded-xl px-3 py-2 text-sm outline-none focus:border-[var(--orange)]" />
-          <div className="text-xs text-[#9FB3C8] mt-2">This is enough for the app to save the vehicle. More details are optional.</div>
+          <div className="flex items-center justify-between gap-3 mb-3">
+            <div className="text-xs uppercase tracking-wider text-[#9FB3C8]">Vehicle setup</div>
+            {editingVehicleId && <div className="text-[10px] uppercase tracking-wider text-[var(--orange)]">Editing saved vehicle</div>}
+          </div>
+          <label className="block text-xs text-[#9FB3C8] mb-1">Vehicle name<span className="text-[var(--orange)]"> *</span></label>
+          <input aria-label="Vehicle name" required value={form.nickname || ""} onChange={e=>update("nickname", e.target.value)} placeholder="Example: White F-150, wife's SUV, daily driver" className="w-full bg-[#0d2236] border border-[#1f3b5c] rounded-xl px-3 py-2 text-sm outline-none focus:border-[var(--orange)]" />
+          <div className="text-xs text-[#9FB3C8] mt-2">Save the main vehicle details now so booking is faster later. Plate number and notes are optional.</div>
 
-          <button className="mt-4 w-full p-3 rounded-xl border border-[#1f3b5c] bg-[#0d2236] flex items-center justify-between" onClick={()=> setShowDetails(!showDetails)}>
-            <span className="text-sm font-semibold">Optional exact car details / VIN lookup</span>
-            <span className="text-xs text-[var(--orange)]">{showDetails ? "Hide" : "Show"}</span>
-          </button>
-
-          {showDetails && (
-            <div className="mt-4">
-              <label className="block text-xs text-[#9FB3C8] mb-1">VIN</label>
-              <div className="flex gap-2">
-                <input value={form.vin || ""} onChange={e=>update("vin", e.target.value.toUpperCase())} placeholder="Optional 17-character VIN" className="flex-1 bg-[#0d2236] border border-[#1f3b5c] rounded-xl px-3 py-2 text-sm outline-none focus:border-[var(--orange)]" />
-                <button onClick={decodeVin} className="px-3 py-2 rounded-xl bg-[var(--orange)] text-white text-sm font-semibold">Decode</button>
-              </div>
-              <div className="text-xs text-[#9FB3C8] mt-2">{decodeNote}</div>
-
-              <div className="grid grid-cols-2 gap-3 mt-4">
-                <Field label="Year" value={form.year || ""} onChange={v=>update("year", v)} />
-                <Field label="Make" value={form.make || ""} onChange={v=>update("make", v)} />
-                <Field label="Model" value={form.model || ""} onChange={v=>update("model", v)} />
-                <Field label="Trim" value={form.trim || ""} onChange={v=>update("trim", v)} />
-                <Field label="Color" value={form.color || ""} onChange={v=>update("color", v)} />
-                <Field label="Plate / note" value={form.plate || ""} onChange={v=>update("plate", v)} />
-              </div>
+          <div className="mt-4 rounded-xl border border-[#1f3b5c] bg-[#0d2236] p-3">
+            <label className="block text-xs text-[#9FB3C8] mb-1">VIN lookup (optional)</label>
+            <div className="flex gap-2">
+              <input value={form.vin || ""} onChange={e=>update("vin", e.target.value.toUpperCase())} placeholder="Optional 17-character VIN" className="flex-1 bg-[#071a2b] border border-[#1f3b5c] rounded-xl px-3 py-2 text-sm outline-none focus:border-[var(--orange)]" />
+              <button onClick={decodeVin} disabled={isDecodingVin} className="px-3 py-2 rounded-xl bg-[var(--orange)] disabled:bg-[#34506b] disabled:text-[#9FB3C8] text-white text-sm font-semibold">{isDecodingVin ? "Checking" : "Decode"}</button>
             </div>
-          )}
+            <div className="text-xs text-[#9FB3C8] mt-2">{decodeNote}</div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 mt-4">
+            <Field label="Year" value={form.year || ""} onChange={v=>update("year", v)} required />
+            <Field label="Make" value={form.make || ""} onChange={v=>update("make", v)} required />
+            <Field label="Model" value={form.model || ""} onChange={v=>update("model", v)} required />
+            <Field label="Trim" value={form.trim || ""} onChange={v=>update("trim", v)} required />
+            <Field label="Color" value={form.color || ""} onChange={v=>update("color", v)} required />
+            <Field label="Plate number (optional)" value={form.plate || ""} onChange={v=>update("plate", v)} />
+          </div>
+          <div className="mt-3">
+            <Field label="Notes (optional)" value={form.notes || ""} onChange={v=>update("notes", v)} />
+          </div>
         </div>
 
         <div className="mt-5">
-          <button className="btn-primary w-full" onClick={saveVehicle}>Save & Use Vehicle</button>
+          <button className="btn-primary w-full" onClick={saveVehicle}>{editingVehicleId ? "Update & Use Vehicle" : "Save & Use Vehicle"}</button>
         </div>
       </div>
     </div>
   );
 };
 
-const Field = ({ label, value, onChange }) => (
+const Field = ({ label, value, onChange, required=false }) => (
   <div>
-    <label className="block text-xs text-[#9FB3C8] mb-1">{label}</label>
-    <input value={value} onChange={e=>onChange(e.target.value)} className="w-full bg-[#0d2236] border border-[#1f3b5c] rounded-xl px-3 py-2 text-sm outline-none focus:border-[var(--orange)]" />
+    <label className="block text-xs text-[#9FB3C8] mb-1">{label}{required && <span className="text-[var(--orange)]"> *</span>}</label>
+    <input aria-label={label} required={required} value={value} onChange={e=>onChange(e.target.value)} className="w-full bg-[#0d2236] border border-[#1f3b5c] rounded-xl px-3 py-2 text-sm outline-none focus:border-[var(--orange)]" />
   </div>
 );
 

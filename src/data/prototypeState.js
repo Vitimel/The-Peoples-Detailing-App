@@ -128,7 +128,7 @@ export const demoDecodeVin = vin => {
   };
   const prefix = Object.keys(samples).find(k => clean.startsWith(k));
   if (prefix) return samples[prefix];
-  return { year:"2024", make:"Vehicle", model:"From VIN", trim:"Verify trim", source:"prototype VIN lookup" };
+  return null;
 };
 
 /* ==== HELPERS ==== */

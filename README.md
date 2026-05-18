@@ -73,3 +73,7 @@ The original prototype saved promo and vehicle data into the booking object, but
 - Copy review for any text inherited from the prototype that should be polished before production.
 - Confirm whether browser GPS distance estimation is enough for MVP or whether paid/free-tier maps and address validation should be planned later.
 - Later production implementation of Stripe, calendar, SMS/email, auth, backend storage, privacy, and deployment.
+
+## Usable App Path
+
+See `docs/USABLE_APP_ASAP_PLAN.md` for the fastest safe path from clickable prototype to hosted preview and then real MVP.
