@@ -421,7 +421,7 @@ const HeaderBar = ({ title, subtitle, onBack, right }) => (
   </div>
 );
 
-const TopBrandHeader = () => (
+const TopBrandHeader = ({ onNotifications }) => (
   <div className="px-5 pt-12 pb-2 flex items-center justify-between">
     <div className="flex items-center gap-2">
       <img src={LOGO_DATA_URI} alt="" className="w-9 h-9 rounded-md" />
@@ -431,14 +431,20 @@ const TopBrandHeader = () => (
       </div>
     </div>
     <div className="flex items-center gap-2">
-      <button className="w-9 h-9 rounded-full bg-[#102A43] border border-[#1f3b5c] flex items-center justify-center"><Icon name="bell" className="w-4 h-4 text-white" /></button>
+      <button
+        aria-label="Open messages and notifications"
+        className="w-9 h-9 rounded-full bg-[#102A43] border border-[#1f3b5c] flex items-center justify-center"
+        onClick={onNotifications}
+      >
+        <Icon name="bell" className="w-4 h-4 text-white" />
+      </button>
     </div>
   </div>
 );
 
 const Home = (p) => (
   <div className="pb-6">
-    <TopBrandHeader />
+    <TopBrandHeader onNotifications={()=> p.setScreen("messages")} />
 
     <div className="px-5 pt-2">
       <div className="gradient-hero rounded-2xl p-5 min-h-[150px] flex items-center gap-4 border border-[#1a3553] overflow-hidden">
