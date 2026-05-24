@@ -77,3 +77,7 @@ The original prototype saved promo and vehicle data into the booking object, but
 ## Usable App Path
 
 See `docs/USABLE_APP_ASAP_PLAN.md` for the fastest safe path from clickable prototype to hosted preview and then real MVP.
+
+## Obsidian Brain
+
+See `docs/OBSIDIAN_BRAIN_INDEX.md` for the local Obsidian vault path and the key project-memory notes for The Peoples Detailing.
