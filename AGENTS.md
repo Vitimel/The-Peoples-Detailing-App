@@ -4,15 +4,17 @@ This repo is for The Peoples Detailing booking app prototype conversion.
 
 The source-of-truth prototype is `docs/peoples_detailing_app_SOURCE_OF_TRUTH.html`.
 
+Before changing business rules, payments, notifications, maps/location behavior, backend behavior, auth, deployment assumptions, or major screen flows, check `docs/OBSIDIAN_BRAIN_INDEX.md` and the linked Obsidian project notes. The app repo remains authoritative when repo docs and Obsidian notes conflict; reconcile the brain later instead of changing code to match outdated notes.
+
 Preserve:
 
 - The Peoples Detailing as the primary brand.
-- App fee: flat $3.00 customer-visible fee by default.
-- Company-covered card processing fee by default, with owner settings available if it should be shown to customers later.
+- App fee: flat $3.00 hidden from customer checkout by default, tracked as a Dane-side ledger cost from each online purchase or deposit.
+- Customer-paid card processing fee by default, calculated only on the amount paid online today.
 - Checkout fee breakdown and no-surprise language.
 - Saved vehicle flow with required nickname/basic name and optional exact details.
 - MVP statuses: On the Way, I'm Here, Completed.
-- Tasteful BrandNew attribution in the app-fee info area.
+- Tasteful BrandNew attribution in the owner/reporting app-fee ledger area.
 
 Do not add production Stripe, SMS, maps/routing, reverse geocoding, auth, or backend behavior without explicit approval.
 
