@@ -13,9 +13,11 @@ Classification key:
 
 | Screen | Button/action | Classification | Expected behavior | Current status | Fix needed |
 |---|---|---:|---|---|---|
-| Demo bar | Customer | works now | Switch to customer home | Works | None |
-| Demo bar | Owner | works now | Switch to owner dashboard | Works | None |
-| Demo bar | Reset demo | works now | Reset localStorage demo state | Works | None |
+| Public route `/` | Customer app | works now | Show customer booking only, without owner/developer/demo controls | Implemented | Keep route tests |
+| Owner route `/owner` | Owner app | works now | Open Dane's owner tools directly | Implemented | Keep route tests |
+| Developer route `/developer` | Developer admin | works now | Open Tim/BrandNew setup controls directly | Implemented | Keep route tests |
+| Demo bar `?demo=1` | Customer/Owner/Developer | works now | Switch between roles for local testing only | Works | None |
+| Demo bar `?demo=1` | Reset demo | works now | Reset localStorage demo state | Works | None |
 | Bottom nav | Customer Home, Bookings, Messages, Profile | works now | Navigate to matching customer screens | Works | None |
 | Bottom nav | Owner Dash, Jobs, Tracker, Reports, Settings | works now | Navigate to matching owner screens | Works | None |
 | Header | Back arrow | works now | Return to prior screen for the flow | Works | Keep testing during new screens |
@@ -106,15 +108,15 @@ Classification key:
 | Services | Cancel | works now | Exit edit mode | Fixed in audit pass | Test required |
 | Services | Save Service | works now | Save changes for future bookings | Fixed in audit pass | Test required |
 | Settings | Reset | works now | Reset settings to defaults | Works | None |
-| Settings | Preview as customer | works now | Switch to customer home | Works | None |
-| Settings | Manage service menu | works now | Open service editor | Fixed in audit pass | Test required |
+| Settings | Preview as customer | works now | Open customer home with a return-to-owner preview banner | Implemented | Keep route tests |
 | Settings | Availability hours | works now | Edit working start/end hour | Implemented | Keep tests |
 | Settings | Block full day | works now | Disable date for customer booking/reschedule | Implemented | Keep tests |
 | Settings | Block time slot | works now | Disable selected date/time slot | Implemented | Keep tests |
 | Settings | Number inputs | works now | Update local setting values | Works | None |
-| Settings | App cost from Dane's cut | works now | Edit the hidden $3 app cost tracked on each online purchase/deposit | Implemented | None |
-| Settings | Customer card processing toggle | works now | Keep customer-paid card processing on by default, with an owner option to cover it later | Implemented | Keep tests |
-| Settings | Connection rows | prototype info | Show connection status only | Works | Do not add fake connect buttons |
+| Developer Admin | Edit customer service prices | works now | Open service editor from developer route only | Implemented | Keep tests |
+| Developer Admin | App cost from Dane's cut | works now | Edit the hidden $3 app cost tracked on each online purchase/deposit | Implemented | None |
+| Developer Admin | Customer card processing toggle | works now | Keep customer-paid card processing on by default, with a developer option to cover it later | Implemented | Keep tests |
+| Developer Admin | Connection rows | prototype info | Show connection status only | Works | Do not add fake connect buttons |
 
 ## Required Follow-Up Checks
 

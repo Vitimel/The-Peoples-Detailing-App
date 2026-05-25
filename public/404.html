@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>The Peoples Detailing</title>
+    <script>
+      (function () {
+        var base = "/The-Peoples-Detailing-App/";
+        var path = window.location.pathname || "/";
+        var route = "/";
+        if (path.indexOf(base) === 0) {
+          route = path.slice(base.length - 1) || "/";
+        }
+        var search = new URLSearchParams(window.location.search);
+        search.set("route", route);
+        window.location.replace(base + "?" + search.toString() + window.location.hash);
+      })();
+    </script>
+  </head>
+  <body>Redirecting...</body>
+</html>

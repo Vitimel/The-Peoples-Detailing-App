@@ -8,6 +8,8 @@ This app should behave like a usable localStorage prototype of The Peoples Detai
 
 - The app is a Vite/React frontend deployed as a static GitHub Pages preview.
 - Data is stored in browser localStorage for demo use only.
+- One frontend app is split by route: `/` is the public customer booking app, `/owner` is Dane's operations app, and `/developer` is Tim/BrandNew admin.
+- The Customer/Owner/Developer role switcher and Reset Demo controls are only visible with `?demo=1` for local/testing review.
 - NHTSA vPIC VIN lookup is the only connected external API.
 - No production Stripe, SMS, email, auth, backend, database, calendar, maps/routing, reverse geocoding, or automatic payout routing is connected.
 - No secret keys or private credentials belong in this GitHub repo or the GitHub Pages frontend.
@@ -67,6 +69,7 @@ This app should behave like a usable localStorage prototype of The Peoples Detai
 
 - Supabase Free is the default backend candidate for the finished-product path.
 - GitHub Pages remains the frontend host for the current free preview.
+- Future Supabase Auth/RLS should match the current route split: customers can create/read their own bookings, owner can manage jobs/availability, and developer can manage pricing/integrations.
 - Stripe must start with education and test mode/sandbox only; live Stripe is not approved.
 - Real SMS to Dane should be added through a backend/provider later; the frontend preview records the owner acknowledgment state without sending SMS.
 - See `docs/PRODUCTION_FOUNDATION_PLAN.md` for the backend/payment starting point.

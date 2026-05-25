@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 
 async function resetAndEnterHome(page) {
-  await page.goto('/');
+  await page.goto('/?demo=1');
   await page.getByRole('button', { name: /reset demo/i }).click();
   await page.getByRole('button', { name: /book now/i }).click();
   await expect(page.getByText('Our Services')).toBeVisible();
@@ -16,6 +16,39 @@ async function reachCheckout(page) {
   await page.getByRole('button', { name: /Continue to Checkout/i }).click();
   await expect(page.getByRole('heading', { name: 'Checkout' })).toBeVisible();
 }
+
+test('public route hides demo role controls', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.getByRole('button', { name: /^Owner$/i })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /^Developer$/i })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /reset demo/i })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /book now/i })).toBeVisible();
+});
+
+test('owner route opens owner tools without public demo controls', async ({ page }) => {
+  await page.goto('/owner');
+  await expect(page.getByText('Welcome back')).toBeVisible();
+  await expect(page.locator('button.card').filter({ hasText: 'Jobs' })).toBeVisible();
+  await expect(page.getByRole('button', { name: /^Developer$/i })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /reset demo/i })).toHaveCount(0);
+});
+
+test('developer route opens developer admin without public demo controls', async ({ page }) => {
+  await page.goto('/developer');
+  await expect(page.getByRole('heading', { name: 'Developer Admin' })).toBeVisible();
+  await expect(page.getByRole('button', { name: /Edit customer service prices/i })).toBeVisible();
+  await expect(page.getByText(/temporary developer route/i)).toBeVisible();
+  await expect(page.getByRole('button', { name: /^Owner$/i })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /reset demo/i })).toHaveCount(0);
+});
+
+test('demo flag keeps the role switcher for local testing', async ({ page }) => {
+  await page.goto('/?demo=1');
+  await expect(page.getByRole('button', { name: /^Customer$/i })).toBeVisible();
+  await expect(page.getByRole('button', { name: /^Owner$/i })).toBeVisible();
+  await expect(page.getByRole('button', { name: /^Developer$/i })).toBeVisible();
+  await expect(page.getByRole('button', { name: /reset demo/i })).toBeVisible();
+});
 
 test('app loads, home renders, and bottom navigation works', async ({ page }) => {
   await resetAndEnterHome(page);
@@ -35,7 +68,7 @@ test('home notification bell opens messages', async ({ page }) => {
 });
 
 test('browse services opens the complete price list', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/?demo=1');
   await page.getByRole('button', { name: /reset demo/i }).click();
   await page.getByRole('button', { name: /Browse Services/i }).click();
   await expect(page.getByRole('heading', { name: 'Price List' })).toBeVisible();
@@ -70,7 +103,7 @@ test('basic detail can use 4 PM but deluxe still needs earlier time', async ({ p
 });
 
 test('owner availability defaults to a 7:30 PM end time', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/?demo=1');
   await page.getByRole('button', { name: /reset demo/i }).click();
   await page.getByRole('button', { name: /^Owner$/i }).click();
   await page.locator('button.card').filter({ hasText: 'Settings' }).click();
@@ -258,7 +291,7 @@ test('owner can request reschedule on an instant booking without deposit-forfeit
 });
 
 test('developer settings show app cost while owner tracker statuses render', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/?demo=1');
   await page.getByRole('button', { name: /reset demo/i }).click();
   await page.getByRole('button', { name: /^Developer$/i }).click();
   await expect(page.getByRole('heading', { name: 'Developer Admin' })).toBeVisible();
@@ -315,7 +348,7 @@ test('developer settings show app cost while owner tracker statuses render', asy
 });
 
 test('BrandNew app cost context stays on owner reports, not customer checkout', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/?demo=1');
   await page.getByRole('button', { name: /reset demo/i }).click();
   await page.getByRole('button', { name: /^Owner$/i }).click();
   await page.getByRole('button', { name: /Reports/i }).click();
@@ -324,7 +357,7 @@ test('BrandNew app cost context stays on owner reports, not customer checkout', 
 });
 
 test('owner dashboard actions open notifications and customers', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/?demo=1');
   await page.getByRole('button', { name: /reset demo/i }).click();
   await page.getByRole('button', { name: /^Owner$/i }).click();
   await page.getByRole('button', { name: /Open owner notifications/i }).click();
@@ -336,7 +369,7 @@ test('owner dashboard actions open notifications and customers', async ({ page }
 });
 
 test('owner can reschedule a job from job detail', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/?demo=1');
   await page.getByRole('button', { name: /reset demo/i }).click();
   await page.getByRole('button', { name: /^Owner$/i }).click();
   await page.locator('button.card').filter({ hasText: 'Jobs' }).click();
@@ -352,7 +385,7 @@ test('owner can reschedule a job from job detail', async ({ page }) => {
 });
 
 test('owner closeout can record an adjustment and refund needed', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/?demo=1');
   await page.getByRole('button', { name: /reset demo/i }).click();
   await page.getByRole('button', { name: /^Owner$/i }).click();
   await page.locator('button.card').filter({ hasText: 'Jobs' }).click();
@@ -369,7 +402,7 @@ test('owner closeout can record an adjustment and refund needed', async ({ page 
 });
 
 test('developer can edit service menu pricing', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/?demo=1');
   await page.getByRole('button', { name: /reset demo/i }).click();
   await page.getByRole('button', { name: /^Developer$/i }).click();
   await page.getByRole('button', { name: /Edit customer service prices/i }).click();
@@ -381,7 +414,7 @@ test('developer can edit service menu pricing', async ({ page }) => {
 });
 
 test('owner tax pack export downloads CSV', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/?demo=1');
   await page.getByRole('button', { name: /reset demo/i }).click();
   await page.getByRole('button', { name: /^Owner$/i }).click();
   await page.getByRole('button', { name: /Reports/i }).click();
@@ -393,7 +426,7 @@ test('owner tax pack export downloads CSV', async ({ page }) => {
 });
 
 test('owner can block a time slot from customer booking', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/?demo=1');
   await page.getByRole('button', { name: /reset demo/i }).click();
   await page.getByRole('button', { name: /^Owner$/i }).click();
   await page.locator('button.card').filter({ hasText: 'Settings' }).click();
@@ -412,7 +445,7 @@ test('owner can block a time slot from customer booking', async ({ page }) => {
 });
 
 test('minimum booking notice automatically blocks near-term customer slots', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/?demo=1');
   await page.getByRole('button', { name: /reset demo/i }).click();
   await page.getByRole('button', { name: /^Owner$/i }).click();
   await page.locator('button.card').filter({ hasText: 'Settings' }).click();

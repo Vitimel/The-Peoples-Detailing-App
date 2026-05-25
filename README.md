@@ -20,6 +20,13 @@ npm run dev
 
 Vite serves the app at the local URL printed by the command, usually `http://127.0.0.1:5173`.
 
+Current route split:
+
+- `/` - public customer booking app.
+- `/owner` - Dane's owner tools.
+- `/developer` - Tim/BrandNew admin tools.
+- `/?demo=1` - local demo switcher with Customer/Owner/Developer and Reset Demo controls.
+
 ## Test
 
 ```bash

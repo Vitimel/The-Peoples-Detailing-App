@@ -8,6 +8,8 @@ This note captures the approved direction after the free MVP preview: use a no-m
 
 - The public app remains a static GitHub Pages preview.
 - Browser localStorage remains the working demo data store.
+- Public access is route-based in one app: `/` for customer booking, `/owner` for Dane operations, and `/developer` for Tim/BrandNew setup.
+- The role switcher and Reset Demo controls are hidden from normal public URLs and remain available only through `?demo=1`.
 - Customer bookings are intended to become confirmed slot reservations immediately when the time is open.
 - Owner acknowledgment is tracked separately from booking status.
 - NHTSA vPIC VIN lookup remains the only connected external API.
@@ -25,6 +27,12 @@ Use Supabase Free as the default backend candidate for the finished product beca
 Keep the frontend deploy on GitHub Pages until the app needs server-rendered routes or a different deployment target.
 
 The production booking write must reserve the selected slot atomically so two customers cannot take the same time.
+
+Future Row Level Security should line up with the frontend routes:
+
+- `customer`: create bookings and read/update only their own bookings, vehicles, messages, and allowed profile data.
+- `owner`: manage jobs, acknowledgments, availability, blocked days/times, operational settings, reports, and customer support workflows.
+- `developer`: manage service pricing, deposit/app/card-fee settings, booking submit mode, integrations, and environment setup.
 
 ## Backend Guardrails
 

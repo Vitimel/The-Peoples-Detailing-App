@@ -157,6 +157,31 @@ const normalizedSettings = settings => ({
   blockedDates: settings?.blockedDates || [],
   blockedSlots: settings?.blockedSlots || [],
 });
+const routePathFromLocation = () => {
+  if (typeof window === "undefined") return "/";
+  const params = new URLSearchParams(window.location.search);
+  const rawPath = params.get("route") || window.location.pathname || "/";
+  let path = rawPath.startsWith("/") ? rawPath : `/${rawPath}`;
+  path = path.replace(/\/+$/, "") || "/";
+  const githubPagesBase = "/The-Peoples-Detailing-App";
+  if (path === githubPagesBase) return "/";
+  if (path.startsWith(`${githubPagesBase}/`)) {
+    path = path.slice(githubPagesBase.length) || "/";
+  }
+  return path;
+};
+const routeRoleFromLocation = () => {
+  const path = routePathFromLocation();
+  if (path === "/owner") return "owner";
+  if (path === "/developer") return "developer";
+  return "customer";
+};
+const isDemoRoute = () => typeof window !== "undefined" && new URLSearchParams(window.location.search).get("demo") === "1";
+const defaultScreenForRole = role => {
+  if (role === "owner") return "ownerDash";
+  if (role === "developer") return "developerSettings";
+  return "splash";
+};
 const normalizeBooking = (booking, settings = SETTINGS) => {
   const s = normalizedSettings(settings);
   const serviceAndTravel = (booking.priceCents || 0) + (booking.travelFeeCents || 0);
@@ -353,9 +378,12 @@ const BottomNavShell = ({ role, screen, setScreen }) => {
 /* ==== APP ==== */
 const App = () => {
   const initial = loadState();
+  const demoMode = isDemoRoute();
+  const routeRole = routeRoleFromLocation();
+  const startingRole = demoMode ? (initial?.role || routeRole) : routeRole;
   const initialSettings = normalizedSettings(initial?.settings);
-  const [role, setRole] = useState(initial?.role || "customer"); // customer | owner | developer
-  const [screen, setScreen] = useState(initial?.screen || "splash");
+  const [role, setRole] = useState(startingRole); // customer | owner | developer
+  const [screen, setScreen] = useState(demoMode ? (initial?.screen || defaultScreenForRole(startingRole)) : defaultScreenForRole(startingRole));
   const [bookings, setBookings] = useState(() => (initial?.bookings || seedBookings()).map(b => normalizeBooking(b, initialSettings)));
   const [services, setServices] = useState(initial?.services || SERVICES);
   const [draft, setDraft] = useState(initial?.draft || null);
@@ -364,6 +392,7 @@ const App = () => {
   const [settings, setSettings] = useState(() => initialSettings);
   const [vehicles, setVehicles] = useState(initial?.vehicles || seedVehicles());
   const [activeVehicleId, setActiveVehicleId] = useState(initial?.activeVehicleId || (initial?.vehicles?.find(v=>v.isDefault)?.id) || "vehicle-demo-1");
+  const [previewReturnRole, setPreviewReturnRole] = useState(null);
   const activeVehicle = vehicles.find(v => v.id === activeVehicleId) || vehicles[0];
 
   // Persist
@@ -398,7 +427,24 @@ const App = () => {
   const resetApp = () => {
     localStorage.removeItem(LS_KEY);
     setRole("customer"); setScreen("splash"); setBookings(seedBookings().map(b => normalizeBooking(b, SETTINGS))); setServices(SERVICES); setDraft(null); setActiveBookingId(null); setSettings(normalizedSettings(SETTINGS)); setVehicles(seedVehicles()); setActiveVehicleId("vehicle-demo-1");
+    setPreviewReturnRole(null);
     showToast("Demo reset");
+  };
+
+  const previewAsCustomer = () => {
+    const returnRole = role === "developer" ? "developer" : "owner";
+    setPreviewReturnRole(returnRole);
+    setRole("customer");
+    setScreen("home");
+    showToast("Previewing customer view");
+  };
+
+  const exitCustomerPreview = () => {
+    const returnRole = previewReturnRole || routeRoleFromLocation();
+    setPreviewReturnRole(null);
+    setRole(returnRole);
+    setScreen(defaultScreenForRole(returnRole));
+    showToast(returnRole === "developer" ? "Back to developer admin" : "Back to owner tools");
   };
 
   // Customer flow helpers
@@ -600,15 +646,26 @@ const App = () => {
     confirmBooking, startBooking, beginReschedule, finishReschedule,
     confirmRequestedBooking, declineRequestedBooking, acknowledgeBooking, requestBookingReschedule,
     updateTracker, completeJob, closeOutJob, cancelBooking,
-    resetApp, showToast,
+    resetApp, showToast, previewAsCustomer, exitCustomerPreview, previewReturnRole,
   };
 
   return (
     <div className="min-h-screen flex flex-col items-center">
-      <DemoBar role={role} setRole={setRole} setScreen={setScreen} resetApp={resetApp} />
+      {demoMode && <DemoBar role={role} setRole={setRole} setScreen={setScreen} resetApp={resetApp} />}
       <div className="py-8 flex justify-center w-full">
         <div className="phone-shell">
           <div className="notch" />
+          {previewReturnRole && (
+            <div className="mx-5 mt-12 mb-[-2rem] relative z-10 rounded-2xl border border-[var(--orange)]/50 bg-[#0B1E2D] px-3 py-2 flex items-center justify-between gap-2">
+              <div>
+                <div className="text-xs font-semibold text-white">Customer Preview</div>
+                <div className="text-[10px] text-[#9FB3C8]">Temporary view from {previewReturnRole === "developer" ? "Developer" : "Owner"}.</div>
+              </div>
+              <button className="text-xs px-3 py-1.5 rounded-full border border-[var(--orange)] text-[var(--orange)]" onClick={exitCustomerPreview}>
+                Back
+              </button>
+            </div>
+          )}
           <div className="scroll-area">
             <Screen {...props} />
           </div>
@@ -2838,7 +2895,7 @@ const OwnerSettings = (p) => {
         {developerMode && (
           <div className="card bg-[var(--orange)]/10 border-[var(--orange)]/30">
             <div className="text-sm font-semibold">Developer-only controls</div>
-            <div className="text-xs text-[#C7D8EA] mt-1">This area is for Tim/BrandNew setup. Dane's owner view keeps day-to-day scheduling controls separate.</div>
+            <div className="text-xs text-[#C7D8EA] mt-1">This temporary developer route is for Tim/BrandNew setup until Supabase Auth and role rules are connected. Dane's owner view keeps day-to-day scheduling controls separate.</div>
             <button className="btn-secondary mt-3 !py-2 text-xs" onClick={()=> p.setScreen("ownerServices")}>Edit customer service prices</button>
           </div>
         )}
@@ -2853,7 +2910,7 @@ const OwnerSettings = (p) => {
               <textarea className="input" rows="2" value={s.homeTagline} onChange={e=> update("homeTagline", e.target.value)} />
               <div className="text-[11px] text-[#9FB3C8] mt-3 mb-1">Footer phone / offer line</div>
               <input className="input" value={s.homeFooterPhone} onChange={e=> update("homeFooterPhone", e.target.value)} />
-              <button className="btn-secondary mt-3 !py-2 text-xs" onClick={()=> { p.setRole("customer"); p.setScreen("home"); p.showToast("Switched to customer view"); }}>Preview as customer</button>
+              <button className="btn-secondary mt-3 !py-2 text-xs" onClick={p.previewAsCustomer}>Preview as customer</button>
             </div>
 
             <div className="card">
