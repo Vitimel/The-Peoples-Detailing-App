@@ -8,12 +8,14 @@ This note captures the approved direction after the free MVP preview: use a no-m
 
 - The public app remains a static GitHub Pages preview.
 - Browser localStorage remains the working demo data store.
+- A backend-ready local data adapter is in place, and Supabase remains scaffolded/planned but disabled until credentials, Auth, and RLS are approved.
 - Public access is route-based in one app: `/` for customer booking, `/owner` for Dane operations, and `/developer` for Tim/BrandNew setup.
 - The role switcher and Reset Demo controls are hidden from normal public URLs and remain available only through `?demo=1`.
 - Customer bookings are intended to become confirmed slot reservations immediately when the time is open.
 - Owner acknowledgment is tracked separately from booking status.
 - NHTSA vPIC VIN lookup remains the only connected external API.
 - No production Stripe, SMS, email, maps/routing, reverse geocoding, auth, database, calendar sync, or live tracking is connected.
+- New local bookings create production-shaped records for future payments, owner SMS queueing, status events, owner acknowledgment, and BrandNew app-fee ledger reconciliation.
 
 ## Backend Direction
 
@@ -40,6 +42,7 @@ Future Row Level Security should line up with the frontend routes:
 - Do not store real customer data until Row Level Security policies are designed, enabled, and tested.
 - Keep localStorage as a demo fallback until the Supabase-backed path is verified.
 - Treat backend setup as a separate approved work item from today's free preview release.
+- The current local adapter should be treated as a schema rehearsal only; the production write still needs server-side slot reservation.
 
 ## Payments Learning Gate
 
@@ -51,6 +54,7 @@ Before implementing payment code:
 - Decide whether real customers pay before owner approval or after owner approval.
 - Decide whether the first real payment is a full card payment, deposit only, or payment link/manual invoice.
 - Keep the $3 BrandNew app cost ledger-only until Stripe Connect/backend routing is explicitly approved.
+- The app now records future Stripe fields locally: Checkout Session ID, PaymentIntent ID, connected account ID, `application_fee_amount`, deposit, card fee, and routing status. Those fields stay empty/ledger-only until Stripe test mode is approved.
 
 ## Notification Direction
 
@@ -62,6 +66,12 @@ Dane should receive a real SMS when a customer books. The first production SMS f
 - If the time somehow does not work, Dane can mark `reschedule_requested` and message the customer.
 
 Do not put SMS provider secrets in the frontend.
+
+Current near-live preview behavior:
+
+- Booking/request creation adds a local owner SMS queue record.
+- Owner notifications show that SMS would be sent to Dane, with an estimated not-billed cost.
+- SMS cost estimates are reconciled against BrandNew's hidden `$3.00` app-fee ledger, but no provider is called and no SMS bill is created.
 
 ## Useful Official References
 

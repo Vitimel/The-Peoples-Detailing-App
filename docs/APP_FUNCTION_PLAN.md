@@ -8,12 +8,14 @@ This app should behave like a usable localStorage prototype of The Peoples Detai
 
 - The app is a Vite/React frontend deployed as a static GitHub Pages preview.
 - Data is stored in browser localStorage for demo use only.
+- The app has a backend-ready adapter shape: localStorage is active for demo, while Supabase is planned/disabled until credentials, Auth, and Row Level Security are approved.
 - One frontend app is split by route: `/` is the public customer booking app, `/owner` is Dane's operations app, and `/developer` is Tim/BrandNew admin.
 - The Customer/Owner/Developer role switcher and Reset Demo controls are only visible with `?demo=1` for local/testing review.
 - NHTSA vPIC VIN lookup is the only connected external API.
 - Owner directions use ordinary Google Maps URL links. Customer browser GPS can save a pinned coordinate for owner directions when permission is granted.
 - No production Stripe, SMS, email, auth, backend, database, calendar, maps/routing, reverse geocoding, or automatic payout routing is connected.
 - No secret keys or private credentials belong in this GitHub repo or the GitHub Pages frontend.
+- New bookings also create local near-live records for future customers, messages, owner acknowledgments, status events, payment intent placeholders, app-fee ledger entries, and owner SMS notification queue entries.
 
 ## Customer Booking Rules
 
@@ -55,6 +57,7 @@ This app should behave like a usable localStorage prototype of The Peoples Detai
 - Reports should show ledger items: $3 app costs from Dane's cut, customer-paid card processing fees, owner adjustments, and refund-needed amounts.
 - CSV export should include payment choice, service price, travel fee, discount, owner adjustment, deposit, paid online today, cash collected, cash balance due, card fee, refund needed, app fee, app fee routing status, cancellation outcome, completion date, closeout status, and job total.
 - Automatic $3 routing to BrandNew/Tim is future backend + Stripe Connect work. In this frontend-only pass it is ledger-only.
+- Owner SMS cost estimates are tracked against BrandNew's hidden app-fee ledger as estimated/not billed. SMS provider billing remains a future backend integration.
 
 ## Free/Test-Mode Service Policy
 
@@ -75,6 +78,7 @@ This app should behave like a usable localStorage prototype of The Peoples Detai
 - Future Supabase Auth/RLS should match the current route split: customers can create/read their own bookings, owner can manage jobs/availability, and developer can manage pricing/integrations.
 - Stripe must start with education and test mode/sandbox only; live Stripe is not approved.
 - Real SMS to Dane should be added through a backend/provider later; the frontend preview records the owner acknowledgment state without sending SMS.
+- Developer Admin now shows launch readiness for GitHub Pages, Supabase, Auth/RLS, Stripe test mode, locked live Stripe, and local-only owner SMS queueing.
 - See `docs/PRODUCTION_FOUNDATION_PLAN.md` for the backend/payment starting point.
 
 Sources checked:

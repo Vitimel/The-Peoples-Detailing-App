@@ -7,6 +7,11 @@ import {
   calculateDepositPayment,
   DEFAULT_FEE_SETTINGS,
 } from '../src/utils/fees.js';
+import {
+  calculateAppFeeLedgerNetCents,
+  calculateOwnerSmsEstimateCents,
+  createNearLiveRecordsForBooking,
+} from '../src/utils/nearLiveRecords.js';
 
 describe('checkout fee logic', () => {
   it('tracks the flat $3 app cost for Dane without adding it to checkout', () => {
@@ -65,5 +70,37 @@ describe('checkout fee logic', () => {
       companyAppFeeCents: 300,
       appFeeRoutingStatus: 'ledger_only',
     });
+  });
+
+  it('estimates owner SMS from the hidden BrandNew app fee ledger', () => {
+    expect(calculateOwnerSmsEstimateCents()).toBe(1);
+    expect(calculateAppFeeLedgerNetCents(300, 1)).toBe(299);
+  });
+
+  it('creates near-live payment, ledger, and SMS records without live provider IDs', () => {
+    const records = createNearLiveRecordsForBooking({
+      id: 'booking_123',
+      serviceTitle: 'Basic Detail',
+      status: 'confirmed',
+      totalCents: 15000,
+      amountPaidTodayCents: 0,
+      depositCents: 2500,
+      cardProcessingFeeCents: 0,
+      companyAppFeeCents: 300,
+      appFeeRoutingStatus: 'ledger_only',
+      address: 'Murfreesboro, TN',
+      customer: { name: 'Demo Customer', phone: '(615) 555-0123', vehicle: 'Daily driver' },
+    }, DEFAULT_FEE_SETTINGS);
+
+    expect(records.paymentIntent.mode).toBe('test_mode_ready_not_connected');
+    expect(records.paymentIntent.checkoutSessionId).toBeNull();
+    expect(records.paymentIntent.paymentIntentId).toBeNull();
+    expect(records.paymentIntent.connectedAccountId).toBeNull();
+    expect(records.paymentIntent.applicationFeeAmountCents).toBe(300);
+    expect(records.appFeeLedgerEntry.routingStatus).toBe('ledger_only');
+    expect(records.appFeeLedgerEntry.smsCostStatus).toBe('estimated_not_billed');
+    expect(records.appFeeLedgerEntry.visibleToCustomer).toBe(false);
+    expect(records.smsNotification.status).toBe('would_send');
+    expect(records.smsNotification.costEstimateCents).toBe(1);
   });
 });

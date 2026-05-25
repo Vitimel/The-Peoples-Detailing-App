@@ -1,3 +1,5 @@
+import { getActiveDataAdapter, getIntegrationStatus } from "./appDataLayer.js";
+
 /* ==== MOCK DATA ==== */
 export const SERVICES = [
   {
@@ -71,6 +73,7 @@ export const SETTINGS = {
   brandNewInfoUrl: "#brandnew-info-link-needed",
   businessPhone: "(931) 334-0730",
   bookingSubmissionMode: "instant_book_no_payment",
+  ownerSmsEstimateCents: 1,
   ownerNotificationMethod: "sms",
   customerNotificationMethod: "email",
   bufferMinutes: 30,
@@ -150,15 +153,25 @@ export const uuid = () => "b_" + Math.random().toString(36).slice(2,10);
 /* ==== STORAGE ==== */
 export const LS_KEY = "tpd_proto_v1";
 export const loadState = () => {
-  try {
-    const raw = localStorage.getItem(LS_KEY);
-    if (!raw) return null;
-    return JSON.parse(raw);
-  } catch { return null; }
+  return getActiveDataAdapter().load(LS_KEY);
 };
 export const saveState = s => {
-  try { localStorage.setItem(LS_KEY, JSON.stringify(s)); } catch {}
+  getActiveDataAdapter().save(LS_KEY, s);
 };
+
+export const clearState = () => getActiveDataAdapter().clear(LS_KEY);
+
+export const seedProductionState = () => ({
+  customers: [],
+  availabilityBlocks: [],
+  messages: [],
+  ownerAcknowledgments: [],
+  statusEvents: [],
+  paymentIntents: [],
+  appFeeLedgerEntries: [],
+  smsNotifications: [],
+  integrationStatus: getIntegrationStatus(),
+});
 
 export const seedBookings = () => ([
   {

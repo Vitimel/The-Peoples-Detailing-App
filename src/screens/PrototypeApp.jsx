@@ -2,20 +2,22 @@ import React, { useEffect, useMemo, useState } from 'react';
 import LOGO_DATA_URI from '../assets/The_Peoples_Detailing_Primary_Crest_Logo.webp';
 import MASCOT_DATA_URI from '../assets/Booking_App_Hero_Concept_Mascot_Car_Logo.png';
 import { calculateCustomerCheckoutTotals } from '../utils/fees.js';
+import { createNearLiveRecordsForBooking, ensureProductionState, upsertById } from '../utils/nearLiveRecords.js';
 import { calculateTravelFeeCents, estimateMilesFromAddress, milesBetween, MURFREESBORO_BASE } from '../utils/travel.js';
 import { decodeVinSample, lookupVinDetails, normalizeVin } from '../utils/vin.js';
 
 import {
-  LS_KEY,
   PROMO_CODES,
   SERVICES,
   SETTINGS,
+  clearState,
   cents,
   isoToDay,
   isoToTime,
   loadState,
   saveState,
   seedBookings,
+  seedProductionState,
   seedVehicles,
   todayPlus,
   uuid,
@@ -387,6 +389,7 @@ const BottomNavShell = ({ role, screen, setScreen }) => {
 /* ==== APP ==== */
 const App = () => {
   const initial = loadState();
+  const initialProductionState = ensureProductionState(initial || seedProductionState());
   const demoMode = isDemoRoute();
   const routeRole = routeRoleFromLocation();
   const startingRole = demoMode ? (initial?.role || routeRole) : routeRole;
@@ -402,12 +405,29 @@ const App = () => {
   const [vehicles, setVehicles] = useState(initial?.vehicles || seedVehicles());
   const [activeVehicleId, setActiveVehicleId] = useState(initial?.activeVehicleId || (initial?.vehicles?.find(v=>v.isDefault)?.id) || "vehicle-demo-1");
   const [previewReturnRole, setPreviewReturnRole] = useState(null);
+  const [customers, setCustomers] = useState(initialProductionState.customers);
+  const [availabilityBlocks, setAvailabilityBlocks] = useState(initialProductionState.availabilityBlocks);
+  const [messages, setMessages] = useState(initialProductionState.messages);
+  const [ownerAcknowledgments, setOwnerAcknowledgments] = useState(initialProductionState.ownerAcknowledgments);
+  const [statusEvents, setStatusEvents] = useState(initialProductionState.statusEvents);
+  const [paymentIntents, setPaymentIntents] = useState(initialProductionState.paymentIntents);
+  const [appFeeLedgerEntries, setAppFeeLedgerEntries] = useState(initialProductionState.appFeeLedgerEntries);
+  const [smsNotifications, setSmsNotifications] = useState(initialProductionState.smsNotifications);
+  const [integrationStatus, setIntegrationStatus] = useState(initialProductionState.integrationStatus);
   const activeVehicle = vehicles.find(v => v.id === activeVehicleId) || vehicles[0];
 
   // Persist
   useEffect(() => {
-    saveState({ role, screen, bookings, services, draft, settings, activeBookingId, vehicles, activeVehicleId });
-  }, [role, screen, bookings, services, draft, settings, activeBookingId, vehicles, activeVehicleId]);
+    saveState({
+      role, screen, bookings, services, draft, settings, activeBookingId, vehicles, activeVehicleId,
+      customers, availabilityBlocks, messages, ownerAcknowledgments, statusEvents, paymentIntents,
+      appFeeLedgerEntries, smsNotifications, integrationStatus,
+    });
+  }, [
+    role, screen, bookings, services, draft, settings, activeBookingId, vehicles, activeVehicleId,
+    customers, availabilityBlocks, messages, ownerAcknowledgments, statusEvents, paymentIntents,
+    appFeeLedgerEntries, smsNotifications, integrationStatus,
+  ]);
 
   useEffect(() => {
     setBookings(bs => bs.map(b => {
@@ -434,9 +454,19 @@ const App = () => {
   };
 
   const resetApp = () => {
-    localStorage.removeItem(LS_KEY);
+    clearState();
     setRole("customer"); setScreen("splash"); setBookings(seedBookings().map(b => normalizeBooking(b, SETTINGS))); setServices(SERVICES); setDraft(null); setActiveBookingId(null); setSettings(normalizedSettings(SETTINGS)); setVehicles(seedVehicles()); setActiveVehicleId("vehicle-demo-1");
     setPreviewReturnRole(null);
+    const productionSeed = ensureProductionState(seedProductionState());
+    setCustomers(productionSeed.customers);
+    setAvailabilityBlocks(productionSeed.availabilityBlocks);
+    setMessages(productionSeed.messages);
+    setOwnerAcknowledgments(productionSeed.ownerAcknowledgments);
+    setStatusEvents(productionSeed.statusEvents);
+    setPaymentIntents(productionSeed.paymentIntents);
+    setAppFeeLedgerEntries(productionSeed.appFeeLedgerEntries);
+    setSmsNotifications(productionSeed.smsNotifications);
+    setIntegrationStatus(productionSeed.integrationStatus);
     showToast("Demo reset");
   };
 
@@ -573,39 +603,78 @@ const App = () => {
       paid: (finalDraft.amountPaidTodayCents || 0) > 0,
       promoCode: finalDraft.promoCode || null,
     };
+    const nearLiveRecords = createNearLiveRecordsForBooking(booking, settings);
     setBookings(b => [booking, ...b]);
+    setCustomers(list => upsertById(list, nearLiveRecords.customer));
+    setMessages(list => upsertById(list, nearLiveRecords.message));
+    setOwnerAcknowledgments(list => upsertById(list, nearLiveRecords.ownerAcknowledgment));
+    setStatusEvents(list => upsertById(list, nearLiveRecords.statusEvent));
+    setPaymentIntents(list => upsertById(list, nearLiveRecords.paymentIntent));
+    setAppFeeLedgerEntries(list => upsertById(list, nearLiveRecords.appFeeLedgerEntry));
+    setSmsNotifications(list => upsertById(list, nearLiveRecords.smsNotification));
     setDraft(null);
     setActiveBookingId(booking.id);
     setScreen("confirmation");
   };
 
   const confirmRequestedBooking = bookingId => {
+    const now = Date.now();
     setBookings(bs => bs.map(b => b.id === bookingId ? {
       ...b,
       status: "confirmed",
-      confirmedAt: Date.now(),
+      confirmedAt: now,
       paymentStatus: (b.amountPaidTodayCents || 0) > 0 ? b.paymentStatus : "balance_due",
     } : b));
+    setStatusEvents(list => upsertById(list, {
+      id: `event_${bookingId}_confirmed`,
+      bookingId,
+      type: "owner_confirmed_request",
+      status: "confirmed",
+      createdAt: now,
+    }));
     showToast("Booking confirmed");
   };
 
   const declineRequestedBooking = bookingId => {
+    const now = Date.now();
     setBookings(bs => bs.map(b => b.id === bookingId ? {
       ...b,
       status: "declined",
-      declinedAt: Date.now(),
+      declinedAt: now,
       paymentStatus: "not_collected",
       cancellationOutcome: "Request declined - no payment collected",
     } : b));
+    setStatusEvents(list => upsertById(list, {
+      id: `event_${bookingId}_declined`,
+      bookingId,
+      type: "owner_declined_request",
+      status: "declined",
+      createdAt: now,
+    }));
     showToast("Request declined");
   };
 
   const acknowledgeBooking = bookingId => {
+    const now = Date.now();
     setBookings(bs => bs.map(b => b.id === bookingId ? {
       ...b,
-      ownerAcknowledgedAt: Date.now(),
+      ownerAcknowledgedAt: now,
       ownerAckStatus: "acknowledged",
     } : b));
+    setOwnerAcknowledgments(list => upsertById(list, {
+      id: `ack_${bookingId}`,
+      bookingId,
+      status: "acknowledged",
+      acknowledgedAt: now,
+      createdAt: list.find(item => item.id === `ack_${bookingId}`)?.createdAt || now,
+    }));
+    setStatusEvents(list => upsertById(list, {
+      id: `event_${bookingId}_acknowledged`,
+      bookingId,
+      type: "owner_acknowledged",
+      status: "acknowledged",
+      createdAt: now,
+    }));
     showToast("Booking acknowledged");
   };
 
@@ -655,6 +724,10 @@ const App = () => {
     activeBookingId, setActiveBookingId,
     settings, setSettings,
     vehicles, setVehicles, activeVehicleId, setActiveVehicleId, activeVehicle,
+    customers, setCustomers, availabilityBlocks, setAvailabilityBlocks, messages, setMessages,
+    ownerAcknowledgments, setOwnerAcknowledgments, statusEvents, setStatusEvents, paymentIntents,
+    setPaymentIntents, appFeeLedgerEntries, setAppFeeLedgerEntries, smsNotifications,
+    setSmsNotifications, integrationStatus, setIntegrationStatus,
     confirmBooking, startBooking, beginReschedule, finishReschedule,
     confirmRequestedBooking, declineRequestedBooking, acknowledgeBooking, requestBookingReschedule,
     updateTracker, completeJob, closeOutJob, cancelBooking,
@@ -2463,17 +2536,18 @@ const OwnerCustomers = (p) => {
 
 const OwnerNotifications = (p) => {
   const attention = p.bookings
-    .filter(b => b.status === "confirmed" && (!b.ownerAcknowledgedAt || b.ownerAckStatus === "reschedule_requested"))
+    .filter(b => (b.status === "requested") || (b.status === "confirmed" && (!b.ownerAcknowledgedAt || b.ownerAckStatus === "reschedule_requested")))
     .sort((a, b) => new Date(a.startIso) - new Date(b.startIso))
     .slice(0, 3);
+  const queuedSmsByBooking = new Map((p.smsNotifications || []).map(n => [n.bookingId, n]));
 
   return (
     <div className="pb-6">
       <HeaderBar title="Notifications" subtitle="Owner" onBack={()=> p.setScreen("ownerDash")} />
       <div className="px-5 flex flex-col gap-2">
         <div className="card bg-[var(--orange)]/10 border-[var(--orange)]/30">
-          <div className="text-sm font-semibold">Demo notification center</div>
-          <div className="text-xs text-[#C7D8EA] mt-1">Real SMS, email, and calendar alerts are not connected yet. This preview shows the owner acknowledgment queue.</div>
+          <div className="text-sm font-semibold">Near-live notification center</div>
+          <div className="text-xs text-[#C7D8EA] mt-1">Real SMS is not connected yet. New bookings create a local owner SMS queue record so the backend can send it later without changing the booking flow.</div>
         </div>
         {attention.map(b => (
           <button
@@ -2485,7 +2559,12 @@ const OwnerNotifications = (p) => {
               <div>
                 <div className="text-sm font-bold">{b.customer?.name}</div>
                 <div className="text-xs text-[#9FB3C8] mt-0.5">{b.serviceTitle} - {isoToDay(b.startIso)} at {isoToTime(b.startIso)}</div>
-                <div className="text-[11px] text-[#fed7aa] mt-1">{b.ownerAckStatus === "reschedule_requested" ? "Reschedule requested" : "Needs acknowledgment"}</div>
+                <div className="text-[11px] text-[#fed7aa] mt-1">{b.status === "requested" ? "Needs approval" : b.ownerAckStatus === "reschedule_requested" ? "Reschedule requested" : "Needs acknowledgment"}</div>
+                {queuedSmsByBooking.get(b.id) && (
+                  <div className="text-[11px] text-[#9FB3C8] mt-1">
+                    SMS would be sent to Dane - {cents(queuedSmsByBooking.get(b.id).costEstimateCents)} estimated, not billed.
+                  </div>
+                )}
               </div>
               <Icon name="bell" className="w-4 h-4 text-[var(--orange)]" />
             </div>
@@ -2501,6 +2580,7 @@ const OwnerJobDetail = (p) => {
   if (!b) return <div className="p-6">No job selected.</div>;
   const isRequested = b.status === "requested";
   const needsAck = b.status === "confirmed" && !b.ownerAcknowledgedAt && b.ownerAckStatus !== "reschedule_requested";
+  const smsNotice = (p.smsNotifications || []).find(n => n.bookingId === b.id);
   return (
     <div className="pb-6">
       <HeaderBar title="Job Detail" onBack={()=> p.setScreen("ownerJobs")} />
@@ -2524,6 +2604,12 @@ const OwnerJobDetail = (p) => {
               <button className="btn-primary !py-2 text-sm" onClick={()=> p.confirmRequestedBooking(b.id)}>Confirm</button>
               <button className="btn-secondary !py-2 text-sm" onClick={()=> p.declineRequestedBooking(b.id)}>Decline</button>
             </div>
+          </div>
+        )}
+        {smsNotice && (
+          <div className="card mt-3 border-[#38bdf8]/30 bg-[#38bdf8]/10">
+            <div className="text-sm font-semibold">Owner SMS queue ready</div>
+            <div className="text-xs text-[#C7D8EA] mt-1">SMS would be sent to Dane when the backend provider is connected. Estimated cost: {cents(smsNotice.costEstimateCents)} from BrandNew's $3 app-fee ledger, not billed yet.</div>
           </div>
         )}
         {needsAck && (
@@ -2772,6 +2858,10 @@ const OwnerReports = (p) => {
   const cashDue = monthBookings.reduce((s,b)=> s + (b.balanceDueCents||0), 0);
   const cardFees = monthBookings.reduce((s,b)=> s + (b.cardProcessingFeeCents||0), 0);
   const appFees = monthBookings.filter(b => b.status !== "cancelled").reduce((s,b)=> s + (b.companyAppFeeCents ?? p.settings.companyAppFeeCents ?? 300), 0);
+  const smsEstimates = (p.appFeeLedgerEntries || [])
+    .filter(entry => monthBookings.some(b => b.id === entry.bookingId))
+    .reduce((s, entry) => s + (entry.smsEstimateCents || 0), 0);
+  const brandNewNetEstimate = Math.max(0, appFees - smsEstimates);
   const forfeitedDeposits = monthBookings.filter(b => b.paymentStatus === "cancelled_deposit_forfeited").reduce((s,b)=> s + (b.depositCents || p.settings.depositCents || 2500), 0);
   const ownerAdjustments = monthBookings.reduce((s,b)=> s + (b.ownerAdjustmentCents || 0), 0);
   const refundsNeeded = monthBookings.reduce((s,b)=> s + (b.refundNeededCents || 0), 0);
@@ -2779,7 +2869,7 @@ const OwnerReports = (p) => {
   const expensesEstimate = cardFees + appFees;
   const net = revenue - expensesEstimate;
   const exportTaxPack = () => {
-    const headers = ["Date", "Time", "Customer", "Service", "Address", "Status", "Payment Choice", "Service Price", "Travel Fee", "Discount", "Owner Adjustment", "Adjustment Reason", "Deposit", "Paid Online Today", "Cash Collected", "Cash Balance Due", "Card Fee", "Refund Needed", "App Fee", "App Fee Routing", "Cancellation Outcome", "Completion Date", "Closeout Status", "Job Total"];
+    const headers = ["Date", "Time", "Customer", "Service", "Address", "Status", "Payment Choice", "Service Price", "Travel Fee", "Discount", "Owner Adjustment", "Adjustment Reason", "Deposit", "Paid Online Today", "Cash Collected", "Cash Balance Due", "Card Fee", "Refund Needed", "App Fee", "SMS Estimate", "App Fee Net Estimate", "App Fee Routing", "SMS Cost Status", "Cancellation Outcome", "Completion Date", "Closeout Status", "Job Total"];
     const rows = monthBookings.map(b => [
       isoToDay(b.startIso),
       isoToTime(b.startIso),
@@ -2800,7 +2890,10 @@ const OwnerReports = (p) => {
       ((b.cardProcessingFeeCents || 0) / 100).toFixed(2),
       ((b.refundNeededCents || 0) / 100).toFixed(2),
       ((b.companyAppFeeCents || 0) / 100).toFixed(2),
+      (((p.appFeeLedgerEntries || []).find(entry => entry.bookingId === b.id)?.smsEstimateCents || 0) / 100).toFixed(2),
+      (((p.appFeeLedgerEntries || []).find(entry => entry.bookingId === b.id)?.netBrandNewEstimateCents ?? b.companyAppFeeCents ?? 0) / 100).toFixed(2),
       b.appFeeRoutingStatus || "ledger_only",
+      (p.appFeeLedgerEntries || []).find(entry => entry.bookingId === b.id)?.smsCostStatus || "",
       b.cancellationOutcome || "",
       b.status === "complete" ? isoToDay(b.startIso) : "",
       b.closeoutStatus || "",
@@ -2839,13 +2932,15 @@ const OwnerReports = (p) => {
           <Kpi label="Adjustments" value={cents(ownerAdjustments)} />
           <Kpi label="Refunds needed" value={cents(refundsNeeded)} />
           <Kpi label="App fees" value={cents(appFees)} />
+          <Kpi label="SMS estimate" value={cents(smsEstimates)} />
+          <Kpi label="BrandNew net" value={cents(brandNewNetEstimate)} />
           <Kpi label="Card fees" value={cents(cardFees)} />
           <Kpi label="Forfeited deposits" value={cents(forfeitedDeposits)} />
           <Kpi label="Net" value={cents(net)} />
         </div>
 
         <div className="card mt-3 text-xs text-[#9FB3C8] leading-relaxed">
-          The $3 app cost is hidden from customer checkout and tracked here as a Dane-side ledger cost. Automatic routing to BrandNew requires future backend + Stripe Connect setup.
+          The $3 app cost is hidden from customer checkout and tracked here as a Dane-side ledger cost. Owner SMS estimates come out of BrandNew's side of that ledger and are marked estimated, not billed. Automatic routing requires future backend + Stripe Connect setup.
         </div>
 
         <div className="mt-5">
@@ -2947,11 +3042,26 @@ const OwnerSettings = (p) => {
   const addBlockedDate = () => {
     if (!blockDate) return;
     p.setSettings(prev => ({...prev, blockedDates: Array.from(new Set([...(prev.blockedDates || []), blockDate]))}));
+    p.setAvailabilityBlocks?.(list => upsertById(list || [], {
+      id: `block_day_${blockDate}`,
+      type: "full_day",
+      date: blockDate,
+      source: "owner_settings",
+      createdAt: Date.now(),
+    }));
     p.showToast("Day blocked");
   };
   const addBlockedSlot = () => {
     if (!blockDate || !blockTime) return;
     p.setSettings(prev => ({...prev, blockedSlots: Array.from(new Set([...(prev.blockedSlots || []), `${blockDate}|${blockTime}`]))}));
+    p.setAvailabilityBlocks?.(list => upsertById(list || [], {
+      id: `block_slot_${blockDate}_${blockTime.replace(/[^a-z0-9]/gi, "")}`,
+      type: "time_slot",
+      date: blockDate,
+      timeLabel: blockTime,
+      source: "owner_settings",
+      createdAt: Date.now(),
+    }));
     p.showToast("Time slot blocked");
   };
   const removeBlockedDate = value => p.setSettings(prev => ({...prev, blockedDates: (prev.blockedDates || []).filter(x => x !== value)}));
@@ -2968,6 +3078,19 @@ const OwnerSettings = (p) => {
             <div className="text-sm font-semibold">Developer-only controls</div>
             <div className="text-xs text-[#C7D8EA] mt-1">This temporary developer route is for Tim/BrandNew setup until Supabase Auth and role rules are connected. Dane's owner view keeps day-to-day scheduling controls separate.</div>
             <button className="btn-secondary mt-3 !py-2 text-xs" onClick={()=> p.setScreen("ownerServices")}>Edit customer service prices</button>
+          </div>
+        )}
+
+        {developerMode && (
+          <div className="card">
+            <div className="label-up mb-2">Launch Readiness</div>
+            <ConnRow label="Frontend host" status="GitHub Pages active" />
+            <ConnRow label="Active data adapter" status="localStorage demo" />
+            <ConnRow label="Supabase backend" status="Planned - disabled until credentials and RLS are approved" />
+            <ConnRow label="Auth / RLS" status="Required before real customer data" />
+            <ConnRow label="Stripe Test Mode Ready" status="Planned - no checkout session or PaymentIntent is created yet" />
+            <ConnRow label="Stripe live mode" status="Locked" />
+            <ConnRow label="Owner SMS queue" status="Local records only - no provider send call" />
           </div>
         )}
 
@@ -3069,6 +3192,10 @@ const OwnerSettings = (p) => {
             <NumberRow label="Card fixed fee" value={(s.cardProcessingFixedCents ?? 30)/100} step="0.05" onChange={v=> update("cardProcessingFixedCents", Math.round(v*100))} prefix="$" />
             <div className="text-[11px] text-[#9FB3C8] mt-3 mb-1">Card processing fee info message</div>
             <textarea className="input" rows="3" value={s.cardProcessingInfoText || SETTINGS.cardProcessingInfoText} onChange={e=> update("cardProcessingInfoText", e.target.value)} />
+            <div className="card mt-3 bg-[#0d2236]">
+              <div className="text-sm font-semibold">Future Stripe Connect fields</div>
+              <div className="text-xs text-[#9FB3C8] mt-1">New booking records now reserve space for Checkout Session ID, PaymentIntent ID, Dane connected account ID, application_fee_amount, card fee, deposit, and routing status. They remain empty until test mode is approved.</div>
+            </div>
           </div>
         )}
 
@@ -3076,7 +3203,7 @@ const OwnerSettings = (p) => {
           <div className="card">
             <div className="label-up mb-2">Connections</div>
             <ConnRow label="Stripe (payouts)" status="Not connected (demo)" />
-            <ConnRow label="SMS/Text provider" status="Owner SMS required; customer SMS limited to On the Way / I'm Here / Completed if enabled" />
+            <ConnRow label="SMS/Text provider" status="Not connected; owner SMS queue records are local estimates only" />
             <ConnRow label="Maps/address tools" status="Maps links and browser GPS pinning only; no paid Maps API, live routing, or reverse geocoding connected" />
             <ConnRow label="Google Calendar" status="Not connected (demo)" />
           </div>

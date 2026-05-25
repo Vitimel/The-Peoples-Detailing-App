@@ -38,6 +38,12 @@ test('developer route opens developer admin without public demo controls', async
   await expect(page.getByRole('heading', { name: 'Developer Admin' })).toBeVisible();
   await expect(page.getByRole('button', { name: /Edit customer service prices/i })).toBeVisible();
   await expect(page.getByText(/temporary developer route/i)).toBeVisible();
+  await expect(page.getByText('Launch Readiness')).toBeVisible();
+  await expect(page.getByText('Supabase backend')).toBeVisible();
+  await expect(page.getByText(/Planned - disabled until credentials and RLS are approved/i)).toBeVisible();
+  await expect(page.getByText('Stripe Test Mode Ready')).toBeVisible();
+  await expect(page.getByText('Stripe live mode')).toBeVisible();
+  await expect(page.getByText('Locked')).toBeVisible();
   await expect(page.getByRole('button', { name: /^Owner$/i })).toHaveCount(0);
   await expect(page.getByRole('button', { name: /reset demo/i })).toHaveCount(0);
 });
@@ -295,10 +301,15 @@ test('owner can acknowledge an instant booking', async ({ page }) => {
   await page.getByRole('button', { name: /Book This Spot/i }).click();
   await expect(page.getByRole('heading', { name: /You're Booked/i })).toBeVisible();
   await page.getByRole('button', { name: /^Owner$/i }).click();
+  await page.getByRole('button', { name: /Open owner notifications/i }).click();
+  await expect(page.getByText(/SMS would be sent to Dane/i)).toBeVisible();
+  await expect(page.getByText(/estimated, not billed/i)).toBeVisible();
+  await page.getByRole('button', { name: 'Go back' }).click();
   await page.locator('button.card').filter({ hasText: 'Jobs' }).click();
   await expect(page.getByRole('button', { name: 'Needs Ack', exact: true })).toBeVisible();
   await page.locator('button.card').filter({ hasText: 'Deluxe Detail' }).first().click();
   await expect(page.getByText('New booking needs acknowledgment')).toBeVisible();
+  await expect(page.getByText('Owner SMS queue ready')).toBeVisible();
   await expect(page.getByRole('link', { name: 'Message Customer' }).first()).toHaveAttribute('href', /sms:/);
   await page.getByRole('button', { name: 'Acknowledge' }).click();
   await expect(page.getByText('Acknowledged by Dane')).toBeVisible();
@@ -380,10 +391,20 @@ test('developer settings show app cost while owner tracker statuses render', asy
 test('BrandNew app cost context stays on owner reports, not customer checkout', async ({ page }) => {
   await page.goto('/?demo=1');
   await page.getByRole('button', { name: /reset demo/i }).click();
+  await page.getByRole('button', { name: /Book now/i }).click();
+  await page.getByRole('button', { name: /Deluxe Detail/i }).click();
+  await page.getByRole('button', { name: /Book Deluxe Detail/i }).click();
+  await page.getByRole('button', { name: /Continue to Location & Travel Fee/i }).click();
+  await page.getByRole('button', { name: /Use my current location/i }).click();
+  await page.getByRole('button', { name: /Continue to Checkout/i }).click();
+  await expect(page.getByText('App fee')).toHaveCount(0);
+  await page.getByRole('button', { name: /Book This Spot/i }).click();
   await page.getByRole('button', { name: /^Owner$/i }).click();
   await page.getByRole('button', { name: /Reports/i }).click();
   await expect(page.getByText(/hidden from customer checkout/i)).toBeVisible();
-  await expect(page.getByText(/Automatic routing to BrandNew/i)).toBeVisible();
+  await expect(page.getByText(/Owner SMS estimates come out of BrandNew's side/i)).toBeVisible();
+  await expect(page.getByText('SMS estimate', { exact: true })).toBeVisible();
+  await expect(page.getByText('BrandNew net', { exact: true })).toBeVisible();
 });
 
 test('owner dashboard actions open notifications and customers', async ({ page }) => {
