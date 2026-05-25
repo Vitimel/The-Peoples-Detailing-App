@@ -102,6 +102,17 @@ test('basic detail can use 4 PM but deluxe still needs earlier time', async ({ p
   await expect(page.getByRole('button', { name: /4:00 PM.*Needs more time/i })).toBeVisible();
 });
 
+test('date strip keeps the previous date visible after selecting the next day', async ({ page }) => {
+  await resetAndEnterHome(page);
+  await page.getByRole('button', { name: /Basic Detail/i }).click();
+  await page.getByRole('button', { name: /Book Basic Detail/i }).click();
+  const firstDateId = await page.locator('button[data-testid^="date-strip-day-"]').first().getAttribute('data-testid');
+  const secondDate = page.locator('button[data-testid^="date-strip-day-"]').nth(1);
+  await secondDate.click();
+  await expect(page.getByTestId(firstDateId)).toBeVisible();
+  await expect(page.getByRole('button', { name: /Show previous dates/i })).toBeVisible();
+});
+
 test('owner availability defaults to a 7:30 PM end time', async ({ page }) => {
   await page.goto('/?demo=1');
   await page.getByRole('button', { name: /reset demo/i }).click();

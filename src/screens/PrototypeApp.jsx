@@ -1006,10 +1006,26 @@ const BookForm = (p) => {
     p.setScreen("location");
   };
 
-  // Strip starts at the picked date and shows that day + the next 5
-  const stripStart = useMemo(() => { const d = new Date(time); d.setHours(0,0,0,0); return d; }, [time]);
-  const dates = useMemo(() => Array.from({length:6}, (_,i) => { const d = new Date(stripStart); d.setDate(d.getDate()+i); return d; }), [stripStart]);
   const today0 = useMemo(() => { const d = new Date(); d.setHours(0,0,0,0); return d; }, []);
+  const [stripStart, setStripStart] = useState(() => {
+    const d = new Date(time);
+    d.setHours(0,0,0,0);
+    return d;
+  });
+  const dates = useMemo(() => Array.from({length:6}, (_,i) => { const d = new Date(stripStart); d.setDate(d.getDate()+i); return d; }), [stripStart]);
+  const moveDateStrip = delta => {
+    setStripStart(prev => {
+      const d = new Date(prev);
+      d.setDate(d.getDate() + delta);
+      d.setHours(0,0,0,0);
+      return d < today0 ? new Date(today0) : d;
+    });
+  };
+  const syncStripToPickedDate = picked => {
+    const d = new Date(picked);
+    d.setHours(0,0,0,0);
+    setStripStart(d < today0 ? new Date(today0) : d);
+  };
 
   return (
     <div className="pb-6">
@@ -1033,10 +1049,27 @@ const BookForm = (p) => {
         <div className="mt-5">
           <div className="flex items-center justify-between mb-2">
             <div className="text-xs uppercase tracking-wider text-[#9FB3C8]">Select Date</div>
-            <button onClick={()=> setShowCal(true)} className="flex items-center gap-1 text-xs text-[var(--orange)] font-semibold">
-              <Icon name="cal" className="w-4 h-4" />
-              Pick a date
-            </button>
+            <div className="flex items-center gap-1">
+              <button
+                aria-label="Show previous dates"
+                disabled={stripStart <= today0}
+                onClick={()=> moveDateStrip(-1)}
+                className="w-8 h-8 rounded-full border border-[#1f3b5c] flex items-center justify-center text-white disabled:text-[#3e5775] disabled:cursor-not-allowed"
+              >
+                <Icon name="chevL" className="w-4 h-4" />
+              </button>
+              <button
+                aria-label="Show next dates"
+                onClick={()=> moveDateStrip(1)}
+                className="w-8 h-8 rounded-full border border-[#1f3b5c] flex items-center justify-center text-white"
+              >
+                <Icon name="chevR" className="w-4 h-4" />
+              </button>
+              <button onClick={()=> setShowCal(true)} className="flex items-center gap-1 text-xs text-[var(--orange)] font-semibold pl-1">
+                <Icon name="cal" className="w-4 h-4" />
+                Pick a date
+              </button>
+            </div>
           </div>
           <div className="flex gap-2 overflow-x-auto pb-1" style={{scrollbarWidth:"none"}}>
             {dates.map((d,i)=>{
@@ -1050,6 +1083,8 @@ const BookForm = (p) => {
               return (
                 <button
                   key={i}
+                  data-testid={`date-strip-day-${dateKey(d)}`}
+                  aria-label={`${same ? "Selected date" : "Select date"} ${d.toLocaleDateString("en-US",{weekday:"long", month:"short", day:"numeric"})}`}
                   disabled={past || isFull}
                   onClick={()=>{ const nd=new Date(d); nd.setHours(time.getHours(),time.getMinutes()); setTime(nd); }}
                   className={`relative min-w-[64px] flex-shrink-0 py-2 px-2 rounded-xl border ${
@@ -1124,7 +1159,7 @@ const BookForm = (p) => {
           activeBookingId={p.draft?.rescheduleBookingId}
           enforceMinimumNotice={enforceMinimumNotice}
           onClose={()=> setShowCal(false)}
-          onPick={d => { const nd=new Date(d); nd.setHours(time.getHours(),time.getMinutes()); setTime(nd); setShowCal(false); }}
+          onPick={d => { const nd=new Date(d); nd.setHours(time.getHours(),time.getMinutes()); setTime(nd); syncStripToPickedDate(nd); setShowCal(false); }}
         />
       )}
     </div>
