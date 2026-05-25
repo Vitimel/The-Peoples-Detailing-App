@@ -252,6 +252,28 @@ test('guest confirmation can prepare profile save without real auth', async ({ p
   await expect(page.getByText(/No account was created in this preview/i)).toBeVisible();
 });
 
+test('sign in option opens a profile setup preview before booking calendar', async ({ page }) => {
+  await resetAndEnterHome(page);
+  await page.getByRole('button', { name: /Basic Detail/i }).click();
+  await page.getByRole('button', { name: /Book Basic Detail/i }).click();
+  await expect(page.getByRole('heading', { name: 'Before You Book' })).toBeVisible();
+  await page.getByRole('button', { name: /Sign in \/ Create profile/i }).click();
+  await expect(page.getByText('Profile Setup Preview')).toBeVisible();
+  await expect(page.getByText(/No password or real account yet/i)).toBeVisible();
+  await page.getByLabel('Full name').fill('Taylor Customer');
+  await page.getByLabel('Mobile phone').fill('(615) 555-8888');
+  await page.getByLabel('Email optional').fill('taylor@example.com');
+  await page.getByRole('button', { name: /Continue with profile setup/i }).click();
+  await expect(page.getByText('Select Date')).toBeVisible();
+  await page.getByRole('button', { name: /Continue to Location & Travel Fee/i }).click();
+  await page.getByRole('button', { name: /Use my current location/i }).click();
+  await page.getByRole('button', { name: /Continue to Checkout/i }).click();
+  await page.getByRole('button', { name: /Book This Spot/i }).click();
+  await expect(page.getByText(/Profile setup prepared/i)).toBeVisible();
+  await expect(page.getByText(/No password or real account was created/i)).toBeVisible();
+  await expect(page.getByText(/Save your info for next time/i)).toHaveCount(0);
+});
+
 test('typed Nashville service address estimates travel fee before checkout', async ({ page }) => {
   await resetAndEnterHome(page);
   await page.getByRole('button', { name: /Deluxe Detail/i }).click();

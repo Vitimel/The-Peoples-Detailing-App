@@ -619,6 +619,7 @@ const App = () => {
       customerAccessMode: finalDraft.customerAccessMode || "guest",
       guestName: finalDraft.guestName || "You (Demo)",
       guestPhone: finalDraft.guestPhone || "(615) 555-0123",
+      guestEmail: finalDraft.guestEmail || null,
       guestVehicleLabel: finalDraft.guestVehicleLabel || finalDraft.vehicleLabel || vehicleLabel(activeVehicle),
       claimTokenHash: finalDraft.claimTokenHash || null,
       claimedByUserId: finalDraft.claimedByUserId || null,
@@ -1068,11 +1069,27 @@ const ServiceDetail = (p) => {
 };
 
 const CustomerAccess = (p) => {
+  const [mode, setMode] = useState("choice");
+  const [profileName, setProfileName] = useState(p.draft?.guestName || "");
+  const [profilePhone, setProfilePhone] = useState(p.draft?.guestPhone || "");
+  const [profileEmail, setProfileEmail] = useState(p.draft?.guestEmail || "");
   const svc = p.services.find(s => s.id === p.draft?.serviceId) || p.services.find(s => s.id === p.activeBookingId) || p.services[0];
-  const choose = mode => {
-    p.setDraft({ ...p.draft, customerAccessMode: mode });
+  const continueAsGuest = () => {
+    p.setDraft({ ...p.draft, customerAccessMode: "guest" });
     p.setScreen("book");
-    p.showToast(mode === "account_start" ? "Profile setup can be connected later" : "Continuing as guest");
+    p.showToast("Continuing as guest");
+  };
+  const continueWithProfile = () => {
+    p.setDraft({
+      ...p.draft,
+      customerAccessMode: "account_start",
+      guestName: profileName.trim() || "You (Demo)",
+      guestPhone: profilePhone.trim() || "(615) 555-0123",
+      guestEmail: profileEmail.trim() || "",
+      profileSaveChoice: "save_info",
+    });
+    p.setScreen("book");
+    p.showToast("Profile setup saved for this preview");
   };
 
   return (
@@ -1088,17 +1105,52 @@ const CustomerAccess = (p) => {
         </div>
 
         <div className="card mt-3">
-          <div className="text-lg font-bold">Book fast, save details later.</div>
-          <div className="text-sm text-[#C7D8EA] mt-2">
-            You can book as a guest today. After your booking, you can choose whether to save your name and vehicle for next time.
-          </div>
-          <div className="grid gap-2 mt-4">
-            <button className="btn-primary" onClick={()=> choose("guest")}>Continue as guest</button>
-            <button className="btn-secondary" onClick={()=> choose("account_start")}>Sign in / Create profile</button>
-          </div>
-          <div className="text-[11px] text-[#9FB3C8] mt-3">
-            Profile login is prepared for the real backend, but no account is created in this preview.
-          </div>
+          {mode === "choice" ? (
+            <>
+              <div className="text-lg font-bold">Book fast, save details later.</div>
+              <div className="text-sm text-[#C7D8EA] mt-2">
+                You can book as a guest today, or start a profile so your info is ready when the real login is connected.
+              </div>
+              <div className="grid gap-2 mt-4">
+                <button className="btn-primary" onClick={continueAsGuest}>Continue as guest</button>
+                <button className="btn-secondary" onClick={()=> setMode("profile")}>Sign in / Create profile</button>
+              </div>
+              <div className="text-[11px] text-[#9FB3C8] mt-3">
+                Profile login is prepared for the real backend, but no account is created in this preview.
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="label-up mb-2">Profile Setup Preview</div>
+              <div className="text-lg font-bold">Save your details for later login.</div>
+              <div className="text-sm text-[#C7D8EA] mt-2">
+                Add the basics now. This keeps the booking ready to claim when Supabase Auth is approved.
+              </div>
+              <div className="grid gap-3 mt-4">
+                <label className="text-xs uppercase tracking-wider text-[#9FB3C8]">
+                  Full name
+                  <input className="input mt-1" value={profileName} onChange={e=> setProfileName(e.target.value)} placeholder="Your name" />
+                </label>
+                <label className="text-xs uppercase tracking-wider text-[#9FB3C8]">
+                  Mobile phone
+                  <input className="input mt-1" value={profilePhone} onChange={e=> setProfilePhone(e.target.value)} placeholder="(615) 555-0123" />
+                </label>
+                <label className="text-xs uppercase tracking-wider text-[#9FB3C8]">
+                  Email optional
+                  <input className="input mt-1" value={profileEmail} onChange={e=> setProfileEmail(e.target.value)} placeholder="you@example.com" />
+                </label>
+              </div>
+              <div className="card mt-4 bg-[#38bdf8]/10 border-[#38bdf8]/30">
+                <div className="text-sm font-semibold">No password or real account yet</div>
+                <div className="text-xs text-[#C7D8EA] mt-1">This preview saves the profile intent only. Real sign in comes with Supabase Auth and RLS.</div>
+              </div>
+              <div className="grid gap-2 mt-4">
+                <button className="btn-primary" onClick={continueWithProfile}>Continue with profile setup</button>
+                <button className="btn-secondary" onClick={continueAsGuest}>Use guest instead</button>
+                <button className="text-[#9FB3C8] text-sm py-2" onClick={()=> setMode("choice")}>Back</button>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>
@@ -1842,7 +1894,8 @@ const Confirmation = (p) => {
   const needsAck = b?.status === "confirmed" && !b?.ownerAcknowledgedAt && b?.ownerAckStatus !== "reschedule_requested";
   const requestMessage = b ? bookingRequestMessage(b, p.settings) : "";
   const businessPhone = p.settings?.businessPhone || SETTINGS.businessPhone;
-  const isGuestBooking = b?.customerAccessMode !== "account_start";
+  const isProfileSetupBooking = b?.customerAccessMode === "account_start";
+  const isGuestBooking = !isProfileSetupBooking;
   if (!b) {
     return (
       <div className="p-6 text-center">
@@ -1905,6 +1958,13 @@ const Confirmation = (p) => {
           <div className="card mt-3 bg-[#4ade80]/10 border-[#4ade80]/30">
             <div className="text-sm font-semibold">Dane has been notified</div>
             <div className="text-xs text-[#C7D8EA] mt-1">The time is held for you. Real SMS will be connected with the backend; this preview records the owner acknowledgment inside the app.</div>
+          </div>
+        )}
+
+        {isProfileSetupBooking && (
+          <div className="card mt-3 border-[#38bdf8]/30 bg-[#38bdf8]/10">
+            <div className="text-sm font-semibold">Profile setup prepared</div>
+            <div className="text-xs text-[#C7D8EA] mt-1">Your booking has the profile fields ready for future Supabase login. No password or real account was created in this preview.</div>
           </div>
         )}
 
