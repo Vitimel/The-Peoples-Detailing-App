@@ -10,6 +10,7 @@ This note captures the approved direction after the free MVP preview: use a no-m
 - Browser localStorage remains the working demo data store.
 - A backend-ready local data adapter is in place, and Supabase remains scaffolded/planned but disabled until credentials, Auth, and RLS are approved.
 - Public access is route-based in one app: `/` for customer booking, `/owner` for Dane operations, and `/developer` for Tim/BrandNew setup.
+- Customers can choose future profile setup at booking start or continue as guest. Guest bookings can later be claimed by a Supabase Auth profile.
 - The role switcher and Reset Demo controls are hidden from normal public URLs and remain available only through `?demo=1`.
 - Customer bookings are intended to become confirmed slot reservations immediately when the time is open.
 - Owner acknowledgment is tracked separately from booking status.
@@ -43,6 +44,7 @@ Future Row Level Security should line up with the frontend routes:
 - Keep localStorage as a demo fallback until the Supabase-backed path is verified.
 - Treat backend setup as a separate approved work item from today's free preview release.
 - The current local adapter should be treated as a schema rehearsal only; the production write still needs server-side slot reservation.
+- A repo-ready migration now defines the intended Supabase tables, RLS policies, and guest booking RPC stub, but it has not been applied to a live project.
 
 ## Payments Learning Gate
 

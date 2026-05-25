@@ -184,6 +184,7 @@ const defaultScreenForRole = role => {
   if (role === "developer") return "developerSettings";
   return "splash";
 };
+const createClaimTokenHash = bookingId => `claim_preview_${bookingId}`;
 const normalizeBooking = (booking, settings = SETTINGS) => {
   const s = normalizedSettings(settings);
   const serviceAndTravel = (booking.priceCents || 0) + (booking.travelFeeCents || 0);
@@ -203,6 +204,14 @@ const normalizeBooking = (booking, settings = SETTINGS) => {
     appFeeRoutingStatus: booking.appFeeRoutingStatus || "ledger_only",
     paymentStatus,
     requestedAt: booking.requestedAt || null,
+    customerAccessMode: booking.customerAccessMode || "guest",
+    guestName: booking.guestName || booking.guest_name || booking.customer?.name || "You (Demo)",
+    guestPhone: booking.guestPhone || booking.guest_phone || booking.customer?.phone || "(615) 555-0123",
+    guestVehicleLabel: booking.guestVehicleLabel || booking.guest_vehicle_label || booking.customer?.vehicle || "Saved vehicle",
+    claimTokenHash: booking.claimTokenHash || booking.claim_token_hash || null,
+    claimedByUserId: booking.claimedByUserId || booking.claimed_by_user_id || null,
+    claimedAt: booking.claimedAt || booking.claimed_at || null,
+    profileSaveChoice: booking.profileSaveChoice || null,
     totalCents: booking.totalCents ?? totalBeforeCard,
   };
 };
@@ -406,6 +415,7 @@ const App = () => {
   const [activeVehicleId, setActiveVehicleId] = useState(initial?.activeVehicleId || (initial?.vehicles?.find(v=>v.isDefault)?.id) || "vehicle-demo-1");
   const [previewReturnRole, setPreviewReturnRole] = useState(null);
   const [customers, setCustomers] = useState(initialProductionState.customers);
+  const [customerProfiles, setCustomerProfiles] = useState(initialProductionState.customerProfiles);
   const [availabilityBlocks, setAvailabilityBlocks] = useState(initialProductionState.availabilityBlocks);
   const [messages, setMessages] = useState(initialProductionState.messages);
   const [ownerAcknowledgments, setOwnerAcknowledgments] = useState(initialProductionState.ownerAcknowledgments);
@@ -420,12 +430,12 @@ const App = () => {
   useEffect(() => {
     saveState({
       role, screen, bookings, services, draft, settings, activeBookingId, vehicles, activeVehicleId,
-      customers, availabilityBlocks, messages, ownerAcknowledgments, statusEvents, paymentIntents,
+      customers, customerProfiles, availabilityBlocks, messages, ownerAcknowledgments, statusEvents, paymentIntents,
       appFeeLedgerEntries, smsNotifications, integrationStatus,
     });
   }, [
     role, screen, bookings, services, draft, settings, activeBookingId, vehicles, activeVehicleId,
-    customers, availabilityBlocks, messages, ownerAcknowledgments, statusEvents, paymentIntents,
+    customers, customerProfiles, availabilityBlocks, messages, ownerAcknowledgments, statusEvents, paymentIntents,
     appFeeLedgerEntries, smsNotifications, integrationStatus,
   ]);
 
@@ -459,6 +469,7 @@ const App = () => {
     setPreviewReturnRole(null);
     const productionSeed = ensureProductionState(seedProductionState());
     setCustomers(productionSeed.customers);
+    setCustomerProfiles(productionSeed.customerProfiles);
     setAvailabilityBlocks(productionSeed.availabilityBlocks);
     setMessages(productionSeed.messages);
     setOwnerAcknowledgments(productionSeed.ownerAcknowledgments);
@@ -504,6 +515,8 @@ const App = () => {
       promoCode: "",
       discountCents: 0,
       paymentChoice: "card_full",
+      customerAccessMode: "guest",
+      profileSaveChoice: null,
     });
     setScreen("book");
   };
@@ -535,6 +548,7 @@ const App = () => {
       travelFeeCents: booking.travelFeeCents || 0,
       promoCode: booking.promoCode || "",
       discountCents: booking.discountCents || 0,
+      customerAccessMode: booking.customerAccessMode || "guest",
     });
     setActiveBookingId(booking.id);
     setScreen("book");
@@ -602,10 +616,20 @@ const App = () => {
       ownerAcknowledgedAt: finalDraft.ownerAcknowledgedAt || null,
       paid: (finalDraft.amountPaidTodayCents || 0) > 0,
       promoCode: finalDraft.promoCode || null,
+      customerAccessMode: finalDraft.customerAccessMode || "guest",
+      guestName: finalDraft.guestName || "You (Demo)",
+      guestPhone: finalDraft.guestPhone || "(615) 555-0123",
+      guestVehicleLabel: finalDraft.guestVehicleLabel || finalDraft.vehicleLabel || vehicleLabel(activeVehicle),
+      claimTokenHash: finalDraft.claimTokenHash || null,
+      claimedByUserId: finalDraft.claimedByUserId || null,
+      claimedAt: finalDraft.claimedAt || null,
+      profileSaveChoice: finalDraft.profileSaveChoice || null,
     };
+    booking.claimTokenHash = booking.claimTokenHash || createClaimTokenHash(booking.id);
     const nearLiveRecords = createNearLiveRecordsForBooking(booking, settings);
     setBookings(b => [booking, ...b]);
     setCustomers(list => upsertById(list, nearLiveRecords.customer));
+    setCustomerProfiles(list => upsertById(list, nearLiveRecords.customerProfile));
     setMessages(list => upsertById(list, nearLiveRecords.message));
     setOwnerAcknowledgments(list => upsertById(list, nearLiveRecords.ownerAcknowledgment));
     setStatusEvents(list => upsertById(list, nearLiveRecords.statusEvent));
@@ -715,6 +739,24 @@ const App = () => {
     showToast("Booking cancelled");
   };
 
+  const setBookingProfileSaveChoice = (bookingId, choice) => {
+    const now = Date.now();
+    setBookings(bs => bs.map(b => b.id === bookingId ? {
+      ...b,
+      profileSaveChoice: choice,
+      claimedAt: choice === "save_info" ? now : b.claimedAt,
+      claimedByUserId: choice === "save_info" ? "future_supabase_customer" : b.claimedByUserId,
+    } : b));
+    setStatusEvents(list => upsertById(list, {
+      id: `event_${bookingId}_${choice}`,
+      bookingId,
+      type: choice === "save_info" ? "guest_profile_save_requested" : "guest_profile_save_declined",
+      status: choice,
+      createdAt: now,
+    }));
+    showToast(choice === "save_info" ? "Profile save is ready for future login setup" : "Saved as guest booking");
+  };
+
   const props = {
     role, setRole,
     screen, setScreen,
@@ -724,12 +766,13 @@ const App = () => {
     activeBookingId, setActiveBookingId,
     settings, setSettings,
     vehicles, setVehicles, activeVehicleId, setActiveVehicleId, activeVehicle,
-    customers, setCustomers, availabilityBlocks, setAvailabilityBlocks, messages, setMessages,
+    customers, setCustomers, customerProfiles, setCustomerProfiles, availabilityBlocks, setAvailabilityBlocks, messages, setMessages,
     ownerAcknowledgments, setOwnerAcknowledgments, statusEvents, setStatusEvents, paymentIntents,
     setPaymentIntents, appFeeLedgerEntries, setAppFeeLedgerEntries, smsNotifications,
     setSmsNotifications, integrationStatus, setIntegrationStatus,
     confirmBooking, startBooking, beginReschedule, finishReschedule,
     confirmRequestedBooking, declineRequestedBooking, acknowledgeBooking, requestBookingReschedule,
+    setBookingProfileSaveChoice,
     updateTracker, completeJob, closeOutJob, cancelBooking,
     resetApp, showToast, previewAsCustomer, exitCustomerPreview, previewReturnRole,
   };
@@ -1047,6 +1090,10 @@ const BookForm = (p) => {
     const hour = parseSlotLabel(label).h;
     return hour >= (p.settings.workingHoursStart ?? 8) && hour < (p.settings.workingHoursEnd ?? 18);
   });
+  const setAccessMode = mode => {
+    p.setDraft({ ...p.draft, customerAccessMode: mode });
+    p.showToast(mode === "account_start" ? "Profile setup will connect when Supabase Auth is approved" : "Continuing as guest");
+  };
 
   // Build availability map from existing bookings (same source as the calendar overlay)
   const busyMap = useMemo(() => {
@@ -1117,6 +1164,27 @@ const BookForm = (p) => {
       <HeaderBar title={isReschedule ? "Reschedule Booking" : "Book Appointment"} subtitle={isReschedule ? "Pick a new date or time" : "Step 1 of 3"} onBack={()=> p.setScreen(isReschedule ? (p.role === "owner" ? "ownerJobDetail" : "bookingDetail") : "serviceDetail")} />
       {!isReschedule && <Stepper step={0} />}
       <div className="px-5">
+        {!isReschedule && (
+          <div className="card mb-3">
+            <div className="label-up mb-2">Customer Access</div>
+            <div className="text-sm font-semibold">Book now, save details when you want.</div>
+            <div className="text-xs text-[#9FB3C8] mt-1">Profiles will use Supabase Auth later. Today this keeps the flow ready without requiring login.</div>
+            <div className="grid grid-cols-2 gap-2 mt-3">
+              <button
+                className={`btn-secondary !py-2 text-xs ${p.draft?.customerAccessMode === "account_start" ? "border-[var(--orange)]" : ""}`}
+                onClick={()=> setAccessMode("account_start")}
+              >
+                Sign in / Create profile
+              </button>
+              <button
+                className={`btn-secondary !py-2 text-xs ${p.draft?.customerAccessMode !== "account_start" ? "border-[var(--orange)]" : ""}`}
+                onClick={()=> setAccessMode("guest")}
+              >
+                Continue as guest
+              </button>
+            </div>
+          </div>
+        )}
         {isReschedule && (
           <div className="card mb-3 bg-[var(--orange)]/10 border-[var(--orange)]/30">
             <div className="text-sm font-semibold">No new payment in this prototype.</div>
@@ -1760,6 +1828,7 @@ const Confirmation = (p) => {
   const needsAck = b?.status === "confirmed" && !b?.ownerAcknowledgedAt && b?.ownerAckStatus !== "reschedule_requested";
   const requestMessage = b ? bookingRequestMessage(b, p.settings) : "";
   const businessPhone = p.settings?.businessPhone || SETTINGS.businessPhone;
+  const isGuestBooking = b?.customerAccessMode !== "account_start";
   if (!b) {
     return (
       <div className="p-6 text-center">
@@ -1822,6 +1891,28 @@ const Confirmation = (p) => {
           <div className="card mt-3 bg-[#4ade80]/10 border-[#4ade80]/30">
             <div className="text-sm font-semibold">Dane has been notified</div>
             <div className="text-xs text-[#C7D8EA] mt-1">The time is held for you. Real SMS will be connected with the backend; this preview records the owner acknowledgment inside the app.</div>
+          </div>
+        )}
+
+        {isGuestBooking && !b.profileSaveChoice && (
+          <div className="card mt-3 border-[#38bdf8]/30 bg-[#38bdf8]/10">
+            <div className="text-sm font-semibold">Save your info for next time?</div>
+            <div className="text-xs text-[#C7D8EA] mt-1">Future Supabase login can turn this guest booking into your profile and keep your vehicle ready for the next booking.</div>
+            <div className="grid grid-cols-2 gap-2 mt-3">
+              <button className="btn-primary !py-2 text-sm" onClick={()=> p.setBookingProfileSaveChoice(b.id, "save_info")}>Save my info for next time</button>
+              <button className="btn-secondary !py-2 text-sm" onClick={()=> p.setBookingProfileSaveChoice(b.id, "no_thanks")}>No thanks</button>
+            </div>
+          </div>
+        )}
+
+        {b.profileSaveChoice && (
+          <div className="card mt-3">
+            <div className="text-sm font-semibold">{b.profileSaveChoice === "save_info" ? "Profile save prepared" : "Guest checkout kept"}</div>
+            <div className="text-xs text-[#9FB3C8] mt-1">
+              {b.profileSaveChoice === "save_info"
+                ? "This booking has a future claim record ready for Supabase Auth. No account was created in this preview."
+                : "No profile will be created from this guest booking unless you choose to save it later."}
+            </div>
           </div>
         )}
 

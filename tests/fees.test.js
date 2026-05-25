@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
   calculateAppFeeCents,
@@ -102,5 +103,21 @@ describe('checkout fee logic', () => {
     expect(records.appFeeLedgerEntry.visibleToCustomer).toBe(false);
     expect(records.smsNotification.status).toBe('would_send');
     expect(records.smsNotification.costEstimateCents).toBe(1);
+    expect(records.customer.guestName).toBe('Demo Customer');
+    expect(records.customer.claimTokenHash).toBe('claim_preview_booking_123');
+    expect(records.customerProfile.status).toBe('guest_unclaimed');
+  });
+
+  it('keeps the Supabase migration ready for guest claims and RLS', () => {
+    const migration = readFileSync('supabase/migrations/20260525161000_backend_foundation.sql', 'utf8');
+    expect(migration).toContain('guest_name text');
+    expect(migration).toContain('guest_phone text');
+    expect(migration).toContain('guest_vehicle_label text');
+    expect(migration).toContain('claim_token_hash text');
+    expect(migration).toContain('claimed_by_user_id uuid');
+    expect(migration).toContain('claimed_at timestamptz');
+    expect(migration).toContain('alter table public.bookings enable row level security');
+    expect(migration).toContain('create or replace function public.create_guest_booking');
+    expect(migration).toContain('create policy "bookings read claimed own or staff"');
   });
 });

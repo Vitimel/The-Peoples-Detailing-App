@@ -163,6 +163,7 @@ export const clearState = () => getActiveDataAdapter().clear(LS_KEY);
 
 export const seedProductionState = () => ({
   customers: [],
+  customerProfiles: [],
   availabilityBlocks: [],
   messages: [],
   ownerAcknowledgments: [],

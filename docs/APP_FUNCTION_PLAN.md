@@ -10,12 +10,14 @@ This app should behave like a usable localStorage prototype of The Peoples Detai
 - Data is stored in browser localStorage for demo use only.
 - The app has a backend-ready adapter shape: localStorage is active for demo, while Supabase is planned/disabled until credentials, Auth, and Row Level Security are approved.
 - One frontend app is split by route: `/` is the public customer booking app, `/owner` is Dane's operations app, and `/developer` is Tim/BrandNew admin.
+- Customer booking can start with a future-ready `Sign in / Create profile` choice or continue as guest. Guest confirmation can mark whether the customer wants to save info later, but no real auth is connected yet.
 - The Customer/Owner/Developer role switcher and Reset Demo controls are only visible with `?demo=1` for local/testing review.
 - NHTSA vPIC VIN lookup is the only connected external API.
 - Owner directions use ordinary Google Maps URL links. Customer browser GPS can save a pinned coordinate for owner directions when permission is granted.
 - No production Stripe, SMS, email, auth, backend, database, calendar, maps/routing, reverse geocoding, or automatic payout routing is connected.
 - No secret keys or private credentials belong in this GitHub repo or the GitHub Pages frontend.
 - New bookings also create local near-live records for future customers, messages, owner acknowledgments, status events, payment intent placeholders, app-fee ledger entries, and owner SMS notification queue entries.
+- Guest booking records include future claim fields so Supabase Auth can later attach the booking to a customer profile.
 
 ## Customer Booking Rules
 
@@ -74,6 +76,7 @@ This app should behave like a usable localStorage prototype of The Peoples Detai
 ## Production Foundation Direction
 
 - Supabase Free is the default backend candidate for the finished-product path.
+- Repo-ready Supabase migration scaffolding now exists for tables, RLS, and a guest-booking RPC, but it is not applied to a live project.
 - GitHub Pages remains the frontend host for the current free preview.
 - Future Supabase Auth/RLS should match the current route split: customers can create/read their own bookings, owner can manage jobs/availability, and developer can manage pricing/integrations.
 - Stripe must start with education and test mode/sandbox only; live Stripe is not approved.

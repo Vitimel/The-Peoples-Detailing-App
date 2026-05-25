@@ -4,6 +4,7 @@ export const DEFAULT_OWNER_SMS_COST_CENTS = 1;
 
 export const PRODUCTION_RECORD_BUCKETS = [
   "customers",
+  "customerProfiles",
   "availabilityBlocks",
   "messages",
   "ownerAcknowledgments",
@@ -36,6 +37,8 @@ export function createNearLiveRecordsForBooking(booking, settings = {}) {
   const smsCostCents = calculateOwnerSmsEstimateCents(1, settings.ownerSmsEstimateCents ?? DEFAULT_OWNER_SMS_COST_CENTS);
   const baseId = booking.id;
   const customerId = booking.customerId || `customer_${baseId}`;
+  const customerAccessMode = booking.customerAccessMode || "guest";
+  const claimTokenHash = booking.claimTokenHash || `claim_preview_${baseId}`;
   const paymentIntentId = `pi_preview_${baseId}`;
 
   return {
@@ -45,7 +48,25 @@ export function createNearLiveRecordsForBooking(booking, settings = {}) {
       name: booking.customer?.name || "Customer",
       phone: booking.customer?.phone || "",
       vehicle: booking.customer?.vehicle || "",
+      accessMode: customerAccessMode,
+      guestName: booking.guestName || booking.customer?.name || "Customer",
+      guestPhone: booking.guestPhone || booking.customer?.phone || "",
+      guestVehicleLabel: booking.guestVehicleLabel || booking.customer?.vehicle || "",
+      claimTokenHash,
+      claimedByUserId: booking.claimedByUserId || null,
+      claimedAt: booking.claimedAt || null,
       source: "booking_flow",
+      createdAt: now,
+    },
+    customerProfile: {
+      id: `profile_${customerId}`,
+      customerId,
+      supabaseUserId: booking.claimedByUserId || null,
+      name: booking.guestName || booking.customer?.name || "Customer",
+      phone: booking.guestPhone || booking.customer?.phone || "",
+      defaultVehicleLabel: booking.guestVehicleLabel || booking.customer?.vehicle || "",
+      notificationPreference: "email",
+      status: customerAccessMode === "account_start" ? "auth_planned" : "guest_unclaimed",
       createdAt: now,
     },
     message: {

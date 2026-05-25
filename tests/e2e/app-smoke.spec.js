@@ -208,6 +208,39 @@ test('service selection and booking flow reaches checkout with deposit rules', a
   await expect(page.getByText(/No card is charged in this version/i)).toBeVisible();
 });
 
+test('customer can continue as guest and choose not to save profile info', async ({ page }) => {
+  await resetAndEnterHome(page);
+  await page.getByRole('button', { name: /Basic Detail/i }).click();
+  await page.getByRole('button', { name: /Book Basic Detail/i }).click();
+  await expect(page.getByText('Customer Access')).toBeVisible();
+  await expect(page.getByRole('button', { name: /Sign in \/ Create profile/i })).toBeVisible();
+  await page.getByRole('button', { name: /Continue as guest/i }).click();
+  await page.getByRole('button', { name: /Continue to Location & Travel Fee/i }).click();
+  await page.getByRole('button', { name: /Use my current location/i }).click();
+  await page.getByRole('button', { name: /Continue to Checkout/i }).click();
+  await expect(page.getByText('App fee')).toHaveCount(0);
+  await page.getByRole('button', { name: /Book This Spot/i }).click();
+  await expect(page.getByText(/Save your info for next time/i)).toBeVisible();
+  await page.getByRole('button', { name: /No thanks/i }).click();
+  await expect(page.getByText(/Guest checkout kept/i)).toBeVisible();
+});
+
+test('guest confirmation can prepare profile save without real auth', async ({ page }) => {
+  await resetAndEnterHome(page);
+  await page.getByRole('button', { name: /Monthly Maintenance/i }).click();
+  await page.getByRole('button', { name: /Book Monthly Maintenance/i }).click();
+  await page.getByRole('button', { name: /Sign in \/ Create profile/i }).click();
+  await expect(page.getByText(/Profile setup will connect/i)).toBeVisible();
+  await page.getByRole('button', { name: /Continue as guest/i }).click();
+  await page.getByRole('button', { name: /Continue to Location & Travel Fee/i }).click();
+  await page.getByRole('button', { name: /Use my current location/i }).click();
+  await page.getByRole('button', { name: /Continue to Checkout/i }).click();
+  await page.getByRole('button', { name: /Book This Spot/i }).click();
+  await page.getByRole('button', { name: /Save my info for next time/i }).click();
+  await expect(page.getByText(/Profile save prepared/i)).toBeVisible();
+  await expect(page.getByText(/No account was created in this preview/i)).toBeVisible();
+});
+
 test('typed Nashville service address estimates travel fee before checkout', async ({ page }) => {
   await resetAndEnterHome(page);
   await page.getByRole('button', { name: /Deluxe Detail/i }).click();
