@@ -16,10 +16,10 @@ This app should behave like a usable localStorage prototype of The Peoples Detai
 
 1. Customer selects service, date/time, vehicle, and service address.
 2. Customer checks travel fee before checkout.
-3. Customer chooses a payment preference for future payment setup, but request-only mode collects `$0.00` today.
+3. Customer chooses a payment preference for future payment setup, but instant-book/no-payment mode collects `$0.00` today.
 4. Customer-paid card processing remains the default future rule and is calculated only on the amount paid online today once payments are connected.
 5. The $3 app cost is not shown to customers; it is tracked as a Dane-side ledger cost on each online purchase or deposit once payments are connected.
-6. Booking starts as `requested`; Dane confirms or declines it from Owner Jobs.
+6. Booking starts as `confirmed`; Dane acknowledges it from Owner Jobs after receiving the notification.
 
 ## Cancellation And Reschedule Rules
 
@@ -27,8 +27,10 @@ This app should behave like a usable localStorage prototype of The Peoples Detai
 - Inside 48 hours, the app should show `Request Change` / contact-Dane copy instead of direct rescheduling.
 - Customer can cancel, but deposit is refundable only until 7 days before the appointment.
 - Cancelling inside 7 days marks the deposit as forfeited.
-- In request-only mode, canceling or declining an unpaid request must say no payment was collected.
+- In no-payment preview mode, canceling an unpaid booking must say no payment was collected.
 - Owner can override cancel/reschedule from the owner side.
+- Owner acknowledgment is separate from booking status. A booking can be confirmed before Dane acknowledges it.
+- If the time unexpectedly does not work, Dane can request a reschedule and message the customer.
 
 ## Owner Scheduling Rules
 
@@ -66,6 +68,7 @@ This app should behave like a usable localStorage prototype of The Peoples Detai
 - Supabase Free is the default backend candidate for the finished-product path.
 - GitHub Pages remains the frontend host for the current free preview.
 - Stripe must start with education and test mode/sandbox only; live Stripe is not approved.
+- Real SMS to Dane should be added through a backend/provider later; the frontend preview records the owner acknowledgment state without sending SMS.
 - See `docs/PRODUCTION_FOUNDATION_PLAN.md` for the backend/payment starting point.
 
 Sources checked:

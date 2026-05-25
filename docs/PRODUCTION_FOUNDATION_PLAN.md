@@ -2,12 +2,14 @@
 
 **Date:** 2026-05-25
 
-This note captures the approved direction after the free MVP preview: use a no-monthly-cost production-shaped backend first, and teach/verify Stripe test mode before any live payment work.
+This note captures the approved direction after the free MVP preview: use a no-monthly-cost production-shaped backend first, hold open slots immediately when customers book, notify Dane, and teach/verify Stripe test mode before any live payment work.
 
 ## Current Release Boundary
 
 - The public app remains a static GitHub Pages preview.
 - Browser localStorage remains the working demo data store.
+- Customer bookings are intended to become confirmed slot reservations immediately when the time is open.
+- Owner acknowledgment is tracked separately from booking status.
 - NHTSA vPIC VIN lookup remains the only connected external API.
 - No production Stripe, SMS, email, maps/routing, reverse geocoding, auth, database, calendar sync, or live tracking is connected.
 
@@ -21,6 +23,8 @@ Use Supabase Free as the default backend candidate for the finished product beca
 - A free tier suitable for MVP exploration, with usage limits to watch.
 
 Keep the frontend deploy on GitHub Pages until the app needs server-rendered routes or a different deployment target.
+
+The production booking write must reserve the selected slot atomically so two customers cannot take the same time.
 
 ## Backend Guardrails
 
@@ -39,6 +43,17 @@ Before implementing payment code:
 - Decide whether real customers pay before owner approval or after owner approval.
 - Decide whether the first real payment is a full card payment, deposit only, or payment link/manual invoice.
 - Keep the $3 BrandNew app cost ledger-only until Stripe Connect/backend routing is explicitly approved.
+
+## Notification Direction
+
+Dane should receive a real SMS when a customer books. The first production SMS flow should be:
+
+- Customer books an available time.
+- Backend creates the confirmed booking and sends Dane an SMS.
+- Dane acknowledges from the owner app or by a future SMS reply.
+- If the time somehow does not work, Dane can mark `reschedule_requested` and message the customer.
+
+Do not put SMS provider secrets in the frontend.
 
 ## Useful Official References
 

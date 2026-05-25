@@ -128,7 +128,7 @@ test('customer booking detail requires request change inside reschedule cutoff',
   await expect(page.getByText('Service-Day Location')).toHaveCount(0);
   await expect(page.getByText(/Exact GPS updates/i)).toHaveCount(0);
   await expect(page.getByText('Arrival Tracker')).toBeVisible();
-  await expect(page.getByText('status')).toBeVisible();
+  await expect(page.getByText('status', { exact: true })).toBeVisible();
   await expect(page.getByText(/Status updates from the owner side/i)).toHaveCount(0);
   await expect(page.getByText(/No ETA is shown until Dane adds one manually/i)).toHaveCount(0);
   await page.getByRole('button', { name: 'Request Change' }).click();
@@ -190,7 +190,7 @@ test('typed exact Franklin address estimates travel fee before checkout', async 
   await expect(page.getByText('$42.00')).toBeVisible();
 });
 
-test('promo and saved vehicle carry into booking request', async ({ page }) => {
+test('promo and saved vehicle carry into instant booking', async ({ page }) => {
   await resetAndEnterHome(page);
   await page.getByRole('button', { name: /Deluxe Detail/i }).click();
   await page.getByRole('button', { name: /Book Deluxe Detail/i }).click();
@@ -209,8 +209,8 @@ test('promo and saved vehicle carry into booking request', async ({ page }) => {
   await page.getByPlaceholder('Try PEOPLES10').fill('PEOPLES10');
   await page.getByRole('button', { name: /^Apply$/i }).click();
   await expect(page.getByText(/PEOPLES10 applied/i)).toBeVisible();
-  await page.getByRole('button', { name: /Request Booking/i }).click();
-  await expect(page.getByRole('heading', { name: /Request Ready/i })).toBeVisible();
+  await page.getByRole('button', { name: /Book This Spot/i }).click();
+  await expect(page.getByRole('heading', { name: /You're Booked/i })).toBeVisible();
   await expect(page.getByText(/White F-150/)).toBeVisible();
   await expect(page.getByText(/PEOPLES10/i)).toBeVisible();
 });
@@ -219,43 +219,41 @@ test('deposit cash balance option records balance due', async ({ page }) => {
   await reachCheckout(page);
   await page.getByText('Prefer $25 deposit, cash later').click();
   await expect(page.getByText('Cash balance due at service')).toBeVisible();
-  await page.getByRole('button', { name: /Request Booking/i }).click();
-  await expect(page.getByRole('heading', { name: /Request Ready/i })).toBeVisible();
+  await page.getByRole('button', { name: /Book This Spot/i }).click();
+  await expect(page.getByRole('heading', { name: /You're Booked/i })).toBeVisible();
   await page.getByRole('button', { name: /View Booking/i }).click();
-  await expect(page.getByText('Request - not paid yet')).toBeVisible();
+  await expect(page.getByText('Deposit + cash balance')).toBeVisible();
+  await expect(page.getByText('deposit due')).toBeVisible();
   await expect(page.getByText('Cash balance due')).toBeVisible();
 });
 
-test('owner can confirm a free request-only booking', async ({ page }) => {
+test('owner can acknowledge an instant booking', async ({ page }) => {
   await reachCheckout(page);
-  await page.getByRole('button', { name: /Request Booking/i }).click();
-  await expect(page.getByRole('heading', { name: /Request Ready/i })).toBeVisible();
+  await page.getByRole('button', { name: /Book This Spot/i }).click();
+  await expect(page.getByRole('heading', { name: /You're Booked/i })).toBeVisible();
   await page.getByRole('button', { name: /^Owner$/i }).click();
   await page.locator('button.card').filter({ hasText: 'Jobs' }).click();
-  await expect(page.getByRole('button', { name: 'Requests' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Needs Ack', exact: true })).toBeVisible();
   await page.locator('button.card').filter({ hasText: 'Deluxe Detail' }).first().click();
-  await expect(page.getByText('Booking request needs approval')).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Text Customer' })).toHaveAttribute('href', /sms:/);
-  await expect(page.getByRole('link', { name: 'Call Customer' })).toHaveAttribute('href', /tel:/);
-  await page.getByRole('button', { name: 'Confirm', exact: true }).click();
-  await expect(page.locator('.pill').filter({ hasText: 'confirmed' })).toBeVisible();
+  await expect(page.getByText('New booking needs acknowledgment')).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Message Customer' }).first()).toHaveAttribute('href', /sms:/);
+  await page.getByRole('button', { name: 'Acknowledge' }).click();
+  await expect(page.getByText('Acknowledged by Dane')).toBeVisible();
 });
 
-test('owner can decline a request without deposit language', async ({ page }) => {
+test('owner can request reschedule on an instant booking without deposit-forfeit language', async ({ page }) => {
   await reachCheckout(page);
-  await page.getByRole('button', { name: /Request Booking/i }).click();
-  await expect(page.getByRole('heading', { name: /Request Ready/i })).toBeVisible();
+  await page.getByRole('button', { name: /Book This Spot/i }).click();
+  await expect(page.getByRole('heading', { name: /You're Booked/i })).toBeVisible();
   await page.getByRole('button', { name: /^Owner$/i }).click();
   await page.locator('button.card').filter({ hasText: 'Jobs' }).click();
   await page.locator('button.card').filter({ hasText: 'Deluxe Detail' }).first().click();
-  await page.getByRole('button', { name: 'Decline', exact: true }).click();
-  await expect(page.locator('.pill').filter({ hasText: 'declined' })).toBeVisible();
+  await page.getByRole('button', { name: 'Request Reschedule' }).click();
+  await expect(page.getByText('Reschedule requested')).toBeVisible();
   await page.getByRole('button', { name: /^Customer$/i }).click();
   await page.getByRole('button', { name: /Bookings/i }).click();
-  await page.getByRole('button', { name: 'Cancelled' }).click();
-  await page.locator('button.card').filter({ hasText: 'Deluxe Detail' }).first().click();
-  await expect(page.getByText('Request closed')).toBeVisible();
-  await expect(page.getByText(/No payment was collected/i)).toBeVisible();
+  await page.locator('button.card').filter({ hasText: 'Deluxe Detail' }).filter({ hasText: '$223.60' }).click();
+  await expect(page.getByText('Dane asked to reschedule')).toBeVisible();
   await expect(page.getByText(/Deposit forfeited/i)).toHaveCount(0);
 });
 

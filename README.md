@@ -39,7 +39,7 @@ The latest verification pass also captured review screenshots in `docs/qa-screen
 - Service packages and pricing from the source prototype.
 - App fee rule: flat $3.00 hidden from customer checkout by default and tracked as a Dane-side ledger cost.
 - Customer-paid card processing by default, calculated only on the online amount paid today once payments are connected.
-- Checkout lines for service price, travel fee, discount, card processing, payment preference, and request-only/no-payment language.
+- Checkout lines for service price, travel fee, discount, card processing, payment preference, and instant-book/no-payment language.
 - No-surprise-charges language.
 - BrandNew Design attribution inside the app fee information area.
 - Simple saved vehicle flow with optional VIN/year/make/model/trim/color/plate details.

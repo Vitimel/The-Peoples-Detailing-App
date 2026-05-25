@@ -202,6 +202,11 @@ const ownerCustomerMessage = booking => [
   "Hi, this is Dane with The Peoples Detailing.",
   `I am following up on your ${booking.serviceTitle} request for ${isoToDay(booking.startIso)} at ${isoToTime(booking.startIso)}.`,
 ].join(" ");
+const ownerRescheduleMessage = booking => [
+  "Hi, this is Dane with The Peoples Detailing.",
+  `I have your ${booking.serviceTitle} booked for ${isoToDay(booking.startIso)} at ${isoToTime(booking.startIso)}, but I need to adjust that time.`,
+  "What other time works for you?",
+].join(" ");
 const statusClass = status => BOOKING_STATUS_CLASS[status] || "pill-pending";
 const statusLabel = status => BOOKING_STATUS_LABEL[status] || status || "requested";
 const customerCancelOutcome = (booking, settings) => {
@@ -505,6 +510,8 @@ const App = () => {
       customer:{ name:"You (Demo)", phone:"(615) 555-0123", vehicle: finalDraft.vehicleLabel || vehicleLabel(activeVehicle) },
       liveLocationOptIn: finalDraft.liveLocationOptIn,
       requestedAt: finalDraft.requestedAt || null,
+      ownerAckStatus: finalDraft.ownerAckStatus || null,
+      ownerAcknowledgedAt: finalDraft.ownerAcknowledgedAt || null,
       paid: (finalDraft.amountPaidTodayCents || 0) > 0,
       promoCode: finalDraft.promoCode || null,
     };
@@ -533,6 +540,24 @@ const App = () => {
       cancellationOutcome: "Request declined - no payment collected",
     } : b));
     showToast("Request declined");
+  };
+
+  const acknowledgeBooking = bookingId => {
+    setBookings(bs => bs.map(b => b.id === bookingId ? {
+      ...b,
+      ownerAcknowledgedAt: Date.now(),
+      ownerAckStatus: "acknowledged",
+    } : b));
+    showToast("Booking acknowledged");
+  };
+
+  const requestBookingReschedule = bookingId => {
+    setBookings(bs => bs.map(b => b.id === bookingId ? {
+      ...b,
+      ownerAckStatus: "reschedule_requested",
+      rescheduleRequestedAt: Date.now(),
+    } : b));
+    showToast("Reschedule request marked");
   };
 
   // Owner tracker state on a booking
@@ -573,7 +598,7 @@ const App = () => {
     settings, setSettings,
     vehicles, setVehicles, activeVehicleId, setActiveVehicleId, activeVehicle,
     confirmBooking, startBooking, beginReschedule, finishReschedule,
-    confirmRequestedBooking, declineRequestedBooking,
+    confirmRequestedBooking, declineRequestedBooking, acknowledgeBooking, requestBookingReschedule,
     updateTracker, completeJob, closeOutJob, cancelBooking,
     resetApp, showToast,
   };
@@ -1324,7 +1349,10 @@ const Checkout = (p) => {
   const cardProcessingFixedCents = p.settings?.cardProcessingFixedCents ?? 30;
   const cardProcessingFeeCents = checkoutTotals.cardProcessingFeeCents;
   const total = checkoutTotals.totalDueTodayCents;
-  const requestOnlyMode = (p.settings?.bookingSubmissionMode || SETTINGS.bookingSubmissionMode) === "request_only";
+  const bookingSubmitMode = p.settings?.bookingSubmissionMode || SETTINGS.bookingSubmissionMode;
+  const instantBookNoPaymentMode = bookingSubmitMode === "instant_book_no_payment";
+  const requestOnlyMode = bookingSubmitMode === "request_only";
+  const noPaymentMode = instantBookNoPaymentMode || requestOnlyMode;
 
   const applyPromo = () => {
     const found = PROMO_CODES.find(c => c.code.toLowerCase() === promo.trim().toLowerCase());
@@ -1391,6 +1419,36 @@ const Checkout = (p) => {
     p.showToast("Booking request saved. Text or call Dane to confirm.");
   };
 
+  const bookConfirmedNoPayment = () => {
+    const finalDraft = {
+      ...p.draft,
+      discountCents,
+      promoCode: appliedPromo?.code || "",
+      paymentChoice,
+      depositCents: p.settings?.depositCents || SETTINGS.depositCents,
+      amountPaidTodayCents: 0,
+      balanceDueCents: checkoutTotals.jobTotalAfterDiscountCents,
+      totalDueTodayCents: 0,
+      companyAppFeeCents: 0,
+      appFeeRoutingStatus: "not_collected",
+      paymentStatus: paymentChoice === "deposit_cash_balance" ? "deposit_due" : "not_collected",
+      appFeeCents: 0,
+      customerPaysCardProcessingFee: p.settings?.customerPaysCardProcessingFee ?? SETTINGS.customerPaysCardProcessingFee,
+      cardProcessingFeeCents: 0,
+      cardProcessingPercent,
+      cardProcessingFixedCents,
+      customerNotificationMethod: "manual",
+      ownerNotificationMethod: "manual_sms_pending",
+      status: "confirmed",
+      confirmedAt: Date.now(),
+      ownerAckStatus: "needs_ack",
+      ownerAcknowledgedAt: null,
+    };
+    p.setDraft(finalDraft);
+    p.confirmBooking(finalDraft);
+    p.showToast("Spot booked. Dane has been notified in the owner view.");
+  };
+
   return (
     <div className="pb-6">
       <HeaderBar title="Checkout" subtitle="Step 3 of 3" onBack={()=> p.setScreen("location")} />
@@ -1409,13 +1467,13 @@ const Checkout = (p) => {
         <div className="card text-sm">{p.draft?.address}</div>
 
         <div className="mt-4">
-          <div className="text-xs uppercase tracking-wider text-[#9FB3C8] mb-2">{requestOnlyMode ? "Payment Preference" : "Payment Option"}</div>
+          <div className="text-xs uppercase tracking-wider text-[#9FB3C8] mb-2">{noPaymentMode ? "Payment Preference" : "Payment Option"}</div>
           <div className="grid gap-2">
             <button className={`card text-left border ${paymentChoice === "card_full" ? "border-[var(--orange)] bg-[var(--orange)]/10" : "border-[#1f3b5c]"}`} onClick={()=> setPaymentChoice("card_full")}>
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <div className="text-sm font-bold">{requestOnlyMode ? "Prefer full card payment" : "Pay full amount by card"}</div>
-                  <div className="text-xs text-[#9FB3C8] mt-1">{requestOnlyMode ? "Dane confirms the request first. Online payment can be connected later." : "Preferred. Confirms the job and marks the balance paid."}</div>
+                  <div className="text-sm font-bold">{noPaymentMode ? "Prefer full card payment" : "Pay full amount by card"}</div>
+                  <div className="text-xs text-[#9FB3C8] mt-1">{noPaymentMode ? "Your spot is booked now. Online payment can be connected later." : "Preferred. Confirms the job and marks the balance paid."}</div>
                 </div>
                 <div className="price-orange text-sm">{cents(paymentChoice === "card_full" ? total : calculateCustomerCheckoutTotals({ servicePriceCents: p.draft?.priceCents || 0, travelFeeCents: p.draft?.travelFeeCents || 0, discountCents, paymentChoice: "card_full", settings: p.settings }).totalDueTodayCents)}</div>
               </div>
@@ -1423,8 +1481,8 @@ const Checkout = (p) => {
             <button className={`card text-left border ${paymentChoice === "deposit_cash_balance" ? "border-[var(--orange)] bg-[var(--orange)]/10" : "border-[#1f3b5c]"}`} onClick={()=> setPaymentChoice("deposit_cash_balance")}>
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <div className="text-sm font-bold">{requestOnlyMode ? "Prefer $25 deposit, cash later" : "Pay $25 deposit, cash balance later"}</div>
-                  <div className="text-xs text-[#9FB3C8] mt-1">{requestOnlyMode ? "The deposit rule is shown, but no payment is collected yet." : "Deposit holds the time. Remaining balance is due at service."}</div>
+                  <div className="text-sm font-bold">{noPaymentMode ? "Prefer $25 deposit, cash later" : "Pay $25 deposit, cash balance later"}</div>
+                  <div className="text-xs text-[#9FB3C8] mt-1">{noPaymentMode ? "Deposit rules are tracked, but no payment is collected yet." : "Deposit holds the time. Remaining balance is due at service."}</div>
                 </div>
                 <div className="price-orange text-sm">{cents(paymentChoice === "deposit_cash_balance" ? total : calculateCustomerCheckoutTotals({ servicePriceCents: p.draft?.priceCents || 0, travelFeeCents: p.draft?.travelFeeCents || 0, discountCents, paymentChoice: "deposit_cash_balance", settings: p.settings }).totalDueTodayCents)}</div>
               </div>
@@ -1467,24 +1525,26 @@ const Checkout = (p) => {
             </div>
           )}
           <div className="divider my-2" />
-          <Row label={<span className="text-white font-bold">{requestOnlyMode ? "Estimated online payment" : "Total due today"}</span>} value={<span className="price-orange text-lg">{cents(total)}</span>} bold />
-          {requestOnlyMode && <Row label="Collected now" value={<span className="text-[#4ade80] font-bold">$0.00</span>} />}
+          <Row label={<span className="text-white font-bold">{noPaymentMode ? "Estimated online payment" : "Total due today"}</span>} value={<span className="price-orange text-lg">{cents(total)}</span>} bold />
+          {noPaymentMode && <Row label="Collected now" value={<span className="text-[#4ade80] font-bold">$0.00</span>} />}
           <div className="mt-2 text-[11px] text-[#9FB3C8] leading-relaxed">
-            {requestOnlyMode
-              ? "No card is charged in this version. Submit the request, then text or call Dane to confirm the appointment."
+            {instantBookNoPaymentMode
+              ? "No card is charged in this version. Booking this spot holds the time and notifies Dane in the owner view."
+              : requestOnlyMode
+                ? "No card is charged in this version. Submit the request, then text or call Dane to confirm the appointment."
               : "No surprise charges. The $3 app cost is not added to customer checkout; it is tracked from Dane's cut on each online payment."}
           </div>
         </div>
 
         <div className="flex items-center gap-2 text-xs text-[#9FB3C8] mt-3">
           <Icon name="shield" className="w-4 h-4 text-[#4ade80]" />
-          <span>{requestOnlyMode ? "Request-only mode - no real payment is collected yet." : "Secure checkout placeholder - Stripe can be connected later - no real payment is collected in this prototype"}</span>
+          <span>{instantBookNoPaymentMode ? "Instant booking mode - no real payment is collected yet." : requestOnlyMode ? "Request-only mode - no real payment is collected yet." : "Secure checkout placeholder - Stripe can be connected later - no real payment is collected in this prototype"}</span>
         </div>
 
         <div className="mt-5">
-          <button className="btn-primary glow-orange flex items-center justify-center gap-2" onClick={requestOnlyMode ? requestBooking : pay}>
+          <button className="btn-primary glow-orange flex items-center justify-center gap-2" onClick={instantBookNoPaymentMode ? bookConfirmedNoPayment : requestOnlyMode ? requestBooking : pay}>
             <Icon name="receipt" className="w-4 h-4" />
-            <span>{requestOnlyMode ? "Request Booking - No Payment Today" : `${paymentChoice === "card_full" ? "Pay Full Amount" : "Pay Deposit"} with Card - ${cents(total)}`}</span>
+            <span>{instantBookNoPaymentMode ? "Book This Spot - No Payment Today" : requestOnlyMode ? "Request Booking - No Payment Today" : `${paymentChoice === "card_full" ? "Pay Full Amount" : "Pay Deposit"} with Card - ${cents(total)}`}</span>
           </button>
         </div>
       </div>
@@ -1502,6 +1562,7 @@ const Row = ({ label, value, valueClass="", bold=false }) => (
 const Confirmation = (p) => {
   const b = p.bookings.find(b => b.id === p.activeBookingId) || p.bookings[0];
   const isRequest = b?.status === "requested";
+  const needsAck = b?.status === "confirmed" && !b?.ownerAcknowledgedAt && b?.ownerAckStatus !== "reschedule_requested";
   const requestMessage = b ? bookingRequestMessage(b, p.settings) : "";
   const businessPhone = p.settings?.businessPhone || SETTINGS.businessPhone;
   if (!b) {
@@ -1522,8 +1583,8 @@ const Confirmation = (p) => {
         <div className="w-20 h-20 rounded-full bg-[#4ade80]/15 flex items-center justify-center mb-3">
           <Icon name="check" className="w-10 h-10 text-[#4ade80]" strokeWidth={3} />
         </div>
-        <h2 className="text-2xl font-extrabold">{isRequest ? "Request Ready" : "You're All Set!"}</h2>
-        <p className="text-sm text-[#9FB3C8] mt-1">{isRequest ? "No payment was collected. Text or call Dane to confirm this appointment." : "Your booking is confirmed."}</p>
+        <h2 className="text-2xl font-extrabold">{isRequest ? "Request Ready" : "You're Booked!"}</h2>
+        <p className="text-sm text-[#9FB3C8] mt-1">{isRequest ? "No payment was collected. Text or call Dane to confirm this appointment." : "Your spot is booked. Dane has been notified."}</p>
       </div>
 
       <div className="px-5 mt-5">
@@ -1562,6 +1623,13 @@ const Confirmation = (p) => {
           </div>
         )}
 
+        {needsAck && (
+          <div className="card mt-3 bg-[#4ade80]/10 border-[#4ade80]/30">
+            <div className="text-sm font-semibold">Dane has been notified</div>
+            <div className="text-xs text-[#C7D8EA] mt-1">The time is held for you. Real SMS will be connected with the backend; this preview records the owner acknowledgment inside the app.</div>
+          </div>
+        )}
+
         <div className="mt-5">
           <div className="text-xs uppercase tracking-wider text-[#9FB3C8] mb-2">What Happens Next</div>
           <div className="flex flex-col gap-2">
@@ -1573,9 +1641,9 @@ const Confirmation = (p) => {
               </>
             ) : (
               <>
-                <NextStepRow icon="receipt" title="Confirmation email" body="You'll get booking details, receipt, and the full total by email." />
+                <NextStepRow icon="bell" title="Dane gets notified" body="The owner side tracks whether Dane has acknowledged the booking." />
+                <NextStepRow icon="receipt" title="Payment is separate" body="Deposits/card payments can be connected later without changing the booked slot." />
                 <NextStepRow icon="truck" title="Simple status updates" body="MVP status updates are limited to On the Way, I'm Here, and Completed." />
-                <NextStepRow icon="bell" title="Low-cost notifications" body="Dane gets owner SMS alerts; customers can use email by default, with SMS for important status updates if enabled." />
               </>
             )}
           </div>
@@ -1737,6 +1805,12 @@ const BookingDetail = (p) => {
               <div>
                 <div className="label-up mb-1">Arrival Tracker</div>
                 <div className="text-sm font-semibold">{trackerCurrent.customerMessage}</div>
+                {b.ownerAckStatus === "reschedule_requested" && (
+                  <div className="text-xs text-[#fed7aa] mt-2">Dane requested a new time. Text or call to pick another slot.</div>
+                )}
+                {b.ownerAckStatus !== "reschedule_requested" && !b.ownerAcknowledgedAt && (
+                  <div className="text-xs text-[#9FB3C8] mt-2">Your spot is booked. Dane has been notified and can acknowledge it from the owner side.</div>
+                )}
               </div>
               <div className="text-right">
                 <div className="w-10 h-10 ml-auto rounded-2xl bg-[var(--orange)]/15 border border-[var(--orange)]/40 text-[var(--orange)] flex items-center justify-center">
@@ -1751,6 +1825,17 @@ const BookingDetail = (p) => {
                   {step.label}
                 </div>
               ))}
+            </div>
+          </div>
+        )}
+
+        {b.status==="confirmed" && b.ownerAckStatus === "reschedule_requested" && (
+          <div className="card mt-3 bg-[var(--orange)]/10 border-[var(--orange)]/30">
+            <div className="text-sm font-semibold">Dane asked to reschedule</div>
+            <div className="text-xs text-[#C7D8EA] mt-1">Your booking is still in the app, but Dane needs a different time.</div>
+            <div className="grid grid-cols-2 gap-2 mt-3">
+              <a className="btn-primary !py-2 text-center text-sm" href={smsHref(p.settings?.businessPhone || SETTINGS.businessPhone, bookingRequestMessage(b, p.settings))}>Text Dane</a>
+              <a className="btn-secondary !py-2 text-center text-sm" href={telHref(p.settings?.businessPhone || SETTINGS.businessPhone)}>Call Dane</a>
             </div>
           </div>
         )}
@@ -1778,7 +1863,8 @@ const BookingDetail = (p) => {
           <Row label="Travel fee" value={b.travelFeeCents===0?"Free":cents(b.travelFeeCents)} />
           {b.promoCode && <Row label="Promo code" value={b.promoCode} valueClass="text-[#4ade80]" />}
           {b.discountCents>0 && <Row label="Discount" value={`- ${cents(b.discountCents)}`} valueClass="text-[#4ade80]" />}
-          <Row label="Payment option" value={b.paymentChoice?.startsWith("request_") ? "Request - not paid yet" : b.paymentChoice === "deposit_cash_balance" ? "Deposit + cash balance" : "Paid by card"} />
+          <Row label="Payment option" value={b.paymentChoice?.startsWith("request_") ? "Request - not paid yet" : b.paymentChoice === "deposit_cash_balance" ? "Deposit + cash balance" : "Full card preferred"} />
+          {b.paymentStatus && <Row label="Payment status" value={String(b.paymentStatus).replaceAll("_", " ")} />}
           <Row label="Paid online today" value={cents(b.amountPaidTodayCents || 0)} />
           {b.balanceDueCents > 0 && <Row label="Cash balance due" value={cents(b.balanceDueCents)} />}
           {b.cardProcessingFeeCents > 0 && <Row label="Card processing fee" value={cents(b.cardProcessingFeeCents)} />}
@@ -2050,9 +2136,10 @@ const OwnerDash = (p) => {
     const d = new Date(b.startIso);
     return d >= today && d < tomorrow;
   });
+  const needsAck = p.bookings.filter(b => b.status === "confirmed" && !b.ownerAcknowledgedAt && b.ownerAckStatus !== "reschedule_requested");
   const requests = p.bookings.filter(b => b.status === "requested");
   const upcoming = p.bookings.filter(b => b.status === "confirmed").sort((a,b)=> new Date(a.startIso) - new Date(b.startIso)).slice(0,4);
-  const recentJobs = [...requests, ...upcoming].slice(0,4);
+  const recentJobs = [...needsAck, ...requests, ...upcoming].slice(0,4);
   const completedThisMonth = p.bookings.filter(b => b.status==="complete" && new Date(b.startIso) >= monthStart).length;
   const monthRevenueCents = p.bookings.filter(b => new Date(b.startIso) >= monthStart).reduce((s,b)=> s + (b.totalCents||0), 0);
   const customers = new Set(p.bookings.map(b => b.customer?.name)).size;
@@ -2079,7 +2166,7 @@ const OwnerDash = (p) => {
 
       <div className="px-5 mt-4 grid grid-cols-2 gap-2">
         <Kpi label="Today's jobs" value={todays.length} />
-        <Kpi label="Requests" value={requests.length} />
+        <Kpi label="Needs ack" value={needsAck.length} />
         <Kpi label="Completed (mo)" value={completedThisMonth} />
         <Kpi label="Revenue (mo)" value={cents(monthRevenueCents)} />
       </div>
@@ -2136,8 +2223,9 @@ const QuickAction = ({ icon, label, onClick }) => (
 );
 
 const OwnerJobs = (p) => {
-  const [tab, setTab] = useState("requests");
+  const [tab, setTab] = useState("needsAck");
   const list = p.bookings.filter(b => {
+    if (tab==="needsAck") return b.status==="confirmed" && !b.ownerAcknowledgedAt && b.ownerAckStatus !== "reschedule_requested";
     if (tab==="requests") return b.status==="requested";
     if (tab==="upcoming") return b.status==="confirmed";
     if (tab==="completed") return b.status==="complete";
@@ -2149,8 +2237,14 @@ const OwnerJobs = (p) => {
     <div className="pb-6">
       <HeaderBar title="Jobs" />
       <div className="px-5 flex gap-2 overflow-x-auto pb-1">
-        {["requests","upcoming","completed","cancelled"].map(t => (
-          <button key={t} onClick={()=> setTab(t)} className={`shrink-0 px-3 py-2 rounded-full text-xs font-semibold ${tab===t?"bg-[var(--orange)] text-white":"bg-[#0d2236] border border-[#1f3b5c] text-[#9FB3C8]"}`}>{t.charAt(0).toUpperCase()+t.slice(1)}</button>
+        {[
+          { id:"needsAck", label:"Needs Ack" },
+          { id:"upcoming", label:"Upcoming" },
+          { id:"requests", label:"Requests" },
+          { id:"completed", label:"Completed" },
+          { id:"cancelled", label:"Cancelled" },
+        ].map(t => (
+          <button key={t.id} onClick={()=> setTab(t.id)} className={`shrink-0 px-3 py-2 rounded-full text-xs font-semibold ${tab===t.id?"bg-[var(--orange)] text-white":"bg-[#0d2236] border border-[#1f3b5c] text-[#9FB3C8]"}`}>{t.label}</button>
         ))}
       </div>
       <div className="px-5 mt-4 flex flex-col gap-2">
@@ -2172,6 +2266,12 @@ const OwnerJobs = (p) => {
             <div className="text-right">
               <div className="text-sm price-orange">{cents(b.totalCents)}</div>
               <span className={`pill ${statusClass(b.status)}`}>{statusLabel(b.status)}</span>
+              {b.status === "confirmed" && !b.ownerAcknowledgedAt && b.ownerAckStatus !== "reschedule_requested" && (
+                <div className="text-[10px] text-[#fbbf24] mt-1">needs ack</div>
+              )}
+              {b.ownerAckStatus === "reschedule_requested" && (
+                <div className="text-[10px] text-[#fed7aa] mt-1">reschedule</div>
+              )}
             </div>
           </button>
         ))}
@@ -2237,8 +2337,8 @@ const OwnerCustomers = (p) => {
 };
 
 const OwnerNotifications = (p) => {
-  const upcoming = p.bookings
-    .filter(b => b.status === "confirmed")
+  const attention = p.bookings
+    .filter(b => b.status === "confirmed" && (!b.ownerAcknowledgedAt || b.ownerAckStatus === "reschedule_requested"))
     .sort((a, b) => new Date(a.startIso) - new Date(b.startIso))
     .slice(0, 3);
 
@@ -2248,9 +2348,9 @@ const OwnerNotifications = (p) => {
       <div className="px-5 flex flex-col gap-2">
         <div className="card bg-[var(--orange)]/10 border-[var(--orange)]/30">
           <div className="text-sm font-semibold">Demo notification center</div>
-          <div className="text-xs text-[#C7D8EA] mt-1">Real SMS, email, and calendar alerts are not connected yet.</div>
+          <div className="text-xs text-[#C7D8EA] mt-1">Real SMS, email, and calendar alerts are not connected yet. This preview shows the owner acknowledgment queue.</div>
         </div>
-        {upcoming.map(b => (
+        {attention.map(b => (
           <button
             key={b.id}
             className="card text-left"
@@ -2260,6 +2360,7 @@ const OwnerNotifications = (p) => {
               <div>
                 <div className="text-sm font-bold">{b.customer?.name}</div>
                 <div className="text-xs text-[#9FB3C8] mt-0.5">{b.serviceTitle} - {isoToDay(b.startIso)} at {isoToTime(b.startIso)}</div>
+                <div className="text-[11px] text-[#fed7aa] mt-1">{b.ownerAckStatus === "reschedule_requested" ? "Reschedule requested" : "Needs acknowledgment"}</div>
               </div>
               <Icon name="bell" className="w-4 h-4 text-[var(--orange)]" />
             </div>
@@ -2274,6 +2375,7 @@ const OwnerJobDetail = (p) => {
   const b = p.bookings.find(x => x.id === p.activeBookingId);
   if (!b) return <div className="p-6">No job selected.</div>;
   const isRequested = b.status === "requested";
+  const needsAck = b.status === "confirmed" && !b.ownerAcknowledgedAt && b.ownerAckStatus !== "reschedule_requested";
   return (
     <div className="pb-6">
       <HeaderBar title="Job Detail" onBack={()=> p.setScreen("ownerJobs")} />
@@ -2296,6 +2398,33 @@ const OwnerJobDetail = (p) => {
             <div className="grid grid-cols-2 gap-2 mt-2">
               <button className="btn-primary !py-2 text-sm" onClick={()=> p.confirmRequestedBooking(b.id)}>Confirm</button>
               <button className="btn-secondary !py-2 text-sm" onClick={()=> p.declineRequestedBooking(b.id)}>Decline</button>
+            </div>
+          </div>
+        )}
+        {needsAck && (
+          <div className="card mt-3 bg-[var(--orange)]/10 border-[var(--orange)]/30">
+            <div className="text-sm font-semibold">New booking needs acknowledgment</div>
+            <div className="text-xs text-[#C7D8EA] mt-1">The customer has the spot. A real SMS to Dane will be connected with the backend; this preview records that Dane saw it.</div>
+            <div className="grid grid-cols-2 gap-2 mt-3">
+              <button className="btn-primary !py-2 text-sm" onClick={()=> p.acknowledgeBooking(b.id)}>Acknowledge</button>
+              <a className="btn-secondary !py-2 text-center text-sm" href={smsHref(b.customer?.phone, ownerCustomerMessage(b))}>Message Customer</a>
+            </div>
+            <button className="btn-secondary mt-2 !py-2 text-sm" onClick={()=> p.requestBookingReschedule(b.id)}>Request Reschedule</button>
+          </div>
+        )}
+        {b.status === "confirmed" && b.ownerAcknowledgedAt && (
+          <div className="card mt-3 border-[#22c55e]/30 bg-[#22c55e]/10">
+            <div className="text-sm font-semibold">Acknowledged by Dane</div>
+            <div className="text-xs text-[#C7D8EA] mt-1">The booking is confirmed and seen by the owner.</div>
+          </div>
+        )}
+        {b.ownerAckStatus === "reschedule_requested" && (
+          <div className="card mt-3 bg-[var(--orange)]/10 border-[var(--orange)]/30">
+            <div className="text-sm font-semibold">Reschedule requested</div>
+            <div className="text-xs text-[#C7D8EA] mt-1">The spot is still recorded, but Dane needs the customer to pick another time.</div>
+            <div className="grid grid-cols-2 gap-2 mt-3">
+              <a className="btn-primary !py-2 text-center text-sm" href={smsHref(b.customer?.phone, ownerRescheduleMessage(b))}>Text Customer</a>
+              <button className="btn-secondary !py-2 text-sm" onClick={()=> p.beginReschedule(b.id)}>Pick New Time</button>
             </div>
           </div>
         )}
@@ -2338,7 +2467,8 @@ const OwnerJobDetail = (p) => {
           {b.status === "confirmed" && <button className="btn-secondary !py-3" onClick={()=>{ p.cancelBooking(b.id); p.setScreen("ownerJobs"); }}>Cancel Job</button>}
         </div>
         {b.status==="confirmed" && (
-          <div className="mt-2">
+          <div className="mt-2 grid gap-2">
+            <a className="btn-secondary !py-3 text-center" href={smsHref(b.customer?.phone, ownerCustomerMessage(b))}>Message Customer</a>
             <button className="btn-primary !py-3" onClick={()=> p.completeJob(b.id)}>Close Out Job</button>
           </div>
         )}
@@ -2792,10 +2922,11 @@ const OwnerSettings = (p) => {
             <div className="label-up mb-2">Developer Money Settings</div>
             <label className="block text-[11px] text-[#9FB3C8] mb-1">Booking submit mode</label>
             <select aria-label="Booking submit mode" className="input" value={s.bookingSubmissionMode || SETTINGS.bookingSubmissionMode} onChange={e=> update("bookingSubmissionMode", e.target.value)}>
+              <option value="instant_book_no_payment">Instant book - no payment</option>
               <option value="request_only">Request only - no payment</option>
               <option value="demo_card">Demo card placeholder</option>
             </select>
-            <div className="text-xs text-[#9FB3C8] mt-2">Use request-only until Stripe/backend work is explicitly approved.</div>
+            <div className="text-xs text-[#9FB3C8] mt-2">Default is instant booking with no payment collected. Stripe stays separate until approved.</div>
             <NumberRow label="Deposit amount" value={(s.depositCents ?? 2500)/100} step="1" onChange={v=> update("depositCents", Math.round(v*100))} prefix="$" />
             <NumberRow label="App cost from Dane's cut" value={(s.companyAppFeeCents ?? 300)/100} step="0.25" onChange={v=> update("companyAppFeeCents", Math.round(v*100))} prefix="$" />
             <div className="text-xs text-[#9FB3C8] mt-2">Customers do not see this fee. It is tracked on each online purchase or deposit until future BrandNew routing is approved.</div>
