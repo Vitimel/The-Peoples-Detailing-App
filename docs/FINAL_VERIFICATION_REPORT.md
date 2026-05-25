@@ -27,11 +27,11 @@ The global `npm` and `npx` executables were not available on PATH in the origina
 | Command | Result |
 |---|---|
 | Dependency availability | Passed through archive dependencies plus Windows optional packages. |
-| Unit tests | Passed. `tests/fees.test.js`: 6 tests passed. |
+| Unit tests | Passed. 14 tests passed across fee, VIN, and travel utilities. |
 | Production build | Passed. Vite production build completed. |
 | `node .\node_modules\@playwright\test\cli.js install chromium` | Passed. Chromium browser installed locally for Playwright. |
 | `npm run dev` equivalent through local npm CLI on port `5173` | Passed. Vite returned HTTP 200 at `http://127.0.0.1:5173`. |
-| `node .\node_modules\@playwright\test\cli.js test` | Passed. 10 e2e smoke tests passed across desktop and mobile Chromium projects. |
+| `node .\node_modules\@playwright\test\cli.js test` | Passed. 40 e2e checks passed across desktop and mobile Chromium projects. |
 | Mobile width check at `393px` | Passed. Document/body scroll width stayed at `393px`; no obvious horizontal overflow. |
 
 ## Tests Passed
@@ -40,10 +40,10 @@ The global `npm` and `npx` executables were not available on PATH in the origina
 - Home screen renders.
 - Service selection works.
 - Booking flow navigation works.
-- Checkout screen renders all required fee lines.
-- App fee calculation follows the flat `$3.00` default, with percent/min/max fallback still covered by unit tests.
-- Card processing fee is covered by the business by default.
-- Card processing fee can switch to customer-visible when owner setting is changed.
+- Checkout screen renders all required payment lines.
+- App cost calculation follows the flat `$3.00` Dane-side ledger default.
+- Customer checkout hides the app cost.
+- Customer pays card processing on the amount paid online today.
 - Promo/discount carries into confirmed booking.
 - Saved vehicle can be added/selected.
 - Selected saved vehicle carries into booking confirmation/detail views.
@@ -51,7 +51,7 @@ The global `npm` and `npx` executables were not available on PATH in the origina
 - Owner dashboard renders.
 - Owner settings render.
 - MVP statuses exist: `On the Way`, `I'm Here`, `Completed`.
-- BrandNew attribution popup/link area appears as secondary app-fee context.
+- BrandNew attribution remains secondary in owner/reporting context.
 - Bottom navigation works.
 - Mobile Chromium smoke project passed.
 - Mobile horizontal-overflow check passed at a phone-width viewport.
@@ -70,7 +70,7 @@ No redesign was performed. Screenshot review confirmed the converted app still p
 - Owner dashboard style.
 - Bottom navigation feel.
 - Clean checkout breakdown.
-- BrandNew attribution as small secondary context inside the app-fee info area.
+- BrandNew attribution as small secondary context in the owner/reporting areas.
 - Saved vehicle flow.
 - Simple MVP status update language.
 
@@ -80,11 +80,9 @@ The screenshots are available in `docs/qa-screenshots/`. Some screenshots show t
 
 Verified and preserved:
 
-- App fee defaults to flat `$3.00`.
-- Percent/min/max app-fee settings remain available as fallback behavior when no flat fee is configured.
-- Card processing fee is business-covered by default.
-- Owner settings can switch card processing fee between business-covered and customer-visible.
-- Checkout displays service price/subtotal, travel fee, discount when applied, app fee, card processing fee when customer pays it, and total due today.
+- App cost defaults to flat `$3.00` and is hidden from customer checkout.
+- Card processing fee is customer-paid on the amount paid online today.
+- Checkout displays service price/subtotal, travel fee, discount when applied, card processing fee, and total due today.
 - No-surprise-charges language remains on checkout.
 
 ## Vehicle Flow Scope
@@ -93,7 +91,7 @@ Verified and preserved:
 
 - Customers can save a vehicle once and reuse it.
 - Vehicle nickname is the simple primary field.
-- VIN/year/make/model/trim/color/plate remain optional.
+- VIN/year/make/model/color/plate remain available without showing trim in the customer form.
 - Mock VIN decode remains non-blocking and future-facing.
 - Selected vehicle appears in booking flow and confirmation/detail views.
 
@@ -113,7 +111,7 @@ Tim/Mac/Claude should still click through the app visually against the approved 
 
 - Compare the home, service detail, booking, checkout, confirmation, vehicles, profile, owner dashboard, tracker, settings, and reports screens against the approved prototype.
 - Confirm mobile spacing feels right on a real phone-width browser.
-- Confirm the BrandNew app-fee popup feels tasteful and secondary.
+- Confirm the BrandNew owner/reporting context feels tasteful and secondary.
 - Confirm the checkout language and fee presentation are approved by Dane.
 - Confirm the mock location/travel-fee UI should remain visible for MVP.
 

@@ -19,10 +19,10 @@ Do not replace it with older backups from the packet.
 
 ## Preserved Business Rules
 
-- App fee: flat $3.00 by default.
-- Card processing fee is covered by the company by default, with owner settings available if it should be shown to customers later.
-- Checkout shows service price, travel fee, discount, app fee, card processing fee, and total due today.
-- BrandNew attribution remains secondary inside the app-fee information area.
+- App fee: flat $3.00 hidden from customer checkout and tracked as a Dane-side ledger cost on each online purchase or deposit.
+- Customer pays card processing on the amount paid online today by default.
+- Checkout shows service price, travel fee, discount, card processing fee, and total due today.
+- BrandNew attribution remains secondary in owner/reporting context for the app-fee ledger item.
 - Saved vehicle flow is simple; nickname is enough, exact vehicle details are optional.
 - MVP status notifications are On the Way, I'm Here, and Completed.
 - Owner SMS and customer email/controlled SMS assumptions remain in the mock settings.
@@ -41,7 +41,7 @@ Do not replace it with older backups from the packet.
 - Click customer flow: splash, home, service detail, booking, location, checkout, confirmation, booking detail, profile, vehicles, messages.
 - Click owner flow: dashboard, jobs, job detail, tracker, reports, services, settings.
 - Confirm checkout fee lines and totals match the tests.
-- Verify checkout says `Covered by business` for card processing by default; toggle owner setting only if testing customer-paid processing.
+- Verify checkout hides the $3 app fee and shows customer-paid card processing by default.
 - Apply `PEOPLES10` and confirm promo appears after booking.
 - Save a vehicle such as `White F-150` and confirm it carries into booking/confirmation.
 - Check desktop and mobile widths for obvious layout breaks.

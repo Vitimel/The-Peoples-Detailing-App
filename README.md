@@ -37,9 +37,9 @@ The latest verification pass also captured review screenshots in `docs/qa-screen
 
 - The Peoples Detailing branding, colors, phone-shell layout, logo, and customer/owner prototype structure.
 - Service packages and pricing from the source prototype.
-- App fee rule: flat $3.00 customer-visible app fee by default.
-- Company-covered card processing fee by default, with owner setting to show it to the customer later.
-- Checkout lines for service price, travel fee, discount, app fee, card processing fee, and total due today.
+- App fee rule: flat $3.00 hidden from customer checkout by default and tracked as a Dane-side ledger cost.
+- Customer-paid card processing by default, calculated only on the online amount paid today once payments are connected.
+- Checkout lines for service price, travel fee, discount, card processing, payment preference, and request-only/no-payment language.
 - No-surprise-charges language.
 - BrandNew Design attribution inside the app fee information area.
 - Simple saved vehicle flow with optional VIN/year/make/model/trim/color/plate details.
@@ -66,6 +66,7 @@ The original prototype saved promo and vehicle data into the booking object, but
 - `docs/FINAL_VERIFICATION_REPORT.md` - latest verification results.
 - `docs/TEST_REPORT.md` - concise command and test summary.
 - `docs/MANUAL_VISUAL_QA_CHECKLIST.md` - manual click-test and visual approval checklist.
+- `docs/PRODUCTION_FOUNDATION_PLAN.md` - Supabase Free and Stripe test-mode starting point for later production work.
 
 ## Still Needs Human Review
 

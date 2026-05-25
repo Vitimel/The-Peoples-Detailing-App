@@ -21,18 +21,18 @@ The global `npm` and `npx` commands were not on PATH, but the bundled Node execu
 | Check | Result |
 |---|---|
 | Dependency availability | Passed through archive dependencies plus Windows optional packages. |
-| Unit tests | Passed: 6 fee tests. |
+| Unit tests | Passed: 14 tests. |
 | Production build | Passed through Vite. |
 | Dev server | Passed on `http://127.0.0.1:5173`. |
 | Playwright Chromium install | Passed. |
-| Playwright e2e | Passed: 10 tests across desktop and mobile Chromium. |
+| Playwright e2e | Passed: 40 checks across desktop and mobile Chromium. |
 | Visual screenshot capture | Passed. Images saved in `docs/qa-screenshots/`. |
 | Mobile overflow check | Passed at `393px` viewport width. |
 
 ## Verified Coverage
 
-- Unit fee rules: flat `$3.00` app fee, percent/min/max fallback behavior, customer-paid card fee, absorbed card fee, checkout total.
-- App smoke: load, home, service selection, booking navigation, checkout lines, promo carry-through, saved vehicle carry-through, My Vehicles, owner dashboard, owner settings, status labels, BrandNew attribution, bottom navigation, mobile smoke.
+- Unit fee rules: hidden `$3.00` Dane-side app cost, customer-paid card processing by default, deposit/cash balance, checkout total.
+- App smoke: load, home, service selection, booking navigation, checkout lines, BrandNew reporting context, promo carry-through, saved vehicle carry-through, My Vehicles, owner dashboard, owner settings, status labels, reporting/export context, bottom navigation, mobile smoke.
 
 ## Notes
 

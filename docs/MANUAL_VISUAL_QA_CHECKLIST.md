@@ -26,7 +26,7 @@ Use this when automated Playwright cannot run or as the human approval pass befo
 - [ ] Vehicle block shows the selected saved vehicle.
 - [ ] My Vehicles screen opens.
 - [ ] A vehicle can be saved with only a nickname such as `White F-150`.
-- [ ] VIN/year/make/model/trim/color/plate are optional and do not block saving.
+- [ ] VIN/year/make/model/color/plate are available without a trim field.
 - [ ] Selected saved vehicle carries back into booking.
 - [ ] Location screen accepts typed address.
 - [ ] `Use my current location` requests browser GPS and falls back to demo address/distance if blocked.
@@ -34,12 +34,12 @@ Use this when automated Playwright cannot run or as the human approval pass befo
 - [ ] Checkout renders service price.
 - [ ] Checkout renders travel fee.
 - [ ] Checkout renders discount after `PEOPLES10`.
-- [ ] Checkout renders app fee.
-- [ ] Checkout renders card processing as `Covered by business` by default.
+- [ ] Checkout does not render a customer app-fee line.
+- [ ] Checkout renders customer-paid card processing by default.
 - [ ] Checkout renders `Total due today`.
 - [ ] Checkout includes no-surprise-charges language.
-- [ ] App fee info popup opens.
-- [ ] BrandNew attribution appears inside the app-fee info area and stays secondary.
+- [ ] Owner reports track the $3 app cost from Dane's cut.
+- [ ] BrandNew attribution remains secondary in owner/reporting context.
 - [ ] Pay mock checkout opens confirmation.
 - [ ] Confirmation shows saved vehicle.
 - [ ] Confirmation shows promo code if used.
@@ -57,7 +57,7 @@ Use this when automated Playwright cannot run or as the human approval pass befo
 - [ ] Reports screen renders.
 - [ ] Services screen renders package cards.
 - [ ] Settings screen renders.
-- [ ] Card processing toggle can switch from business-covered to customer-visible.
+- [ ] Card processing is charged only on the online payment amount.
 - [ ] Returning to customer checkout after toggling reflects the selected card-processing setting.
 - [ ] SMS/text provider note keeps owner SMS and controlled customer SMS scope.
 - [ ] Maps/address note says browser GPS estimate only, with no maps/routing/reverse geocoding.

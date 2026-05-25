@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import LOGO_DATA_URI from '../assets/The_Peoples_Detailing_Primary_Crest_Logo.webp';
 import MASCOT_DATA_URI from '../assets/Booking_App_Hero_Concept_Mascot_Car_Logo.png';
-import { calculateCheckoutTotals } from '../utils/fees.js';
+import { calculateCustomerCheckoutTotals } from '../utils/fees.js';
 import { calculateTravelFeeCents, estimateMilesFromAddress, milesBetween, MURFREESBORO_BASE } from '../utils/travel.js';
 import { decodeVinSample, lookupVinDetails, normalizeVin } from '../utils/vin.js';
 
@@ -66,7 +66,8 @@ const Icon = ({ name, className="w-5 h-5", strokeWidth=2 }) => {
 
 /* ==== BOTTOM NAV (rendered outside scroll-area) ==== */
 const CUSTOMER_NAV_SCREENS = ["home","priceList","serviceDetail","myBookings","bookingDetail","messages","profile"];
-const OWNER_NAV_SCREENS = ["ownerDash","ownerJobs","ownerJobDetail","ownerTracker","ownerReports","ownerServices","ownerSettings"];
+const OWNER_NAV_SCREENS = ["ownerDash","ownerJobs","ownerJobDetail","ownerCloseout","ownerCustomers","ownerNotifications","ownerTracker","ownerReports","ownerServices","ownerSettings"];
+const DEVELOPER_SCREENS = ["developerSettings","ownerServices"];
 
 const customerActiveTab = (screen) => {
   if (screen === "myBookings" || screen === "bookingDetail") return "myBookings";
@@ -81,6 +82,7 @@ const ownerActiveTab = (screen) => {
   if (screen === "ownerSettings" || screen === "ownerServices") return "settings";
   return "dash";
 };
+const developerActiveTab = (screen) => screen === "ownerServices" ? "services" : "settings";
 
 const TRACKER_STEPS = [
   { id:"on_my_way", label:"On the Way", icon:"truck", customerMessage:"Dane is on the way." },
@@ -88,7 +90,191 @@ const TRACKER_STEPS = [
   { id:"complete", label:"Completed", icon:"check", customerMessage:"The job is marked complete." },
 ];
 
-const isReadyExternalUrl = (url) => /^https?:\/\//i.test(url || "");
+const BOOKING_STATUS_CLASS = {
+  requested: "pill-pending",
+  confirmed: "pill-confirmed",
+  complete: "pill-complete",
+  cancelled: "pill-cancelled",
+  declined: "pill-cancelled",
+};
+const BOOKING_STATUS_LABEL = {
+  requested: "requested",
+  confirmed: "confirmed",
+  complete: "complete",
+  cancelled: "cancelled",
+  declined: "declined",
+};
+const AUTO_CLOSE_AFTER_DAYS = 7;
+const SLOT_LABELS = ["8:00 AM","10:00 AM","12:00 PM","2:00 PM","4:00 PM"];
+const TIME_OPTIONS = [
+  7, 7.5, 8, 8.5, 9, 9.5, 10, 10.5, 11, 11.5,
+  12, 12.5, 13, 13.5, 14, 14.5, 15, 15.5,
+  16, 16.5, 17, 17.5, 18, 18.5, 19, 19.5, 20,
+];
+const dateKey = d => {
+  const date = new Date(d);
+  return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,"0")}-${String(date.getDate()).padStart(2,"0")}`;
+};
+const slotKey = (d, label) => `${dateKey(d)}|${label}`;
+const parseSlotLabel = label => {
+  const [hStr,m] = label.split(/[: ]/);
+  let h = parseInt(hStr,10);
+  if (label.includes("PM") && h !== 12) h += 12;
+  if (label.includes("AM") && h === 12) h = 0;
+  return { h, m: parseInt(m,10) };
+};
+const setDateTimeFromSlot = (date, label) => {
+  const { h, m } = parseSlotLabel(label);
+  const d = new Date(date);
+  d.setHours(h, m, 0, 0);
+  return d;
+};
+const serviceDurationMinutes = service => {
+  const nums = String(service?.durationHours || "2").match(/\d+(\.\d+)?/g)?.map(Number) || [2];
+  return Math.max(...nums) * 60;
+};
+const rangesOverlap = (aStart, aEnd, bStart, bEnd) => aStart < bEnd && bStart < aEnd;
+const hourOptionLabel = value => {
+  const hour = Math.floor(value);
+  const minutes = value % 1 ? "30" : "00";
+  const period = hour >= 12 ? "PM" : "AM";
+  const displayHour = ((hour + 11) % 12) + 1;
+  return `${displayHour}:${minutes} ${period}`;
+};
+const normalizedSettings = settings => ({
+  ...SETTINGS,
+  ...(settings || {}),
+  availabilityDefaultsVersion: SETTINGS.availabilityDefaultsVersion,
+  depositCents: settings?.depositCents ?? SETTINGS.depositCents,
+  companyAppFeeCents: settings?.companyAppFeeCents ?? SETTINGS.companyAppFeeCents,
+  customerPaysCardProcessingFee: settings?.customerPaysCardProcessingFee ?? SETTINGS.customerPaysCardProcessingFee,
+  cancelDepositForfeitDays: settings?.cancelDepositForfeitDays ?? SETTINGS.cancelDepositForfeitDays,
+  rescheduleCutoffHours: settings?.rescheduleCutoffHours ?? settings?.rescheduleTimeoutHours ?? SETTINGS.rescheduleCutoffHours,
+  minimumBookingNoticeHours: settings?.minimumBookingNoticeHours ?? SETTINGS.minimumBookingNoticeHours,
+  workingHoursStart: settings?.workingHoursStart ?? SETTINGS.workingHoursStart,
+  bufferMinutes: (settings?.availabilityDefaultsVersion ?? 0) >= SETTINGS.availabilityDefaultsVersion ? settings?.bufferMinutes ?? SETTINGS.bufferMinutes : SETTINGS.bufferMinutes,
+  workingHoursEnd: (settings?.availabilityDefaultsVersion ?? 0) >= SETTINGS.availabilityDefaultsVersion ? settings?.workingHoursEnd ?? SETTINGS.workingHoursEnd : SETTINGS.workingHoursEnd,
+  blockedDates: settings?.blockedDates || [],
+  blockedSlots: settings?.blockedSlots || [],
+});
+const normalizeBooking = (booking, settings = SETTINGS) => {
+  const s = normalizedSettings(settings);
+  const serviceAndTravel = (booking.priceCents || 0) + (booking.travelFeeCents || 0);
+  const totalBeforeCard = Math.max(0, serviceAndTravel - (booking.discountCents || 0));
+  const amountPaidToday = booking.amountPaidTodayCents ?? booking.totalCents ?? totalBeforeCard;
+  const balanceDue = booking.balanceDueCents ?? Math.max(0, totalBeforeCard - amountPaidToday);
+  const paymentChoice = booking.paymentChoice || (balanceDue > 0 ? "deposit_cash_balance" : "card_full");
+  const paymentStatus = booking.paymentStatus || (booking.status === "complete" ? "complete" : balanceDue > 0 ? "balance_due" : "paid_full");
+  return {
+    ...booking,
+    paymentChoice,
+    depositCents: booking.depositCents ?? s.depositCents,
+    amountPaidTodayCents: amountPaidToday,
+    balanceDueCents: balanceDue,
+    cardProcessingFeeCents: booking.cardProcessingFeeCents || 0,
+    companyAppFeeCents: booking.companyAppFeeCents ?? s.companyAppFeeCents,
+    appFeeRoutingStatus: booking.appFeeRoutingStatus || "ledger_only",
+    paymentStatus,
+    requestedAt: booking.requestedAt || null,
+    totalCents: booking.totalCents ?? totalBeforeCard,
+  };
+};
+const hoursUntilBooking = booking => (new Date(booking.startIso).getTime() - Date.now()) / 36e5;
+const daysUntilBooking = booking => hoursUntilBooking(booking) / 24;
+const canCustomerReschedule = (booking, settings) => hoursUntilBooking(booking) >= (normalizedSettings(settings).rescheduleCutoffHours || 48);
+const directionsUrl = address => `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(address || "")}`;
+const phoneDigits = value => String(value || "").replace(/[^\d+]/g, "");
+const telHref = phone => `tel:${phoneDigits(phone)}`;
+const smsHref = (phone, body = "") => `sms:${phoneDigits(phone)}?&body=${encodeURIComponent(body)}`;
+const bookingRequestMessage = (booking, settings) => {
+  const parts = [
+    "Booking request for The Peoples Detailing:",
+    `${booking.serviceTitle} on ${isoToDay(booking.startIso)} at ${isoToTime(booking.startIso)}`,
+    `Address: ${booking.address}`,
+    `Vehicle: ${booking.customer?.vehicle || "Vehicle not saved"}`,
+    `Estimated job total: ${cents(booking.totalCents || 0)}`,
+  ];
+  if (booking.balanceDueCents > 0) parts.push(`Payment not collected yet. Balance due: ${cents(booking.balanceDueCents)}`);
+  parts.push(`Please confirm this time. ${settings?.businessPhone || SETTINGS.businessPhone}`);
+  return parts.join("\n");
+};
+const ownerCustomerMessage = booking => [
+  "Hi, this is Dane with The Peoples Detailing.",
+  `I am following up on your ${booking.serviceTitle} request for ${isoToDay(booking.startIso)} at ${isoToTime(booking.startIso)}.`,
+].join(" ");
+const statusClass = status => BOOKING_STATUS_CLASS[status] || "pill-pending";
+const statusLabel = status => BOOKING_STATUS_LABEL[status] || status || "requested";
+const customerCancelOutcome = (booking, settings) => {
+  const paidOnline = booking.amountPaidTodayCents || 0;
+  if (booking.status === "requested" || paidOnline <= 0 || booking.paymentStatus === "request_pending") {
+    return {
+      forfeit: false,
+      paymentStatus: "not_collected",
+      cancellationOutcome: "No payment collected",
+    };
+  }
+  const forfeit = daysUntilBooking(booking) < (normalizedSettings(settings).cancelDepositForfeitDays || 7);
+  return {
+    forfeit,
+    paymentStatus: forfeit ? "cancelled_deposit_forfeited" : "refunded",
+    cancellationOutcome: forfeit ? "Deposit forfeited" : "Deposit refundable",
+  };
+};
+const calculateOverdueAutoClose = booking => {
+  if (booking.status !== "confirmed" || booking.autoClosedAt) return false;
+  const dueAt = new Date(booking.startIso).getTime() + AUTO_CLOSE_AFTER_DAYS * 24 * 60 * 60 * 1000;
+  return Date.now() >= dueAt;
+};
+const applyOwnerCloseout = (booking, closeout = {}) => {
+  const adjustmentCents = Math.max(0, closeout.adjustmentCents || 0);
+  const adjustedJobTotalCents = Math.max(0, (booking.totalCents || 0) - adjustmentCents);
+  const amountPaidTodayCents = booking.amountPaidTodayCents || 0;
+  const priorBalanceDueCents = booking.balanceDueCents || 0;
+  const cashCollectedCents = Math.max(0, Math.min(closeout.cashCollectedCents || 0, Math.max(0, adjustedJobTotalCents - amountPaidTodayCents)));
+  const remainingBalanceDueCents = Math.max(0, adjustedJobTotalCents - amountPaidTodayCents - cashCollectedCents);
+  const refundNeededCents = Math.max(0, amountPaidTodayCents - adjustedJobTotalCents);
+  const paymentStatus = refundNeededCents > 0
+    ? "refund_needed"
+    : remainingBalanceDueCents > 0
+      ? "balance_due"
+      : "complete";
+  return {
+    ...booking,
+    status: "complete",
+    trackerStatus: "complete",
+    completedAt: Date.now(),
+    closeoutStatus: refundNeededCents > 0 ? "refund_needed" : remainingBalanceDueCents > 0 ? "balance_due" : "closed",
+    ownerAdjustmentCents: adjustmentCents,
+    ownerAdjustmentLabel: closeout.adjustmentLabel || "",
+    adjustedJobTotalCents,
+    cashCollectedCents,
+    balanceDueCents: remainingBalanceDueCents,
+    originalBalanceDueCents: booking.originalBalanceDueCents ?? priorBalanceDueCents,
+    refundNeededCents,
+    paymentStatus,
+  };
+};
+const availableSlotInfo = ({ date, label, bookings, services, service, settings, activeBookingId, enforceMinimumNotice = true }) => {
+  const s = normalizedSettings(settings);
+  const slotStart = setDateTimeFromSlot(date, label);
+  const startHour = slotStart.getHours() + slotStart.getMinutes() / 60;
+  const durationMinutes = serviceDurationMinutes(service) + (s.bufferMinutes || 0);
+  const slotEnd = new Date(slotStart.getTime() + durationMinutes * 60_000);
+  if (enforceMinimumNotice && slotStart.getTime() < Date.now() + (s.minimumBookingNoticeHours || 0) * 60 * 60_000) return { available: false, reason: "Too soon" };
+  if (s.blockedDates.includes(dateKey(slotStart))) return { available: false, reason: "Blocked day" };
+  if (s.blockedSlots.includes(slotKey(slotStart, label))) return { available: false, reason: "Blocked time" };
+  if (startHour < s.workingHoursStart || startHour >= s.workingHoursEnd) return { available: false, reason: "Outside hours" };
+  if (slotEnd.getHours() + slotEnd.getMinutes() / 60 > s.workingHoursEnd) return { available: false, reason: "Needs more time" };
+  const overlaps = bookings.some(b => {
+    if (b.id === activeBookingId || b.status === "cancelled") return false;
+    const existingService = services.find(svc => svc.id === b.serviceId);
+    const existingStart = new Date(b.startIso);
+    const existingEnd = new Date(existingStart.getTime() + (serviceDurationMinutes(existingService) + (s.bufferMinutes || 0)) * 60_000);
+    return rangesOverlap(slotStart, slotEnd, existingStart, existingEnd);
+  });
+  if (overlaps) return { available: false, reason: "Booked" };
+  return { available: true, reason: "" };
+};
 
 const BottomNavShell = ({ role, screen, setScreen }) => {
   if (role === "customer" && CUSTOMER_NAV_SCREENS.includes(screen)) {
@@ -136,20 +322,41 @@ const BottomNavShell = ({ role, screen, setScreen }) => {
       </div>
     );
   }
+  if (role === "developer" && DEVELOPER_SCREENS.includes(screen)) {
+    return (
+      <div className="bottom-nav-shell">
+        <div className="flex items-center justify-around py-2 px-3">
+          {[
+            { id:"settings", target:"developerSettings", icon:"settings", label:"Admin" },
+            { id:"services", target:"ownerServices", icon:"dollar", label:"Prices" },
+          ].map(t => {
+            const active = developerActiveTab(screen) === t.id;
+            return (
+              <button key={t.id} onClick={()=> setScreen(t.target)} className={`flex flex-col items-center gap-1 py-1 px-3 rounded-xl ${active?"nav-chip-active":"text-[#9FB3C8]"}`}>
+                <Icon name={t.icon} className="w-5 h-5" />
+                <span className="text-[10px] font-semibold">{t.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
   return null;
 };
 
 /* ==== APP ==== */
 const App = () => {
   const initial = loadState();
-  const [role, setRole] = useState(initial?.role || "customer"); // customer | owner
+  const initialSettings = normalizedSettings(initial?.settings);
+  const [role, setRole] = useState(initial?.role || "customer"); // customer | owner | developer
   const [screen, setScreen] = useState(initial?.screen || "splash");
-  const [bookings, setBookings] = useState(initial?.bookings || seedBookings());
+  const [bookings, setBookings] = useState(() => (initial?.bookings || seedBookings()).map(b => normalizeBooking(b, initialSettings)));
   const [services, setServices] = useState(initial?.services || SERVICES);
   const [draft, setDraft] = useState(initial?.draft || null);
   const [activeBookingId, setActiveBookingId] = useState(initial?.activeBookingId || null);
   const [toast, setToast] = useState(null);
-  const [settings, setSettings] = useState(() => ({ ...SETTINGS, ...(initial?.settings || {}) }));
+  const [settings, setSettings] = useState(() => initialSettings);
   const [vehicles, setVehicles] = useState(initial?.vehicles || seedVehicles());
   const [activeVehicleId, setActiveVehicleId] = useState(initial?.activeVehicleId || (initial?.vehicles?.find(v=>v.isDefault)?.id) || "vehicle-demo-1");
   const activeVehicle = vehicles.find(v => v.id === activeVehicleId) || vehicles[0];
@@ -158,6 +365,22 @@ const App = () => {
   useEffect(() => {
     saveState({ role, screen, bookings, services, draft, settings, activeBookingId, vehicles, activeVehicleId });
   }, [role, screen, bookings, services, draft, settings, activeBookingId, vehicles, activeVehicleId]);
+
+  useEffect(() => {
+    setBookings(bs => bs.map(b => {
+      if (!calculateOverdueAutoClose(b)) return b;
+      return {
+        ...b,
+        status: "complete",
+        trackerStatus: "complete",
+        autoClosedAt: Date.now(),
+        completedAt: Date.now(),
+        closeoutStatus: (b.balanceDueCents || 0) > 0 ? "auto_closed_review_needed" : "auto_closed",
+        paymentStatus: (b.balanceDueCents || 0) > 0 ? "balance_due" : "complete",
+        closeoutNote: `Auto-closed ${AUTO_CLOSE_AFTER_DAYS} days after appointment. Review payment before filing taxes.`,
+      };
+    }));
+  }, []);
 
   // Clear toast whenever the screen or role changes (prevents toast leak across screens)
   useEffect(() => { setToast(null); }, [screen, role]);
@@ -169,7 +392,7 @@ const App = () => {
 
   const resetApp = () => {
     localStorage.removeItem(LS_KEY);
-    setRole("customer"); setScreen("splash"); setBookings(seedBookings()); setServices(SERVICES); setDraft(null); setActiveBookingId(null); setSettings({...SETTINGS}); setVehicles(seedVehicles()); setActiveVehicleId("vehicle-demo-1");
+    setRole("customer"); setScreen("splash"); setBookings(seedBookings().map(b => normalizeBooking(b, SETTINGS))); setServices(SERVICES); setDraft(null); setActiveBookingId(null); setSettings(normalizedSettings(SETTINGS)); setVehicles(seedVehicles()); setActiveVehicleId("vehicle-demo-1");
     showToast("Demo reset");
   };
 
@@ -190,14 +413,20 @@ const App = () => {
       travelFeeCents: 0,
       promoCode: "",
       discountCents: 0,
+      paymentChoice: "card_full",
     });
     setScreen("book");
   };
 
   const beginReschedule = bookingId => {
     const booking = bookings.find(b => b.id === bookingId);
-    if (!booking || booking.status !== "confirmed") {
-      showToast("Only confirmed bookings can be rescheduled");
+    if (!booking || !["requested", "confirmed"].includes(booking.status)) {
+      showToast("Only active bookings can be rescheduled");
+      return;
+    }
+    if (role === "customer" && !canCustomerReschedule(booking, settings)) {
+      const cutoff = normalizedSettings(settings).rescheduleCutoffHours || 48;
+      showToast(`Inside ${cutoff} hours. Please contact Dane to request a change.`);
       return;
     }
     const svc = services.find(s => s.id === booking.serviceId) || services[0];
@@ -234,7 +463,7 @@ const App = () => {
     } : b));
     setActiveBookingId(bookingId);
     setDraft(null);
-    setScreen("bookingDetail");
+    setScreen(role === "owner" ? "ownerJobDetail" : "bookingDetail");
     showToast("Booking rescheduled");
   };
 
@@ -245,11 +474,8 @@ const App = () => {
       setScreen("home");
       return;
     }
-    // Tim/Mac v46 protected fix: booking total must match checkout total.
-    // Include app fee and card-processing fee so the confirmation/owner screens do not
-    // fall back to service + travel - discount only after the customer pays.
     const serviceAndTravelCents = finalDraft.priceCents + finalDraft.travelFeeCents;
-    const totalCents = serviceAndTravelCents - finalDraft.discountCents + (finalDraft.appFeeCents || 0) + (finalDraft.cardProcessingFeeCents || 0);
+    const totalCents = Math.max(0, serviceAndTravelCents - (finalDraft.discountCents || 0));
     const booking = {
       id: uuid(),
       serviceId: finalDraft.serviceId,
@@ -260,24 +486,53 @@ const App = () => {
       travelMiles: finalDraft.travelMiles,
       travelFeeCents: finalDraft.travelFeeCents,
       discountCents: finalDraft.discountCents,
-      appFeeCents: finalDraft.appFeeCents || 0,
-      customerPaysCardProcessingFee: finalDraft.customerPaysCardProcessingFee ?? true,
+      paymentChoice: finalDraft.paymentChoice || "card_full",
+      depositCents: finalDraft.depositCents ?? settings.depositCents,
+      amountPaidTodayCents: finalDraft.amountPaidTodayCents ?? finalDraft.totalDueTodayCents ?? totalCents,
+      balanceDueCents: finalDraft.balanceDueCents || 0,
+      companyAppFeeCents: finalDraft.companyAppFeeCents ?? settings.companyAppFeeCents,
+      appFeeRoutingStatus: finalDraft.appFeeRoutingStatus || "ledger_only",
+      appFeeCents: 0,
+      customerPaysCardProcessingFee: finalDraft.customerPaysCardProcessingFee ?? settings.customerPaysCardProcessingFee ?? true,
       cardProcessingFeeCents: finalDraft.cardProcessingFeeCents || 0,
       cardProcessingPercent: finalDraft.cardProcessingPercent,
       cardProcessingFixedCents: finalDraft.cardProcessingFixedCents,
       customerNotificationMethod: finalDraft.customerNotificationMethod || "email",
       ownerNotificationMethod: finalDraft.ownerNotificationMethod || "sms",
       totalCents,
-      status:"confirmed",
+      paymentStatus: finalDraft.paymentStatus || (finalDraft.balanceDueCents > 0 ? "balance_due" : "paid_full"),
+      status: finalDraft.status || "confirmed",
       customer:{ name:"You (Demo)", phone:"(615) 555-0123", vehicle: finalDraft.vehicleLabel || vehicleLabel(activeVehicle) },
       liveLocationOptIn: finalDraft.liveLocationOptIn,
-      paid: true,
+      requestedAt: finalDraft.requestedAt || null,
+      paid: (finalDraft.amountPaidTodayCents || 0) > 0,
       promoCode: finalDraft.promoCode || null,
     };
     setBookings(b => [booking, ...b]);
     setDraft(null);
     setActiveBookingId(booking.id);
     setScreen("confirmation");
+  };
+
+  const confirmRequestedBooking = bookingId => {
+    setBookings(bs => bs.map(b => b.id === bookingId ? {
+      ...b,
+      status: "confirmed",
+      confirmedAt: Date.now(),
+      paymentStatus: (b.amountPaidTodayCents || 0) > 0 ? b.paymentStatus : "balance_due",
+    } : b));
+    showToast("Booking confirmed");
+  };
+
+  const declineRequestedBooking = bookingId => {
+    setBookings(bs => bs.map(b => b.id === bookingId ? {
+      ...b,
+      status: "declined",
+      declinedAt: Date.now(),
+      paymentStatus: "not_collected",
+      cancellationOutcome: "Request declined - no payment collected",
+    } : b));
+    showToast("Request declined");
   };
 
   // Owner tracker state on a booking
@@ -287,12 +542,24 @@ const App = () => {
   };
 
   const completeJob = bookingId => {
-    setBookings(bs => bs.map(b => b.id===bookingId ? {...b, status:"complete", trackerStatus:"complete"} : b));
-    showToast("Job complete");
+    setActiveBookingId(bookingId);
+    setScreen("ownerCloseout");
+    showToast("Review payment before closing the job");
+  };
+
+  const closeOutJob = (bookingId, closeout) => {
+    setBookings(bs => bs.map(b => b.id === bookingId ? applyOwnerCloseout(b, closeout) : b));
+    setActiveBookingId(bookingId);
+    setScreen("ownerJobDetail");
+    showToast(closeout?.adjustmentCents > 0 ? "Job closed with adjustment" : "Job closed");
   };
 
   const cancelBooking = bookingId => {
-    setBookings(bs => bs.map(b => b.id===bookingId ? {...b, status:"cancelled"} : b));
+    setBookings(bs => bs.map(b => {
+      if (b.id !== bookingId) return b;
+      const outcome = customerCancelOutcome(b, settings);
+      return {...b, status:"cancelled", cancelledAt: Date.now(), ...outcome};
+    }));
     showToast("Booking cancelled");
   };
 
@@ -306,7 +573,8 @@ const App = () => {
     settings, setSettings,
     vehicles, setVehicles, activeVehicleId, setActiveVehicleId, activeVehicle,
     confirmBooking, startBooking, beginReschedule, finishReschedule,
-    updateTracker, completeJob, cancelBooking,
+    confirmRequestedBooking, declineRequestedBooking,
+    updateTracker, completeJob, closeOutJob, cancelBooking,
     resetApp, showToast,
   };
 
@@ -342,6 +610,7 @@ const DemoBar = ({ role, setRole, setScreen, resetApp }) => (
         <div className="role-toggle flex">
           <button className={`px-3 py-1.5 rounded-full text-xs font-semibold ${role==="customer"?"active":"text-[--muted]"}`} style={{color:role==="customer"?"#fff":"#9FB3C8"}} onClick={()=>{setRole("customer"); setScreen("home");}}>Customer</button>
           <button className={`px-3 py-1.5 rounded-full text-xs font-semibold ${role==="owner"?"active":"text-[--muted]"}`} style={{color:role==="owner"?"#fff":"#9FB3C8"}} onClick={()=>{setRole("owner"); setScreen("ownerDash");}}>Owner</button>
+          <button className={`px-3 py-1.5 rounded-full text-xs font-semibold ${role==="developer"?"active":"text-[--muted]"}`} style={{color:role==="developer"?"#fff":"#9FB3C8"}} onClick={()=>{setRole("developer"); setScreen("developerSettings");}}>Developer</button>
         </div>
         <button onClick={resetApp} className="text-xs px-3 py-1.5 rounded-full border border-[#1f3b5c] text-[#9FB3C8] hover:text-white">Reset demo</button>
       </div>
@@ -380,14 +649,26 @@ const Screen = (p) => {
       default: return <Home {...p} />;
     }
   } else {
+    if (p.role === "developer") {
+      switch (p.screen) {
+        case "ownerServices": return <OwnerServices {...p} />;
+        case "developerSettings": return <OwnerSettings {...p} developerMode />;
+        default: return <OwnerSettings {...p} developerMode />;
+      }
+    }
     switch (p.screen) {
       case "ownerDash": return <OwnerDash {...p} />;
       case "ownerJobs": return <OwnerJobs {...p} />;
       case "ownerJobDetail": return <OwnerJobDetail {...p} />;
+      case "ownerCloseout": return <OwnerCloseout {...p} />;
+      case "ownerCustomers": return <OwnerCustomers {...p} />;
+      case "ownerNotifications": return <OwnerNotifications {...p} />;
       case "ownerTracker": return <OwnerTracker {...p} />;
       case "ownerReports": return <OwnerReports {...p} />;
       case "ownerServices": return <OwnerServices {...p} />;
       case "ownerSettings": return <OwnerSettings {...p} />;
+      case "book": return <BookForm {...p} />;
+      case "vehicles": return <VehicleManager {...p} />;
       default: return <OwnerDash {...p} />;
     }
   }
@@ -507,7 +788,7 @@ const PriceList = (p) => (
       <div className="card">
         <div className="text-sm font-semibold">Detailing packages</div>
         <div className="text-xs text-[#9FB3C8] mt-1">
-          These are the saved package prices used by checkout. Travel, discounts, and the app fee are shown before payment.
+          These are the saved package prices used by checkout. Travel, discounts, and card processing are shown before payment.
         </div>
       </div>
 
@@ -592,10 +873,13 @@ const Stepper = ({ step }) => (
 const BookForm = (p) => {
   const svc = p.services.find(s => s.id === p.draft?.serviceId) || p.services[0];
   const [time, setTime] = useState(() => new Date(p.draft?.date || Date.now()));
-  const [shareLive, setShareLive] = useState(p.draft?.liveLocationOptIn ?? false);
   const [showCal, setShowCal] = useState(false);
   const isReschedule = Boolean(p.draft?.rescheduleBookingId);
-  const slots = ["8:00 AM","10:00 AM","12:00 PM","2:00 PM","4:00 PM"];
+  const enforceMinimumNotice = p.role !== "owner";
+  const slots = SLOT_LABELS.filter(label => {
+    const hour = parseSlotLabel(label).h;
+    return hour >= (p.settings.workingHoursStart ?? 8) && hour < (p.settings.workingHoursEnd ?? 18);
+  });
 
   // Build availability map from existing bookings (same source as the calendar overlay)
   const busyMap = useMemo(() => {
@@ -622,15 +906,21 @@ const BookForm = (p) => {
 
   const next = () => {
     const currentVehicle = p.vehicles.find(v => v.id === p.activeVehicleId) || p.vehicles[0];
+    const selectedLabel = isoToTime(time.toISOString());
+    const info = availableSlotInfo({ date: time, label: selectedLabel, bookings: p.bookings, services: p.services, service: svc, settings: p.settings, activeBookingId: p.draft?.rescheduleBookingId, enforceMinimumNotice });
+    if (!info.available) {
+      p.showToast(`Pick another time. ${info.reason}`);
+      return;
+    }
     if (isReschedule) {
       p.finishReschedule({
         date: time.toISOString(),
-        liveLocationOptIn: shareLive,
+        liveLocationOptIn: p.draft?.liveLocationOptIn || false,
         vehicleLabel: p.draft?.vehicleLabel || vehicleLabel(currentVehicle),
       });
       return;
     }
-    p.setDraft({...p.draft, date: time.toISOString(), liveLocationOptIn: shareLive, vehicleId: currentVehicle?.id, vehicleLabel: vehicleLabel(currentVehicle) });
+    p.setDraft({...p.draft, date: time.toISOString(), liveLocationOptIn: false, vehicleId: currentVehicle?.id, vehicleLabel: vehicleLabel(currentVehicle) });
     p.setScreen("location");
   };
 
@@ -641,7 +931,7 @@ const BookForm = (p) => {
 
   return (
     <div className="pb-6">
-      <HeaderBar title={isReschedule ? "Reschedule Booking" : "Book Appointment"} subtitle={isReschedule ? "Pick a new date or time" : "Step 1 of 3"} onBack={()=> p.setScreen(isReschedule ? "bookingDetail" : "serviceDetail")} />
+      <HeaderBar title={isReschedule ? "Reschedule Booking" : "Book Appointment"} subtitle={isReschedule ? "Pick a new date or time" : "Step 1 of 3"} onBack={()=> p.setScreen(isReschedule ? (p.role === "owner" ? "ownerJobDetail" : "bookingDetail") : "serviceDetail")} />
       {!isReschedule && <Stepper step={0} />}
       <div className="px-5">
         {isReschedule && (
@@ -670,7 +960,9 @@ const BookForm = (p) => {
             {dates.map((d,i)=>{
               const same = d.toDateString() === time.toDateString();
               const busy = busyMap[busyKey(d)] || 0;
-              const isFull = busy >= FULL_THRESHOLD;
+              const isBlocked = p.settings.blockedDates?.includes(dateKey(d));
+              const availableCount = slots.filter(label => availableSlotInfo({ date: d, label, bookings: p.bookings, services: p.services, service: svc, settings: p.settings, activeBookingId: p.draft?.rescheduleBookingId, enforceMinimumNotice }).available).length;
+              const isFull = busy >= FULL_THRESHOLD || availableCount === 0 || isBlocked;
               const isToday = d.getTime() === today0.getTime();
               const past = d < today0;
               return (
@@ -708,8 +1000,18 @@ const BookForm = (p) => {
           <div className="grid grid-cols-3 gap-2">
             {slots.map(s => {
               const sameTime = isoToTime(time.toISOString()).replace(/\s/g,"") === s.replace(/\s/g,"");
+              const info = availableSlotInfo({ date: time, label: s, bookings: p.bookings, services: p.services, service: svc, settings: p.settings, activeBookingId: p.draft?.rescheduleBookingId, enforceMinimumNotice });
               return (
-                <button key={s} onClick={()=> setSlot(s)} className={`py-2.5 rounded-xl border text-sm ${sameTime?"bg-[var(--orange)] border-[var(--orange)] text-white":"bg-[#0d2236] border-[#1f3b5c] text-white"}`}>{s}</button>
+                <button
+                  key={s}
+                  disabled={!info.available}
+                  title={info.reason}
+                  onClick={()=> setSlot(s)}
+                  className={`py-2.5 rounded-xl border text-sm ${!info.available ? "bg-[#0a1a2c] border-[#1f3b5c] text-[#3e5775] cursor-not-allowed" : sameTime?"bg-[var(--orange)] border-[var(--orange)] text-white":"bg-[#0d2236] border-[#1f3b5c] text-white"}`}
+                >
+                  <span>{s}</span>
+                  {!info.available && <span className="block text-[9px] mt-0.5">{info.reason}</span>}
+                </button>
               );
             })}
           </div>
@@ -726,18 +1028,6 @@ const BookForm = (p) => {
           </button>
         </div>
 
-        <div className="mt-5">
-          <button onClick={()=> setShareLive(v=>!v)} className="w-full flex items-start gap-3 text-left card">
-            <span className={`checkbox ${shareLive?"checked":""} mt-0.5`}>
-              {shareLive && <Icon name="check" className="w-3 h-3 text-white" strokeWidth={3} />}
-            </span>
-            <div>
-              <div className="text-sm font-semibold">Share live location on day-of</div>
-              <div className="text-xs text-[#9FB3C8] mt-0.5">Helps our team find you. Optional.</div>
-            </div>
-          </button>
-        </div>
-
         <div className="mt-6">
           <button className="btn-primary" onClick={next}>{isReschedule ? "Save New Date & Time" : "Continue to Location & Travel Fee"}</button>
         </div>
@@ -746,6 +1036,11 @@ const BookForm = (p) => {
         <CalendarPicker
           selected={time}
           bookings={p.bookings}
+          services={p.services}
+          service={svc}
+          settings={p.settings}
+          activeBookingId={p.draft?.rescheduleBookingId}
+          enforceMinimumNotice={enforceMinimumNotice}
           onClose={()=> setShowCal(false)}
           onPick={d => { const nd=new Date(d); nd.setHours(time.getHours(),time.getMinutes()); setTime(nd); setShowCal(false); }}
         />
@@ -754,7 +1049,7 @@ const BookForm = (p) => {
   );
 };
 
-const CalendarPicker = ({ selected, bookings, onClose, onPick }) => {
+const CalendarPicker = ({ selected, bookings, services, service, settings, activeBookingId, enforceMinimumNotice = true, onClose, onPick }) => {
   const [month, setMonth] = useState(() => new Date(selected.getFullYear(), selected.getMonth(), 1));
   const [pending, setPending] = useState(new Date(selected));
 
@@ -808,7 +1103,9 @@ const CalendarPicker = ({ selected, bookings, onClose, onPick }) => {
             const isPicked = sameDay(d, pending);
             const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
             const busy = busyMap[key] || 0;
-            const fullyBusy = busy >= 3; // mock: 3+ bookings same day = no slots
+            const blockedDay = settings?.blockedDates?.includes(dateKey(d));
+            const availableCount = SLOT_LABELS.filter(label => availableSlotInfo({ date: d, label, bookings, services, service, settings, activeBookingId, enforceMinimumNotice }).available).length;
+            const fullyBusy = busy >= 3 || blockedDay || availableCount === 0;
             return (
               <button
                 key={i}
@@ -833,7 +1130,7 @@ const CalendarPicker = ({ selected, bookings, onClose, onPick }) => {
         </div>
         <div className="flex items-center gap-3 mt-3 text-[10px] text-[#9FB3C8]">
           <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-[var(--orange)]" /> Has bookings</span>
-          <span className="flex items-center gap-1"><span className="w-3 h-0.5 rounded-full bg-[#f87171]" /> Full</span>
+          <span className="flex items-center gap-1"><span className="w-3 h-0.5 rounded-full bg-[#f87171]" /> Full/blocked</span>
           <span className="flex items-center gap-1"><span className="w-3 h-3 rounded ring-1 ring-[var(--orange)]/60" /> Today</span>
         </div>
         <div className="flex gap-2 mt-4">
@@ -1006,7 +1303,7 @@ const LocationStep = (p) => {
 const Checkout = (p) => {
   const [promo, setPromo] = useState(p.draft?.promoCode || "");
   const [appliedPromo, setAppliedPromo] = useState(null);
-  const [showAppFeeInfo, setShowAppFeeInfo] = useState(false);
+  const [paymentChoice, setPaymentChoice] = useState(p.draft?.paymentChoice || "card_full");
   const [showCardFeeInfo, setShowCardFeeInfo] = useState(false);
 
   const subtotal = (p.draft?.priceCents||0) + (p.draft?.travelFeeCents||0);
@@ -1016,20 +1313,18 @@ const Checkout = (p) => {
     if (appliedPromo.type==="percentOff") return Math.round(subtotal * appliedPromo.percent / 100);
     return 0;
   }, [appliedPromo, subtotal]);
-  const checkoutTotals = calculateCheckoutTotals({
+  const checkoutTotals = calculateCustomerCheckoutTotals({
     servicePriceCents: p.draft?.priceCents || 0,
     travelFeeCents: p.draft?.travelFeeCents || 0,
     discountCents,
+    paymentChoice,
     settings: p.settings,
   });
-  const appFeeCents = checkoutTotals.appFeeCents;
-  const customerPaysCardProcessingFee = p.settings?.customerPaysCardProcessingFee ?? SETTINGS.customerPaysCardProcessingFee;
-  const brandNewInfoUrl = p.settings?.brandNewInfoUrl || SETTINGS.brandNewInfoUrl;
-  const brandNewLinkReady = isReadyExternalUrl(brandNewInfoUrl);
   const cardProcessingPercent = p.settings?.cardProcessingPercent ?? 2.9;
   const cardProcessingFixedCents = p.settings?.cardProcessingFixedCents ?? 30;
   const cardProcessingFeeCents = checkoutTotals.cardProcessingFeeCents;
-  const total = checkoutTotals.totalCents;
+  const total = checkoutTotals.totalDueTodayCents;
+  const requestOnlyMode = (p.settings?.bookingSubmissionMode || SETTINGS.bookingSubmissionMode) === "request_only";
 
   const applyPromo = () => {
     const found = PROMO_CODES.find(c => c.code.toLowerCase() === promo.trim().toLowerCase());
@@ -1047,8 +1342,16 @@ const Checkout = (p) => {
       ...p.draft,
       discountCents,
       promoCode: appliedPromo?.code || "",
-      appFeeCents,
-      customerPaysCardProcessingFee,
+      paymentChoice,
+      depositCents: p.settings?.depositCents || SETTINGS.depositCents,
+      amountPaidTodayCents: checkoutTotals.amountPaidBeforeCardFeeCents,
+      balanceDueCents: checkoutTotals.balanceDueCents,
+      totalDueTodayCents: checkoutTotals.totalDueTodayCents,
+      companyAppFeeCents: checkoutTotals.companyAppFeeCents,
+      appFeeRoutingStatus: checkoutTotals.appFeeRoutingStatus,
+      paymentStatus: checkoutTotals.paymentStatus,
+      appFeeCents: 0,
+      customerPaysCardProcessingFee: p.settings?.customerPaysCardProcessingFee ?? SETTINGS.customerPaysCardProcessingFee,
       cardProcessingFeeCents,
       cardProcessingPercent,
       cardProcessingFixedCents,
@@ -1057,7 +1360,35 @@ const Checkout = (p) => {
     };
     p.setDraft(finalDraft);
     setTimeout(() => p.confirmBooking(finalDraft), 350);
-    p.showToast("Processing payment…");
+    p.showToast("Processing demo card payment...");
+  };
+
+  const requestBooking = () => {
+    const finalDraft = {
+      ...p.draft,
+      discountCents,
+      promoCode: appliedPromo?.code || "",
+      paymentChoice: `request_${paymentChoice}`,
+      depositCents: p.settings?.depositCents || SETTINGS.depositCents,
+      amountPaidTodayCents: 0,
+      balanceDueCents: checkoutTotals.jobTotalAfterDiscountCents,
+      totalDueTodayCents: 0,
+      companyAppFeeCents: 0,
+      appFeeRoutingStatus: "not_collected",
+      paymentStatus: "request_pending",
+      appFeeCents: 0,
+      customerPaysCardProcessingFee: p.settings?.customerPaysCardProcessingFee ?? SETTINGS.customerPaysCardProcessingFee,
+      cardProcessingFeeCents: 0,
+      cardProcessingPercent,
+      cardProcessingFixedCents,
+      customerNotificationMethod: "manual",
+      ownerNotificationMethod: "manual",
+      status: "requested",
+      requestedAt: Date.now(),
+    };
+    p.setDraft(finalDraft);
+    p.confirmBooking(finalDraft);
+    p.showToast("Booking request saved. Text or call Dane to confirm.");
   };
 
   return (
@@ -1078,6 +1409,30 @@ const Checkout = (p) => {
         <div className="card text-sm">{p.draft?.address}</div>
 
         <div className="mt-4">
+          <div className="text-xs uppercase tracking-wider text-[#9FB3C8] mb-2">{requestOnlyMode ? "Payment Preference" : "Payment Option"}</div>
+          <div className="grid gap-2">
+            <button className={`card text-left border ${paymentChoice === "card_full" ? "border-[var(--orange)] bg-[var(--orange)]/10" : "border-[#1f3b5c]"}`} onClick={()=> setPaymentChoice("card_full")}>
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <div className="text-sm font-bold">{requestOnlyMode ? "Prefer full card payment" : "Pay full amount by card"}</div>
+                  <div className="text-xs text-[#9FB3C8] mt-1">{requestOnlyMode ? "Dane confirms the request first. Online payment can be connected later." : "Preferred. Confirms the job and marks the balance paid."}</div>
+                </div>
+                <div className="price-orange text-sm">{cents(paymentChoice === "card_full" ? total : calculateCustomerCheckoutTotals({ servicePriceCents: p.draft?.priceCents || 0, travelFeeCents: p.draft?.travelFeeCents || 0, discountCents, paymentChoice: "card_full", settings: p.settings }).totalDueTodayCents)}</div>
+              </div>
+            </button>
+            <button className={`card text-left border ${paymentChoice === "deposit_cash_balance" ? "border-[var(--orange)] bg-[var(--orange)]/10" : "border-[#1f3b5c]"}`} onClick={()=> setPaymentChoice("deposit_cash_balance")}>
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <div className="text-sm font-bold">{requestOnlyMode ? "Prefer $25 deposit, cash later" : "Pay $25 deposit, cash balance later"}</div>
+                  <div className="text-xs text-[#9FB3C8] mt-1">{requestOnlyMode ? "The deposit rule is shown, but no payment is collected yet." : "Deposit holds the time. Remaining balance is due at service."}</div>
+                </div>
+                <div className="price-orange text-sm">{cents(paymentChoice === "deposit_cash_balance" ? total : calculateCustomerCheckoutTotals({ servicePriceCents: p.draft?.priceCents || 0, travelFeeCents: p.draft?.travelFeeCents || 0, discountCents, paymentChoice: "deposit_cash_balance", settings: p.settings }).totalDueTodayCents)}</div>
+              </div>
+            </button>
+          </div>
+        </div>
+
+        <div className="mt-4">
           <div className="text-xs uppercase tracking-wider text-[#9FB3C8] mb-2">Promo Code</div>
           <div className="flex gap-2">
             <input className="input flex-1" placeholder="Try PEOPLES10" value={promo} onChange={e=> setPromo(e.target.value)} />
@@ -1090,44 +1445,8 @@ const Checkout = (p) => {
           <Row label="Subtotal" value={cents(p.draft?.priceCents)} />
           <Row label="Travel fee" value={p.draft?.travelFeeCents===0 ? "Free" : cents(p.draft?.travelFeeCents)} />
           {discountCents>0 && <Row label="Discount" value={`- ${cents(discountCents)}`} valueClass="text-[#4ade80]" />}
-          <Row
-            label={
-              <span className="inline-flex items-center gap-1">
-                App fee
-                <button
-                  type="button"
-                  onClick={() => setShowAppFeeInfo(v => !v)}
-                  className="w-5 h-5 rounded-full border border-[#1f3b5c] text-[10px] text-[#9FB3C8] inline-flex items-center justify-center"
-                  aria-label="What is the app fee?"
-                >?</button>
-              </span>
-            }
-            value={appFeeCents===0 ? "Free" : cents(appFeeCents)}
-          />
-          {showAppFeeInfo && (
-            <div className="mt-2 rounded-xl border border-[#1f3b5c] bg-[#0d2236] p-3 text-xs text-[#9FB3C8] leading-relaxed">
-              <div>{p.settings?.appFeeInfoText || SETTINGS.appFeeInfoText}</div>
-              <div className="mt-3 pt-3 border-t border-[#1f3b5c]">
-                {brandNewLinkReady ? (
-                  <a
-                    href={brandNewInfoUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center justify-center rounded-xl border border-[#f97316]/60 px-3 py-2 text-[#fed7aa] hover:bg-[#f97316]/10"
-                  >
-                    Learn about BrandNew Design
-                  </a>
-                ) : (
-                  <div className="inline-flex items-center justify-center rounded-xl border border-[#1f3b5c] px-3 py-2 text-[#9FB3C8]">
-                    BrandNew Design link coming soon
-                  </div>
-                )}
-                <div className="mt-2 text-[11px] text-[#9FB3C8]">
-                  {p.settings?.brandNewReferralText || SETTINGS.brandNewReferralText}
-                </div>
-              </div>
-            </div>
-          )}
+          <Row label="Job total" value={cents(checkoutTotals.jobTotalAfterDiscountCents)} />
+          {paymentChoice === "deposit_cash_balance" && <Row label="Cash balance due at service" value={cents(checkoutTotals.balanceDueCents)} />}
           <Row
             label={
               <span className="inline-flex items-center gap-1">
@@ -1140,7 +1459,7 @@ const Checkout = (p) => {
                 >?</button>
               </span>
             }
-            value={customerPaysCardProcessingFee ? cents(cardProcessingFeeCents) : "Covered by business"}
+            value={cents(cardProcessingFeeCents)}
           />
           {showCardFeeInfo && (
             <div className="mt-2 rounded-xl border border-[#1f3b5c] bg-[#0d2236] p-3 text-xs text-[#9FB3C8] leading-relaxed">
@@ -1148,19 +1467,24 @@ const Checkout = (p) => {
             </div>
           )}
           <div className="divider my-2" />
-          <Row label={<span className="text-white font-bold">Total due today</span>} value={<span className="price-orange text-lg">{cents(total)}</span>} bold />
-          <div className="mt-2 text-[11px] text-[#9FB3C8] leading-relaxed">No surprise charges — this is your full total before payment.</div>
+          <Row label={<span className="text-white font-bold">{requestOnlyMode ? "Estimated online payment" : "Total due today"}</span>} value={<span className="price-orange text-lg">{cents(total)}</span>} bold />
+          {requestOnlyMode && <Row label="Collected now" value={<span className="text-[#4ade80] font-bold">$0.00</span>} />}
+          <div className="mt-2 text-[11px] text-[#9FB3C8] leading-relaxed">
+            {requestOnlyMode
+              ? "No card is charged in this version. Submit the request, then text or call Dane to confirm the appointment."
+              : "No surprise charges. The $3 app cost is not added to customer checkout; it is tracked from Dane's cut on each online payment."}
+          </div>
         </div>
 
         <div className="flex items-center gap-2 text-xs text-[#9FB3C8] mt-3">
           <Icon name="shield" className="w-4 h-4 text-[#4ade80]" />
-          <span>Secure checkout placeholder - Stripe can be connected later - Full total shown before payment</span>
+          <span>{requestOnlyMode ? "Request-only mode - no real payment is collected yet." : "Secure checkout placeholder - Stripe can be connected later - no real payment is collected in this prototype"}</span>
         </div>
 
         <div className="mt-5">
-          <button className="btn-primary glow-orange flex items-center justify-center gap-2" onClick={pay}>
+          <button className="btn-primary glow-orange flex items-center justify-center gap-2" onClick={requestOnlyMode ? requestBooking : pay}>
             <Icon name="receipt" className="w-4 h-4" />
-            <span>Pay with Card · {cents(total)}</span>
+            <span>{requestOnlyMode ? "Request Booking - No Payment Today" : `${paymentChoice === "card_full" ? "Pay Full Amount" : "Pay Deposit"} with Card - ${cents(total)}`}</span>
           </button>
         </div>
       </div>
@@ -1177,6 +1501,9 @@ const Row = ({ label, value, valueClass="", bold=false }) => (
 
 const Confirmation = (p) => {
   const b = p.bookings.find(b => b.id === p.activeBookingId) || p.bookings[0];
+  const isRequest = b?.status === "requested";
+  const requestMessage = b ? bookingRequestMessage(b, p.settings) : "";
+  const businessPhone = p.settings?.businessPhone || SETTINGS.businessPhone;
   if (!b) {
     return (
       <div className="p-6 text-center">
@@ -1195,8 +1522,8 @@ const Confirmation = (p) => {
         <div className="w-20 h-20 rounded-full bg-[#4ade80]/15 flex items-center justify-center mb-3">
           <Icon name="check" className="w-10 h-10 text-[#4ade80]" strokeWidth={3} />
         </div>
-        <h2 className="text-2xl font-extrabold">You're All Set!</h2>
-        <p className="text-sm text-[#9FB3C8] mt-1">Your booking is confirmed.</p>
+        <h2 className="text-2xl font-extrabold">{isRequest ? "Request Ready" : "You're All Set!"}</h2>
+        <p className="text-sm text-[#9FB3C8] mt-1">{isRequest ? "No payment was collected. Text or call Dane to confirm this appointment." : "Your booking is confirmed."}</p>
       </div>
 
       <div className="px-5 mt-5">
@@ -1224,12 +1551,33 @@ const Confirmation = (p) => {
           </div>
         )}
 
+        {isRequest && (
+          <div className="card mt-3 bg-[var(--orange)]/10 border-[var(--orange)]/30">
+            <div className="text-sm font-semibold">Send this request to Dane</div>
+            <div className="text-xs text-[#C7D8EA] mt-1">This version does not have a backend yet, so the free working bridge is text or call.</div>
+            <div className="grid grid-cols-2 gap-2 mt-3">
+              <a className="btn-primary !py-2 text-center text-sm" href={smsHref(businessPhone, requestMessage)}>Text Dane</a>
+              <a className="btn-secondary !py-2 text-center text-sm" href={telHref(businessPhone)}>Call Dane</a>
+            </div>
+          </div>
+        )}
+
         <div className="mt-5">
           <div className="text-xs uppercase tracking-wider text-[#9FB3C8] mb-2">What Happens Next</div>
           <div className="flex flex-col gap-2">
-            <NextStepRow icon="receipt" title="Confirmation email" body="You'll get booking details, receipt, and the full total by email." />
-            <NextStepRow icon="truck" title="Simple status updates" body="MVP status updates are limited to On the Way, I'm Here, and Completed." />
-            <NextStepRow icon="bell" title="Low-cost notifications" body="Dane gets owner SMS alerts; customers can use email by default, with SMS for important status updates if enabled." />
+            {isRequest ? (
+              <>
+                <NextStepRow icon="msg" title="Text or call Dane" body="Send the request details so Dane can approve the time." />
+                <NextStepRow icon="cal" title="Dane confirms the job" body="The owner side can move a request into confirmed status." />
+                <NextStepRow icon="receipt" title="Payment comes later" body="Stripe or deposits are not connected until approved." />
+              </>
+            ) : (
+              <>
+                <NextStepRow icon="receipt" title="Confirmation email" body="You'll get booking details, receipt, and the full total by email." />
+                <NextStepRow icon="truck" title="Simple status updates" body="MVP status updates are limited to On the Way, I'm Here, and Completed." />
+                <NextStepRow icon="bell" title="Low-cost notifications" body="Dane gets owner SMS alerts; customers can use email by default, with SMS for important status updates if enabled." />
+              </>
+            )}
           </div>
         </div>
 
@@ -1259,9 +1607,9 @@ const MyBookings = (p) => {
   const list = useMemo(() => {
     const now = Date.now();
     return p.bookings.filter(b => {
-      if (tab==="upcoming") return b.status==="confirmed" && new Date(b.startIso).getTime() >= now - 1000*60*60*4;
+      if (tab==="upcoming") return ["requested", "confirmed"].includes(b.status) && new Date(b.startIso).getTime() >= now - 1000*60*60*4;
       if (tab==="past") return b.status==="complete" || (b.status==="confirmed" && new Date(b.startIso).getTime() < now - 1000*60*60*4);
-      if (tab==="cancelled") return b.status==="cancelled";
+      if (tab==="cancelled") return ["cancelled", "declined"].includes(b.status);
       return true;
     }).sort((a,b)=> new Date(a.startIso) - new Date(b.startIso));
   }, [p.bookings, tab]);
@@ -1298,8 +1646,8 @@ const MyBookings = (p) => {
               </div>
               <div className="text-right">
                 <div className="text-sm price-orange">{cents(b.totalCents)}</div>
-                <span className={`pill ${b.status==="confirmed"?"pill-confirmed":b.status==="complete"?"pill-complete":b.status==="cancelled"?"pill-cancelled":"pill-pending"}`}>
-                  {b.status}
+                <span className={`pill ${statusClass(b.status)}`}>
+                  {statusLabel(b.status)}
                 </span>
               </div>
             </div>
@@ -1317,12 +1665,6 @@ const MyBookings = (p) => {
 
 const BookingDetail = (p) => {
   const b = p.bookings.find(x => x.id === p.activeBookingId);
-  const [share, setShare] = useState(b?.liveLocationOptIn ?? false);
-  const [shareStatus, setShareStatus] = useState(() => {
-    if (!b?.liveLocationOptIn) return "Off. Turn this on when you want to share day-of location.";
-    if (b?.liveLocationSnapshot) return "GPS location was shared from this browser.";
-    return "On. Exact GPS updates need the app open and browser permission allowed.";
-  });
   if (!b) {
     return (
       <div className="p-6 text-center">
@@ -1335,51 +1677,23 @@ const BookingDetail = (p) => {
   const trackerStatus = b.trackerStatus || "on_my_way";
   const trackerIdx = Math.max(0, TRACKER_STEPS.findIndex(step => step.id === trackerStatus));
   const trackerCurrent = TRACKER_STEPS[trackerIdx] || TRACKER_STEPS[0];
-
-  const toggleShare = () => {
-    if (share) {
-      setShare(false);
-      setShareStatus("Off. Turn this on when you want to share day-of location.");
-      p.setBookings(bs => bs.map(x => x.id===b.id ? {...x, liveLocationOptIn: false} : x));
-      p.showToast("Live location sharing off");
-      return;
-    }
-
-    setShare(true);
-    setShareStatus("Requesting browser GPS permission...");
-    const enableWithoutExactGps = () => {
-      setShareStatus("Sharing is on, but exact GPS is unavailable in this browser. The route below is a demo preview.");
-      p.setBookings(bs => bs.map(x => x.id===b.id ? {...x, liveLocationOptIn: true} : x));
-      p.showToast("Live location sharing on");
-    };
-
-    if (!navigator.geolocation) {
-      enableWithoutExactGps();
-      return;
-    }
-
-    navigator.geolocation.getCurrentPosition(
-      ({ coords }) => {
-        const snapshot = {
-          lat: coords.latitude,
-          lng: coords.longitude,
-          accuracy: Math.round(coords.accuracy || 0),
-          capturedAt: Date.now(),
-        };
-        setShareStatus(`GPS shared from this browser. Accuracy about ${snapshot.accuracy || "unknown"} meters.`);
-        p.setBookings(bs => bs.map(x => x.id===b.id ? {...x, liveLocationOptIn: true, liveLocationSnapshot: snapshot} : x));
-        p.showToast("Live GPS shared");
-      },
-      () => enableWithoutExactGps(),
-      { enableHighAccuracy: true, timeout: 8000, maximumAge: 60_000 },
-    );
-  };
+  const isActiveBooking = ["requested", "confirmed"].includes(b.status);
+  const directRescheduleAllowed = isActiveBooking && canCustomerReschedule(b, p.settings);
+  const cancelOutcome = customerCancelOutcome(b, p.settings);
 
   return (
     <div className="pb-6">
-      <HeaderBar title="Booking" onBack={()=> p.setScreen("myBookings")} right={<button className="w-9 h-9 rounded-full border border-[#1f3b5c] flex items-center justify-center"><Icon name="msg" className="w-4 h-4" /></button>} />
+      <HeaderBar title="Booking" onBack={()=> p.setScreen("myBookings")} right={
+        <button
+          aria-label="Open booking messages"
+          onClick={()=> p.setScreen("messages")}
+          className="w-9 h-9 rounded-full border border-[#1f3b5c] flex items-center justify-center"
+        >
+          <Icon name="msg" className="w-4 h-4" />
+        </button>
+      } />
       <div className="px-5">
-        <span className={`pill ${b.status==="confirmed"?"pill-confirmed":b.status==="complete"?"pill-complete":b.status==="cancelled"?"pill-cancelled":"pill-pending"}`}>{b.status}</span>
+        <span className={`pill ${statusClass(b.status)}`}>{statusLabel(b.status)}</span>
         <div className="text-base text-[#9FB3C8] mt-2">{isoToDay(b.startIso)} · {isoToTime(b.startIso)}</div>
         <div className="card mt-3 flex justify-between items-center">
           <div>
@@ -1399,16 +1713,23 @@ const BookingDetail = (p) => {
           {b.customer?.vehicle || "Saved vehicle"}
         </div>
 
-        <div className="card mt-3 flex items-center justify-between">
-          <div>
-            <div className="text-sm font-semibold">Live Location Sharing</div>
-            <div className="text-xs text-[#9FB3C8]">Lets our team find you on day-of.</div>
-            <div className="text-[11px] text-[#9FB3C8] mt-1 max-w-[190px]">{shareStatus}</div>
+        {b.status==="requested" && (
+          <div className="card mt-3 bg-[var(--orange)]/10 border-[var(--orange)]/30">
+            <div className="text-sm font-semibold">Waiting on Dane to confirm</div>
+            <div className="text-xs text-[#C7D8EA] mt-1">No payment has been collected yet. Text or call to finish confirming this request.</div>
+            <div className="grid grid-cols-2 gap-2 mt-3">
+              <a className="btn-primary !py-2 text-center text-sm" href={smsHref(p.settings?.businessPhone || SETTINGS.businessPhone, bookingRequestMessage(b, p.settings))}>Text Dane</a>
+              <a className="btn-secondary !py-2 text-center text-sm" href={telHref(p.settings?.businessPhone || SETTINGS.businessPhone)}>Call Dane</a>
+            </div>
           </div>
-          <button aria-label="Toggle live location sharing" onClick={toggleShare} className={`w-12 h-7 rounded-full relative ${share?"bg-[var(--orange)]":"bg-[#1f3b5c]"}`}>
-            <span className="absolute top-0.5 w-6 h-6 bg-white rounded-full transition-all" style={{left: share?"22px":"2px"}} />
-          </button>
-        </div>
+        )}
+
+        {b.status==="declined" && (
+          <div className="card mt-3 border-[#ef4444]/40 bg-[#ef4444]/10">
+            <div className="text-sm font-semibold">Request closed</div>
+            <div className="text-xs text-[#C7D8EA] mt-1">Dane declined this request. No payment was collected.</div>
+          </div>
+        )}
 
         {b.status==="confirmed" && (
           <div className="card mt-3">
@@ -1416,13 +1737,12 @@ const BookingDetail = (p) => {
               <div>
                 <div className="label-up mb-1">Arrival Tracker</div>
                 <div className="text-sm font-semibold">{trackerCurrent.customerMessage}</div>
-                <div className="text-xs text-[#9FB3C8] mt-1">Status updates from the owner side, not live GPS.</div>
               </div>
               <div className="text-right">
                 <div className="w-10 h-10 ml-auto rounded-2xl bg-[var(--orange)]/15 border border-[var(--orange)]/40 text-[var(--orange)] flex items-center justify-center">
                   <Icon name={trackerCurrent.icon} className="w-5 h-5" />
                 </div>
-                <div className="text-[10px] uppercase tracking-wider text-[#9FB3C8] mt-1">owner update</div>
+                <div className="text-[10px] uppercase tracking-wider text-[#9FB3C8] mt-1">status</div>
               </div>
             </div>
             <div className="grid grid-cols-3 gap-2 mt-4">
@@ -1432,16 +1752,25 @@ const BookingDetail = (p) => {
                 </div>
               ))}
             </div>
-            <div className="mt-3 text-[11px] text-[#9FB3C8]">
-              No ETA is shown until Dane adds one manually or real routing is approved.
-            </div>
           </div>
         )}
 
         <div className="flex gap-2 mt-4">
-          <button className="btn-secondary" onClick={()=> p.beginReschedule(b.id)}>Reschedule</button>
-          {b.status==="confirmed" && <button className="btn-secondary" onClick={()=> { p.cancelBooking(b.id); p.setScreen("myBookings"); }}>Cancel</button>}
+          <button
+            className="btn-secondary"
+            onClick={()=> directRescheduleAllowed ? p.beginReschedule(b.id) : p.showToast(`Inside ${p.settings.rescheduleCutoffHours || 48} hours. Contact Dane to request a change.`)}
+          >
+            {directRescheduleAllowed ? "Reschedule" : "Request Change"}
+          </button>
+          {isActiveBooking && <button className="btn-secondary" onClick={()=> { p.cancelBooking(b.id); p.setScreen("myBookings"); }}>Cancel</button>}
         </div>
+        {isActiveBooking && (
+          <div className="text-[11px] text-[#9FB3C8] mt-2">
+            {b.status === "requested"
+              ? `No payment has been collected yet. Canceling closes the request.`
+              : `Reschedule online until ${p.settings.rescheduleCutoffHours || 48} hours before. Cancel inside ${p.settings.cancelDepositForfeitDays || 7} days and the ${cents(b.depositCents || p.settings.depositCents)} deposit is forfeited. Current cancel outcome: ${cancelOutcome.cancellationOutcome}.`}
+          </div>
+        )}
 
         <div className="card mt-3">
           <div className="label-up mb-2">Receipt</div>
@@ -1449,8 +1778,13 @@ const BookingDetail = (p) => {
           <Row label="Travel fee" value={b.travelFeeCents===0?"Free":cents(b.travelFeeCents)} />
           {b.promoCode && <Row label="Promo code" value={b.promoCode} valueClass="text-[#4ade80]" />}
           {b.discountCents>0 && <Row label="Discount" value={`- ${cents(b.discountCents)}`} valueClass="text-[#4ade80]" />}
+          <Row label="Payment option" value={b.paymentChoice?.startsWith("request_") ? "Request - not paid yet" : b.paymentChoice === "deposit_cash_balance" ? "Deposit + cash balance" : "Paid by card"} />
+          <Row label="Paid online today" value={cents(b.amountPaidTodayCents || 0)} />
+          {b.balanceDueCents > 0 && <Row label="Cash balance due" value={cents(b.balanceDueCents)} />}
+          {b.cardProcessingFeeCents > 0 && <Row label="Card processing fee" value={cents(b.cardProcessingFeeCents)} />}
+          {["cancelled", "declined"].includes(b.status) && <Row label="Outcome" value={b.cancellationOutcome || cancelOutcome.cancellationOutcome} />}
           <div className="divider my-2" />
-          <Row label={<span className="text-white font-bold">Total paid</span>} value={<span className="price-orange">{cents(b.totalCents)}</span>} />
+          <Row label={<span className="text-white font-bold">Job total</span>} value={<span className="price-orange">{cents(b.totalCents)}</span>} />
         </div>
       </div>
     </div>
@@ -1471,9 +1805,9 @@ const CustomerProfile = (p) => (
 
       <div className="mt-4 flex flex-col gap-2">
         <ProfileRow icon="car" title="My Vehicles" hint={`${vehicleLabel(p.activeVehicle)} (selected)`} onClick={()=> p.setScreen("vehicles")} />
-        <ProfileRow icon="receipt" title="Payment Methods" hint="Add securely with Stripe later" />
-        <ProfileRow icon="bell" title="Notifications" hint="Email & SMS" />
-        <ProfileRow icon="shield" title="Privacy" hint="Live location off when not booking" />
+        <ProfileRow icon="receipt" title="Payment Methods" hint="Stripe setup comes later; no card is saved in this prototype." />
+        <ProfileRow icon="bell" title="Notifications" hint="Email by default; SMS can be connected later." />
+        <ProfileRow icon="shield" title="Privacy" hint="Live location only turns on when you choose it for a booking." />
         <ProfileRow icon="msg" title="Support" hint="Call (931) 334-0730" />
       </div>
     </div>
@@ -1488,7 +1822,7 @@ const ProfileRow = ({ icon, title, hint, onClick }) => {
         <div className="text-sm font-semibold">{title}</div>
         <div className="text-xs text-[#9FB3C8]">{hint}</div>
       </div>
-      <Icon name="chevR" className="w-4 h-4 text-[#9FB3C8]" />
+      {onClick && <Icon name="chevR" className="w-4 h-4 text-[#9FB3C8]" />}
     </>
   );
   return onClick ? <button className="row-tap w-full text-left" onClick={onClick}>{content}</button> : <div className="row-tap">{content}</div>;
@@ -1499,7 +1833,7 @@ const VehicleManager = (p) => {
   const [form, setForm] = useState(() => ({ ...(active || seedVehicles()[0]) }));
   const [editingVehicleId, setEditingVehicleId] = useState(null);
   const [isDecodingVin, setIsDecodingVin] = useState(false);
-  const [decodeNote, setDecodeNote] = useState("VIN is optional. If entered, it can fill year, make, model, and trim from the free NHTSA database.");
+  const [decodeNote, setDecodeNote] = useState("VIN is optional. If entered, it can fill year, make, and model from the free NHTSA database.");
   const update = (key, value) => setForm(f => ({...f, [key]: value}));
   const displayName = (v) => v?.nickname || vehicleLabel(v);
   const requiredVehicleFields = [
@@ -1507,7 +1841,6 @@ const VehicleManager = (p) => {
     ["Year", form.year],
     ["Make", form.make],
     ["Model", form.model],
-    ["Trim", form.trim],
     ["Color", form.color],
   ];
   const saveVehicle = () => {
@@ -1524,10 +1857,10 @@ const VehicleManager = (p) => {
     p.showToast(isExistingVehicle ? "Vehicle updated and selected." : "Vehicle saved. You can pick it next time without re-entering details.");
   };
   const addNew = () => {
-    const fresh = { id: uuid(), year:"", make:"", model:"", trim:"", color:"", plate:"", notes:"", vin:"", nickname:"", source:"manual", isDefault:false };
+    const fresh = { id: uuid(), year:"", make:"", model:"", color:"", plate:"", notes:"", vin:"", nickname:"", source:"manual", isDefault:false };
     setForm(fresh);
     setEditingVehicleId(null);
-    setDecodeNote("VIN is optional. If entered, it can fill year, make, model, and trim from the free NHTSA database.");
+    setDecodeNote("VIN is optional. If entered, it can fill year, make, and model from the free NHTSA database.");
   };
   const chooseVehicle = v => {
     p.setActiveVehicleId(v.id);
@@ -1571,7 +1904,7 @@ const VehicleManager = (p) => {
     try {
       const result = await lookupVinDetails(cleanVin);
       applyVinResult(result);
-      setDecodeNote("VIN decoded with the free NHTSA vPIC database. Confirm trim and color if the customer wants exact details.");
+      setDecodeNote("VIN decoded with the free NHTSA vPIC database. Confirm color and plate details if the customer wants them saved.");
     } catch (error) {
       const sample = decodeVinSample(cleanVin);
       if (sample) {
@@ -1591,7 +1924,7 @@ const VehicleManager = (p) => {
       <div className="px-5">
         <div className="card bg-[var(--orange)]/10 border-[var(--orange)]/30">
           <div className="text-sm font-semibold">You should not have to type this every time.</div>
-          <div className="text-xs text-[#C7D8EA] mt-1">Customers can save one or more vehicles. During booking they only choose the saved vehicle or add a quick new one.</div>
+          <div className="text-xs text-[#C7D8EA] mt-1">Customers can save one or more vehicles. To add another one, use Vehicle Setup below, enter the new vehicle details, then save it.</div>
         </div>
 
         <div className="card mt-4">
@@ -1600,7 +1933,6 @@ const VehicleManager = (p) => {
               <div className="text-xs uppercase tracking-wider text-[#9FB3C8]">Selected vehicle</div>
               <div className="text-base font-bold mt-1">{displayName(active)}</div>
             </div>
-            <button className="text-xs px-3 py-2 rounded-xl bg-[#16365B] text-white border border-[#1f3b5c]" onClick={addNew}>Add New</button>
           </div>
           <div className="mt-3 flex flex-col gap-2">
             {p.vehicles.map(v => (
@@ -1609,7 +1941,7 @@ const VehicleManager = (p) => {
                   <div className="flex items-center justify-between gap-2">
                     <div>
                       <div className="text-sm font-semibold">{displayName(v)}</div>
-                      <div className="text-xs text-[#9FB3C8]">{[v.year, v.make, v.model, v.trim].filter(Boolean).join(" ") || "Basic saved vehicle"}{v.color ? ` · ${v.color}` : ""}</div>
+                      <div className="text-xs text-[#9FB3C8]">{[v.year, v.make, v.model].filter(Boolean).join(" ") || "Basic saved vehicle"}{v.color ? ` - ${v.color}` : ""}</div>
                     </div>
                     {v.id===p.activeVehicleId && <span className="text-[10px] uppercase tracking-wider text-[var(--orange)]">Selected</span>}
                   </div>
@@ -1625,7 +1957,10 @@ const VehicleManager = (p) => {
 
         <div className="card mt-4">
           <div className="flex items-center justify-between gap-3 mb-3">
-            <div className="text-xs uppercase tracking-wider text-[#9FB3C8]">Vehicle setup</div>
+            <div>
+              <div className="text-xs uppercase tracking-wider text-[#9FB3C8]">Vehicle setup</div>
+              <button className="text-xs text-[var(--orange)] mt-1" onClick={addNew}>Start a new vehicle instead</button>
+            </div>
             {editingVehicleId && <div className="text-[10px] uppercase tracking-wider text-[var(--orange)]">Editing saved vehicle</div>}
           </div>
           <label className="block text-xs text-[#9FB3C8] mb-1">Vehicle name<span className="text-[var(--orange)]"> *</span></label>
@@ -1645,7 +1980,6 @@ const VehicleManager = (p) => {
             <Field label="Year" value={form.year || ""} onChange={v=>update("year", v)} required />
             <Field label="Make" value={form.make || ""} onChange={v=>update("make", v)} required />
             <Field label="Model" value={form.model || ""} onChange={v=>update("model", v)} required />
-            <Field label="Trim" value={form.trim || ""} onChange={v=>update("trim", v)} required />
             <Field label="Color" value={form.color || ""} onChange={v=>update("color", v)} required />
             <Field label="Plate number (optional)" value={form.plate || ""} onChange={v=>update("plate", v)} />
           </div>
@@ -1716,7 +2050,9 @@ const OwnerDash = (p) => {
     const d = new Date(b.startIso);
     return d >= today && d < tomorrow;
   });
-  const upcoming = p.bookings.filter(b => b.status==="confirmed").sort((a,b)=> new Date(a.startIso) - new Date(b.startIso)).slice(0,4);
+  const requests = p.bookings.filter(b => b.status === "requested");
+  const upcoming = p.bookings.filter(b => b.status === "confirmed").sort((a,b)=> new Date(a.startIso) - new Date(b.startIso)).slice(0,4);
+  const recentJobs = [...requests, ...upcoming].slice(0,4);
   const completedThisMonth = p.bookings.filter(b => b.status==="complete" && new Date(b.startIso) >= monthStart).length;
   const monthRevenueCents = p.bookings.filter(b => new Date(b.startIso) >= monthStart).reduce((s,b)=> s + (b.totalCents||0), 0);
   const customers = new Set(p.bookings.map(b => b.customer?.name)).size;
@@ -1730,16 +2066,22 @@ const OwnerDash = (p) => {
             <div className="text-[11px] text-[#9FB3C8] uppercase tracking-wider">Welcome back</div>
             <div className="text-xl font-extrabold">Dane</div>
           </div>
-          <button className="w-9 h-9 rounded-full border border-[#1f3b5c] flex items-center justify-center"><Icon name="bell" className="w-4 h-4" /></button>
+          <button
+            aria-label="Open owner notifications"
+            onClick={()=> p.setScreen("ownerNotifications")}
+            className="w-9 h-9 rounded-full border border-[#1f3b5c] flex items-center justify-center"
+          >
+            <Icon name="bell" className="w-4 h-4" />
+          </button>
         </div>
         <div className="text-xs text-[#9FB3C8] mt-1">Here's what's happening today.</div>
       </div>
 
       <div className="px-5 mt-4 grid grid-cols-2 gap-2">
         <Kpi label="Today's jobs" value={todays.length} />
+        <Kpi label="Requests" value={requests.length} />
         <Kpi label="Completed (mo)" value={completedThisMonth} />
         <Kpi label="Revenue (mo)" value={cents(monthRevenueCents)} />
-        <Kpi label="Customers" value={customers} />
       </div>
 
       <div className="px-5 mt-5">
@@ -1747,7 +2089,7 @@ const OwnerDash = (p) => {
         <div className="grid grid-cols-4 gap-2">
           <QuickAction icon="flag" label="Tracker" onClick={()=> p.setScreen("ownerTracker")} />
           <QuickAction icon="cal" label="Jobs" onClick={()=> p.setScreen("ownerJobs")} />
-          <QuickAction icon="users" label="Customers" onClick={()=> p.setScreen("ownerJobs")} />
+          <QuickAction icon="users" label="Customers" onClick={()=> p.setScreen("ownerCustomers")} />
           <QuickAction icon="settings" label="Settings" onClick={()=> p.setScreen("ownerSettings")} />
         </div>
       </div>
@@ -1758,7 +2100,7 @@ const OwnerDash = (p) => {
           <button className="text-xs text-[var(--orange)]" onClick={()=> p.setScreen("ownerJobs")}>See all</button>
         </div>
         <div className="flex flex-col gap-2">
-          {upcoming.map(b => (
+          {recentJobs.map(b => (
             <button key={b.id} className="card text-left flex justify-between items-center" onClick={()=>{ p.setActiveBookingId(b.id); p.setScreen("ownerJobDetail"); }}>
               <div className="flex items-center gap-3 min-w-0">
                 <div className="w-10 h-10 rounded-xl bg-[#16365B] text-[var(--orange)] flex items-center justify-center"><Icon name="car" className="w-5 h-5" /></div>
@@ -1769,7 +2111,7 @@ const OwnerDash = (p) => {
               </div>
               <div className="text-right">
                 <div className="text-sm price-orange">{cents(b.totalCents)}</div>
-                <span className="pill pill-confirmed">{b.status}</span>
+                <span className={`pill ${statusClass(b.status)}`}>{statusLabel(b.status)}</span>
               </div>
             </button>
           ))}
@@ -1794,23 +2136,29 @@ const QuickAction = ({ icon, label, onClick }) => (
 );
 
 const OwnerJobs = (p) => {
-  const [tab, setTab] = useState("upcoming");
+  const [tab, setTab] = useState("requests");
   const list = p.bookings.filter(b => {
+    if (tab==="requests") return b.status==="requested";
     if (tab==="upcoming") return b.status==="confirmed";
     if (tab==="completed") return b.status==="complete";
-    if (tab==="cancelled") return b.status==="cancelled";
+    if (tab==="cancelled") return ["cancelled", "declined"].includes(b.status);
     return true;
   }).sort((a,b)=> new Date(a.startIso) - new Date(b.startIso));
 
   return (
     <div className="pb-6">
       <HeaderBar title="Jobs" />
-      <div className="px-5 flex gap-2">
-        {["upcoming","completed","cancelled"].map(t => (
-          <button key={t} onClick={()=> setTab(t)} className={`px-4 py-2 rounded-full text-xs font-semibold ${tab===t?"bg-[var(--orange)] text-white":"bg-[#0d2236] border border-[#1f3b5c] text-[#9FB3C8]"}`}>{t.charAt(0).toUpperCase()+t.slice(1)}</button>
+      <div className="px-5 flex gap-2 overflow-x-auto pb-1">
+        {["requests","upcoming","completed","cancelled"].map(t => (
+          <button key={t} onClick={()=> setTab(t)} className={`shrink-0 px-3 py-2 rounded-full text-xs font-semibold ${tab===t?"bg-[var(--orange)] text-white":"bg-[#0d2236] border border-[#1f3b5c] text-[#9FB3C8]"}`}>{t.charAt(0).toUpperCase()+t.slice(1)}</button>
         ))}
       </div>
       <div className="px-5 mt-4 flex flex-col gap-2">
+        {list.length === 0 && (
+          <div className="card text-sm text-[#9FB3C8]">
+            No {tab} jobs right now.
+          </div>
+        )}
         {list.map(b => (
           <button key={b.id} className="card text-left flex justify-between items-center" onClick={()=>{ p.setActiveBookingId(b.id); p.setScreen("ownerJobDetail"); }}>
             <div className="flex items-center gap-3 min-w-0">
@@ -1823,7 +2171,7 @@ const OwnerJobs = (p) => {
             </div>
             <div className="text-right">
               <div className="text-sm price-orange">{cents(b.totalCents)}</div>
-              <span className={`pill ${b.status==="confirmed"?"pill-confirmed":b.status==="complete"?"pill-complete":"pill-cancelled"}`}>{b.status}</span>
+              <span className={`pill ${statusClass(b.status)}`}>{statusLabel(b.status)}</span>
             </div>
           </button>
         ))}
@@ -1832,9 +2180,100 @@ const OwnerJobs = (p) => {
   );
 };
 
+const OwnerCustomers = (p) => {
+  const customers = useMemo(() => {
+    const map = new Map();
+    p.bookings.forEach(b => {
+      const key = b.customer?.phone || b.customer?.name || b.id;
+      const current = map.get(key) || {
+        name: b.customer?.name || "Customer",
+        phone: b.customer?.phone || "No phone saved",
+        vehicle: b.customer?.vehicle || "Vehicle not saved",
+        bookings: [],
+        spentCents: 0,
+      };
+      current.bookings.push(b);
+      current.spentCents += b.totalCents || 0;
+      map.set(key, current);
+    });
+    return Array.from(map.values()).sort((a, b) => b.bookings.length - a.bookings.length);
+  }, [p.bookings]);
+
+  return (
+    <div className="pb-6">
+      <HeaderBar title="Customers" subtitle="Owner" onBack={()=> p.setScreen("ownerDash")} />
+      <div className="px-5 flex flex-col gap-2">
+        {customers.map(customer => {
+          const nextBooking = customer.bookings
+            .filter(b => b.status === "confirmed")
+            .sort((a, b) => new Date(a.startIso) - new Date(b.startIso))[0];
+          return (
+            <div key={customer.phone + customer.name} className="card">
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="text-sm font-bold truncate">{customer.name}</div>
+                  <div className="text-xs text-[#9FB3C8] mt-0.5">{customer.phone}</div>
+                </div>
+                <div className="text-right">
+                  <div className="text-sm price-orange">{cents(customer.spentCents)}</div>
+                  <div className="text-[10px] uppercase tracking-wider text-[#9FB3C8]">{customer.bookings.length} jobs</div>
+                </div>
+              </div>
+              <div className="text-xs text-[#9FB3C8] mt-2">{customer.vehicle}</div>
+              {nextBooking && (
+                <button
+                  className="btn-secondary mt-3 !py-2 text-xs"
+                  onClick={()=> { p.setActiveBookingId(nextBooking.id); p.setScreen("ownerJobDetail"); }}
+                >
+                  View next job
+                </button>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
+const OwnerNotifications = (p) => {
+  const upcoming = p.bookings
+    .filter(b => b.status === "confirmed")
+    .sort((a, b) => new Date(a.startIso) - new Date(b.startIso))
+    .slice(0, 3);
+
+  return (
+    <div className="pb-6">
+      <HeaderBar title="Notifications" subtitle="Owner" onBack={()=> p.setScreen("ownerDash")} />
+      <div className="px-5 flex flex-col gap-2">
+        <div className="card bg-[var(--orange)]/10 border-[var(--orange)]/30">
+          <div className="text-sm font-semibold">Demo notification center</div>
+          <div className="text-xs text-[#C7D8EA] mt-1">Real SMS, email, and calendar alerts are not connected yet.</div>
+        </div>
+        {upcoming.map(b => (
+          <button
+            key={b.id}
+            className="card text-left"
+            onClick={()=> { p.setActiveBookingId(b.id); p.setScreen("ownerJobDetail"); }}
+          >
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <div className="text-sm font-bold">{b.customer?.name}</div>
+                <div className="text-xs text-[#9FB3C8] mt-0.5">{b.serviceTitle} - {isoToDay(b.startIso)} at {isoToTime(b.startIso)}</div>
+              </div>
+              <Icon name="bell" className="w-4 h-4 text-[var(--orange)]" />
+            </div>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 const OwnerJobDetail = (p) => {
   const b = p.bookings.find(x => x.id === p.activeBookingId);
   if (!b) return <div className="p-6">No job selected.</div>;
+  const isRequested = b.status === "requested";
   return (
     <div className="pb-6">
       <HeaderBar title="Job Detail" onBack={()=> p.setScreen("ownerJobs")} />
@@ -1844,8 +2283,22 @@ const OwnerJobDetail = (p) => {
             <div className="text-sm font-bold">{b.customer?.name}</div>
             <div className="text-xs text-[#9FB3C8] mt-0.5">{b.customer?.phone} · {b.customer?.vehicle}</div>
           </div>
-          <span className={`pill ${b.status==="confirmed"?"pill-confirmed":b.status==="complete"?"pill-complete":b.status==="cancelled"?"pill-cancelled":"pill-pending"}`}>{b.status}</span>
+          <span className={`pill ${statusClass(b.status)}`}>{statusLabel(b.status)}</span>
         </div>
+        {isRequested && (
+          <div className="card mt-3 bg-[var(--orange)]/10 border-[var(--orange)]/30">
+            <div className="text-sm font-semibold">Booking request needs approval</div>
+            <div className="text-xs text-[#C7D8EA] mt-1">No payment has been collected. Contact the customer, then confirm or decline the request.</div>
+            <div className="grid grid-cols-2 gap-2 mt-3">
+              <a className="btn-primary !py-2 text-center text-sm" href={smsHref(b.customer?.phone, ownerCustomerMessage(b))}>Text Customer</a>
+              <a className="btn-secondary !py-2 text-center text-sm" href={telHref(b.customer?.phone)}>Call Customer</a>
+            </div>
+            <div className="grid grid-cols-2 gap-2 mt-2">
+              <button className="btn-primary !py-2 text-sm" onClick={()=> p.confirmRequestedBooking(b.id)}>Confirm</button>
+              <button className="btn-secondary !py-2 text-sm" onClick={()=> p.declineRequestedBooking(b.id)}>Decline</button>
+            </div>
+          </div>
+        )}
         <div className="card mt-3">
           <div className="label-up mb-1">Service</div>
           <div className="flex justify-between items-center">
@@ -1854,21 +2307,120 @@ const OwnerJobDetail = (p) => {
           </div>
           <div className="text-xs text-[#9FB3C8] mt-1">{isoToDay(b.startIso)} · {isoToTime(b.startIso)}</div>
         </div>
+        {b.closeoutStatus && (
+          <div className="card mt-3 text-xs text-[#9FB3C8]">
+            <div className="label-up mb-1">Closeout</div>
+            <div>{b.closeoutStatus.replaceAll("_", " ")}</div>
+            {b.ownerAdjustmentCents > 0 && <div className="mt-1">Owner adjustment: {cents(b.ownerAdjustmentCents)} {b.ownerAdjustmentLabel ? `(${b.ownerAdjustmentLabel})` : ""}</div>}
+            {b.refundNeededCents > 0 && <div className="mt-1 text-[#fed7aa]">Refund needed: {cents(b.refundNeededCents)}</div>}
+            {b.closeoutNote && <div className="mt-1">{b.closeoutNote}</div>}
+          </div>
+        )}
         <div className="card mt-3 text-sm">
           <div className="label-up mb-1">Address</div>
           {b.address}
         </div>
 
         <div className="mt-4 grid grid-cols-2 gap-2">
-          <button className="btn-secondary !py-3" onClick={()=>{ p.setActiveBookingId(b.id); p.setScreen("ownerTracker"); }}>Open Tracker</button>
-          <button className="btn-secondary !py-3" onClick={()=> p.showToast("Reschedule sent (mock)")}>Reschedule</button>
+          <a
+            className="btn-primary !py-3 text-center"
+            href={directionsUrl(b.address)}
+            target="_blank"
+            rel="noreferrer"
+          >
+            Open Directions
+          </a>
+          <button className="btn-secondary !py-3" disabled={isRequested} onClick={()=>{ p.setActiveBookingId(b.id); p.setScreen("ownerTracker"); }}>Open Tracker</button>
+        </div>
+        <div className="mt-2 grid grid-cols-2 gap-2">
+          <button className="btn-secondary !py-3" onClick={()=> p.beginReschedule(b.id)}>Reschedule</button>
+          {b.status === "requested" && <button className="btn-secondary !py-3" onClick={()=>{ p.declineRequestedBooking(b.id); p.setScreen("ownerJobs"); }}>Decline Request</button>}
+          {b.status === "confirmed" && <button className="btn-secondary !py-3" onClick={()=>{ p.cancelBooking(b.id); p.setScreen("ownerJobs"); }}>Cancel Job</button>}
         </div>
         {b.status==="confirmed" && (
-          <div className="grid grid-cols-2 gap-2 mt-2">
-            <button className="btn-secondary !py-3" onClick={()=>{ p.cancelBooking(b.id); p.setScreen("ownerJobs"); }}>Cancel Job</button>
-            <button className="btn-primary !py-3" onClick={()=>{ p.completeJob(b.id); p.setScreen("ownerJobs"); }}>Mark Complete</button>
+          <div className="mt-2">
+            <button className="btn-primary !py-3" onClick={()=> p.completeJob(b.id)}>Close Out Job</button>
           </div>
         )}
+      </div>
+    </div>
+  );
+};
+
+const OwnerCloseout = (p) => {
+  const b = p.bookings.find(x => x.id === p.activeBookingId);
+  const [adjustMode, setAdjustMode] = useState("percent");
+  const [adjustValue, setAdjustValue] = useState("0");
+  const [reason, setReason] = useState("Owner adjustment");
+  const rawAdjustment = parseFloat(adjustValue) || 0;
+  const adjustmentCents = adjustMode === "percent"
+    ? Math.round((b?.totalCents || 0) * Math.max(0, rawAdjustment) / 100)
+    : Math.round(Math.max(0, rawAdjustment) * 100);
+  const adjustedTotal = Math.max(0, (b?.totalCents || 0) - adjustmentCents);
+  const defaultCashDue = Math.max(0, adjustedTotal - (b?.amountPaidTodayCents || 0));
+  const [cashCollected, setCashCollected] = useState(() => String(defaultCashDue / 100));
+  if (!b) return <div className="p-6 text-sm">No job selected.</div>;
+  const cashCollectedCents = Math.round((parseFloat(cashCollected) || 0) * 100);
+  const refundNeeded = Math.max(0, (b.amountPaidTodayCents || 0) - adjustedTotal);
+  const balanceAfterClose = Math.max(0, adjustedTotal - (b.amountPaidTodayCents || 0) - cashCollectedCents);
+
+  const close = () => {
+    p.closeOutJob(b.id, {
+      adjustmentCents,
+      adjustmentLabel: reason,
+      cashCollectedCents,
+    });
+  };
+
+  return (
+    <div className="pb-6">
+      <HeaderBar title="Close Out Job" subtitle="Owner" onBack={()=> p.setScreen("ownerJobDetail")} />
+      <div className="px-5 flex flex-col gap-3">
+        <div className="card">
+          <div className="label-up mb-1">Job</div>
+          <div className="text-sm font-bold">{b.customer?.name} - {b.serviceTitle}</div>
+          <div className="text-xs text-[#9FB3C8] mt-1">{isoToDay(b.startIso)} at {isoToTime(b.startIso)}</div>
+        </div>
+
+        <div className="card">
+          <div className="label-up mb-2">Payment Review</div>
+          <Row label="Original job total" value={cents(b.totalCents || 0)} />
+          <Row label="Paid online" value={cents(b.amountPaidTodayCents || 0)} />
+          {b.balanceDueCents > 0 && <Row label="Cash balance before adjustment" value={cents(b.balanceDueCents)} />}
+          <Row label="Owner adjustment" value={`- ${cents(adjustmentCents)}`} valueClass={adjustmentCents > 0 ? "text-[#4ade80]" : ""} />
+          <div className="divider my-2" />
+          <Row label="Adjusted job total" value={cents(adjustedTotal)} bold />
+        </div>
+
+        <div className="card">
+          <div className="label-up mb-2">Adjustment</div>
+          <div className="grid grid-cols-2 gap-2">
+            <button className={`btn-secondary !py-2 text-xs ${adjustMode === "percent" ? "border-[var(--orange)]" : ""}`} onClick={()=> setAdjustMode("percent")}>Percent</button>
+            <button className={`btn-secondary !py-2 text-xs ${adjustMode === "amount" ? "border-[var(--orange)]" : ""}`} onClick={()=> setAdjustMode("amount")}>Dollar amount</button>
+          </div>
+          <div className="grid grid-cols-2 gap-2 mt-3">
+            <input aria-label="Adjustment value" className="input" type="number" value={adjustValue} onChange={e=> setAdjustValue(e.target.value)} />
+            <input aria-label="Adjustment reason" className="input" value={reason} onChange={e=> setReason(e.target.value)} />
+          </div>
+          <div className="text-[11px] text-[#9FB3C8] mt-2">
+            If the card was already overpaid, this records a refund needed. Real Stripe refunding requires connected payments.
+          </div>
+        </div>
+
+        <div className="card">
+          <div className="label-up mb-2">Closeout Result</div>
+          {refundNeeded > 0 ? (
+            <div className="text-sm text-[#fed7aa]">Refund needed: {cents(refundNeeded)}</div>
+          ) : (
+            <>
+              <div className="text-[11px] text-[#9FB3C8] mb-1">Cash collected today</div>
+              <input aria-label="Cash collected" className="input" type="number" value={cashCollected} onChange={e=> setCashCollected(e.target.value)} />
+              <div className="text-sm text-[#9FB3C8] mt-2">Balance after closeout: {cents(balanceAfterClose)}</div>
+            </>
+          )}
+        </div>
+
+        <button className="btn-primary" onClick={close}>Close Job</button>
       </div>
     </div>
   );
@@ -1958,9 +2510,56 @@ const OwnerReports = (p) => {
   const monthStart = new Date(); monthStart.setDate(1); monthStart.setHours(0,0,0,0);
   const monthBookings = p.bookings.filter(b => new Date(b.startIso) >= monthStart);
   const revenue = monthBookings.reduce((s,b)=> s + (b.totalCents||0), 0);
-  const fees = Math.round(revenue * (p.settings.platformFeePercent/100));
-  const expensesEstimate = 218000; // mock supplies/gas/etc
-  const net = revenue - fees - expensesEstimate;
+  const onlinePaid = monthBookings.reduce((s,b)=> s + (b.amountPaidTodayCents||0), 0);
+  const cashDue = monthBookings.reduce((s,b)=> s + (b.balanceDueCents||0), 0);
+  const cardFees = monthBookings.reduce((s,b)=> s + (b.cardProcessingFeeCents||0), 0);
+  const appFees = monthBookings.filter(b => b.status !== "cancelled").reduce((s,b)=> s + (b.companyAppFeeCents ?? p.settings.companyAppFeeCents ?? 300), 0);
+  const forfeitedDeposits = monthBookings.filter(b => b.paymentStatus === "cancelled_deposit_forfeited").reduce((s,b)=> s + (b.depositCents || p.settings.depositCents || 2500), 0);
+  const ownerAdjustments = monthBookings.reduce((s,b)=> s + (b.ownerAdjustmentCents || 0), 0);
+  const refundsNeeded = monthBookings.reduce((s,b)=> s + (b.refundNeededCents || 0), 0);
+  const cashCollected = monthBookings.reduce((s,b)=> s + (b.cashCollectedCents || 0), 0);
+  const expensesEstimate = cardFees + appFees;
+  const net = revenue - expensesEstimate;
+  const exportTaxPack = () => {
+    const headers = ["Date", "Time", "Customer", "Service", "Address", "Status", "Payment Choice", "Service Price", "Travel Fee", "Discount", "Owner Adjustment", "Adjustment Reason", "Deposit", "Paid Online Today", "Cash Collected", "Cash Balance Due", "Card Fee", "Refund Needed", "App Fee", "App Fee Routing", "Cancellation Outcome", "Completion Date", "Closeout Status", "Job Total"];
+    const rows = monthBookings.map(b => [
+      isoToDay(b.startIso),
+      isoToTime(b.startIso),
+      b.customer?.name || "",
+      b.serviceTitle || "",
+      b.address || "",
+      b.status || "",
+      b.paymentChoice || "",
+      ((b.priceCents || 0) / 100).toFixed(2),
+      ((b.travelFeeCents || 0) / 100).toFixed(2),
+      ((b.discountCents || 0) / 100).toFixed(2),
+      ((b.ownerAdjustmentCents || 0) / 100).toFixed(2),
+      b.ownerAdjustmentLabel || "",
+      ((b.depositCents || 0) / 100).toFixed(2),
+      ((b.amountPaidTodayCents || 0) / 100).toFixed(2),
+      ((b.cashCollectedCents || 0) / 100).toFixed(2),
+      ((b.balanceDueCents || 0) / 100).toFixed(2),
+      ((b.cardProcessingFeeCents || 0) / 100).toFixed(2),
+      ((b.refundNeededCents || 0) / 100).toFixed(2),
+      ((b.companyAppFeeCents || 0) / 100).toFixed(2),
+      b.appFeeRoutingStatus || "ledger_only",
+      b.cancellationOutcome || "",
+      b.status === "complete" ? isoToDay(b.startIso) : "",
+      b.closeoutStatus || "",
+      ((b.totalCents || 0) / 100).toFixed(2),
+    ]);
+    const csv = [headers, ...rows]
+      .map(row => row.map(value => `"${String(value).replace(/"/g, '""')}"`).join(","))
+      .join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `peoples-detailing-tax-pack-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+    p.showToast("Tax Pack CSV downloaded");
+  };
 
   return (
     <div className="pb-6">
@@ -1976,9 +2575,19 @@ const OwnerReports = (p) => {
 
         <div className="grid grid-cols-2 gap-2 mt-3">
           <Kpi label="Total bookings" value={monthBookings.length} />
-          <Kpi label="Revenue" value={cents(revenue)} />
-          <Kpi label="Fees & Expenses" value={cents(fees + expensesEstimate)} />
+          <Kpi label="Money in" value={cents(onlinePaid)} />
+          <Kpi label="Cash due" value={cents(cashDue)} />
+          <Kpi label="Cash collected" value={cents(cashCollected)} />
+          <Kpi label="Adjustments" value={cents(ownerAdjustments)} />
+          <Kpi label="Refunds needed" value={cents(refundsNeeded)} />
+          <Kpi label="App fees" value={cents(appFees)} />
+          <Kpi label="Card fees" value={cents(cardFees)} />
+          <Kpi label="Forfeited deposits" value={cents(forfeitedDeposits)} />
           <Kpi label="Net" value={cents(net)} />
+        </div>
+
+        <div className="card mt-3 text-xs text-[#9FB3C8] leading-relaxed">
+          The $3 app cost is hidden from customer checkout and tracked here as a Dane-side ledger cost. Automatic routing to BrandNew requires future backend + Stripe Connect setup.
         </div>
 
         <div className="mt-5">
@@ -1990,7 +2599,7 @@ const OwnerReports = (p) => {
             <ExportRow icon="dollar" label="Payouts CSV" detail="Stripe payouts (when connected)." />
           </div>
         </div>
-        <button className="btn-primary mt-5" onClick={()=> p.showToast("Tax Pack exported (mock)")}>Export Tax Pack</button>
+        <button className="btn-primary mt-5" onClick={exportTaxPack}>Export Tax Pack CSV</button>
       </div>
       </div>
   );
@@ -2003,103 +2612,221 @@ const ExportRow = ({ icon, label, detail }) => (
       <div className="text-sm font-semibold">{label}</div>
       <div className="text-xs text-[#9FB3C8]">{detail}</div>
     </div>
-    <Icon name="download" className="w-4 h-4 text-[#9FB3C8]" />
+    <div className="text-[10px] uppercase tracking-wider text-[#9FB3C8]">Later</div>
   </div>
 );
 
-const OwnerServices = (p) => (
-  <div className="pb-6">
-    <HeaderBar title="Services" onBack={()=> p.setScreen("ownerDash")} />
-    <div className="px-5 flex flex-col gap-2">
-      {p.services.map(svc => (
-        <div key={svc.id} className="card flex items-center justify-between">
-          <div>
-            <div className="text-sm font-bold">{svc.title}</div>
-            <div className="text-xs text-[#9FB3C8]">{cents(svc.priceCents)}{svc.badge||""} · {svc.durationHours} hrs</div>
-          </div>
-          <button className="text-xs px-3 py-1.5 rounded-full border border-[#1f3b5c] text-[#9FB3C8]">Edit</button>
-        </div>
-      ))}
-    </div>
-  </div>
-);
+const OwnerServices = (p) => {
+  const [editingId, setEditingId] = useState(null);
+  const [form, setForm] = useState({ title: "", price: "", duration: "" });
+  const startEdit = svc => {
+    setEditingId(svc.id);
+    setForm({ title: svc.title, price: String((svc.priceCents || 0) / 100), duration: String(svc.durationHours || 1) });
+  };
+  const saveEdit = () => {
+    const title = form.title.trim();
+    const priceCents = Math.round((parseFloat(form.price) || 0) * 100);
+    const durationHours = Math.max(0.5, parseFloat(form.duration) || 1);
+    if (!title || priceCents <= 0) {
+      p.showToast("Add a service name and price first");
+      return;
+    }
+    p.setServices(list => list.map(svc => svc.id === editingId ? { ...svc, title, priceCents, durationHours } : svc));
+    setEditingId(null);
+    p.showToast("Service updated");
+  };
 
-const OwnerSettings = (p) => {
-  const s = p.settings;
-  const update = (k, v) => p.setSettings(prev => ({...prev, [k]: v}));
   return (
     <div className="pb-6">
-      <HeaderBar title="Settings" onBack={()=> p.setScreen("ownerDash")} right={
-        <button onClick={()=> { p.setSettings({...SETTINGS}); p.showToast("Settings reset to defaults"); }} className="text-xs px-3 py-1.5 rounded-full border border-[#1f3b5c] text-[#9FB3C8]">Reset</button>
-      } />
-      <div className="px-5 flex flex-col gap-3">
-
-        <div className="card">
-          <div className="label-up mb-2">Home Page</div>
-          <div className="text-[11px] text-[#9FB3C8] mb-1">Tagline kicker (small orange line)</div>
-          <input className="input" value={s.homeTaglineKicker} onChange={e=> update("homeTaglineKicker", e.target.value)} />
-          <div className="text-[11px] text-[#9FB3C8] mt-3 mb-1">Tagline (big white line)</div>
-          <textarea className="input" rows="2" value={s.homeTagline} onChange={e=> update("homeTagline", e.target.value)} />
-          <div className="text-[11px] text-[#9FB3C8] mt-3 mb-1">Footer phone / offer line</div>
-          <input className="input" value={s.homeFooterPhone} onChange={e=> update("homeFooterPhone", e.target.value)} />
-          <button className="btn-secondary mt-3 !py-2 text-xs" onClick={()=> { p.setRole("customer"); p.setScreen("home"); p.showToast("Switched to customer view"); }}>Preview as customer</button>
-        </div>
-
-        <div className="card">
-          <div className="label-up mb-2">Booking & Travel</div>
-          <NumberRow label="Buffer minutes" value={s.bufferMinutes} onChange={v=> update("bufferMinutes", v)} suffix="min" />
-          <NumberRow label="Free travel radius" value={s.freeTravelRadiusMiles} onChange={v=> update("freeTravelRadiusMiles", v)} suffix="mi" />
-          <NumberRow label="Per-mile fee" value={s.perMileFeeCents/100} step="0.05" onChange={v=> update("perMileFeeCents", Math.round(v*100))} prefix="$" />
-        </div>
-
-        <div className="card">
-          <div className="label-up mb-2">Cancellations & Reschedules</div>
-          <NumberRow label="Free cancel window" value={s.cancelFreeWindowDays} onChange={v=> update("cancelFreeWindowDays", v)} suffix="days" />
-          <NumberRow label="Cancellation fee" value={s.cancellationFeeCents/100} step="1" onChange={v=> update("cancellationFeeCents", Math.round(v*100))} prefix="$" />
-          <NumberRow label="Reschedule approval timeout" value={s.rescheduleTimeoutHours} onChange={v=> update("rescheduleTimeoutHours", v)} suffix="hrs" />
-        </div>
-
-        <div className="card">
-          <div className="label-up mb-2">Business</div>
-          <div className="text-[11px] text-[#9FB3C8] mb-1">Base address</div>
-          <input className="input" value={s.baseAddress} onChange={e=> update("baseAddress", e.target.value)} />
-          <NumberRow label="Flat app fee" value={(s.appFeeFlatCents ?? 300)/100} step="0.25" onChange={v=> update("appFeeFlatCents", Math.round(v*100))} prefix="$" />
-          <NumberRow label="App fee percent" value={s.appFeePercent ?? 2.5} step="0.25" onChange={v=> update("appFeePercent", v)} suffix="%" />
-          <NumberRow label="App fee minimum" value={(s.appFeeMinCents ?? 400)/100} step="0.50" onChange={v=> update("appFeeMinCents", Math.round(v*100))} prefix="$" />
-          <NumberRow label="App fee maximum" value={(s.appFeeMaxCents ?? 550)/100} step="0.50" onChange={v=> update("appFeeMaxCents", Math.round(v*100))} prefix="$" />
-          <ToggleRow label="Customer pays card processing fee" value={s.customerPaysCardProcessingFee ?? SETTINGS.customerPaysCardProcessingFee} onChange={()=> update("customerPaysCardProcessingFee", !(s.customerPaysCardProcessingFee ?? SETTINGS.customerPaysCardProcessingFee))} />
-          <NumberRow label="Card processing %" value={s.cardProcessingPercent ?? 2.9} step="0.1" onChange={v=> update("cardProcessingPercent", v)} suffix="%" />
-          <NumberRow label="Card fixed fee" value={(s.cardProcessingFixedCents ?? 30)/100} step="0.05" onChange={v=> update("cardProcessingFixedCents", Math.round(v*100))} prefix="$" />
-          <NumberRow label="Platform fee % (legacy/demo only)" value={s.platformFeePercent} onChange={v=> update("platformFeePercent", v)} suffix="%" />
-          <div className="text-[11px] text-[#9FB3C8] mt-3 mb-1">App fee info message</div>
-          <textarea className="input" rows="4" value={s.appFeeInfoText || SETTINGS.appFeeInfoText} onChange={e=> update("appFeeInfoText", e.target.value)} />
-          <div className="text-[11px] text-[#9FB3C8] mt-3 mb-1">Card processing fee info message</div>
-          <textarea className="input" rows="3" value={s.cardProcessingInfoText || SETTINGS.cardProcessingInfoText} onChange={e=> update("cardProcessingInfoText", e.target.value)} />
-          <div className="text-[11px] text-[#9FB3C8] mt-3 mb-1">BrandNew info link</div>
-          <input className="input" value={s.brandNewInfoUrl || SETTINGS.brandNewInfoUrl} onChange={e=> update("brandNewInfoUrl", e.target.value)} />
-          <div className="text-[11px] text-[#9FB3C8] mt-3 mb-1">BrandNew referral note</div>
-          <textarea className="input" rows="3" value={s.brandNewReferralText || SETTINGS.brandNewReferralText} onChange={e=> update("brandNewReferralText", e.target.value)} />
-        </div>
-
-        <div className="card">
-          <div className="label-up mb-2">Connections</div>
-          <ConnRow label="Stripe (payouts)" status="Not connected (demo)" />
-          <ConnRow label="SMS/Text provider" status="Owner SMS required; customer SMS limited to On the Way / I'm Here / Completed if enabled" />
-          <ConnRow label="Maps/address tools" status="Browser GPS estimate only; no maps, routing, or reverse geocoding connected" />
-          <ConnRow label="Google Calendar" status="Not connected (demo)" />
-        </div>
-
+      <HeaderBar title={p.role === "developer" ? "Service Prices" : "Services"} onBack={()=> p.setScreen(p.role === "developer" ? "developerSettings" : "ownerDash")} />
+      <div className="px-5 flex flex-col gap-2">
+        {p.services.map(svc => (
+          <div key={svc.id} className="card">
+            {editingId === svc.id ? (
+              <div className="flex flex-col gap-3">
+                <div>
+                  <div className="text-[11px] text-[#9FB3C8] mb-1">Service name</div>
+                  <input aria-label="Service name" className="input" value={form.title} onChange={e=> setForm(f => ({...f, title: e.target.value}))} />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <div className="text-[11px] text-[#9FB3C8] mb-1">Price</div>
+                    <input aria-label="Service price" className="input" type="number" value={form.price} onChange={e=> setForm(f => ({...f, price: e.target.value}))} />
+                  </div>
+                  <div>
+                    <div className="text-[11px] text-[#9FB3C8] mb-1">Hours</div>
+                    <input aria-label="Service duration hours" className="input" type="number" step="0.5" value={form.duration} onChange={e=> setForm(f => ({...f, duration: e.target.value}))} />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <button className="btn-secondary !py-2 text-xs" onClick={()=> setEditingId(null)}>Cancel</button>
+                  <button className="btn-primary !py-2 text-xs" onClick={saveEdit}>Save Service</button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-sm font-bold">{svc.title}</div>
+                  <div className="text-xs text-[#9FB3C8]">{cents(svc.priceCents)}{svc.badge||""} - {svc.durationHours} hrs</div>
+                </div>
+                <button className="text-xs px-3 py-1.5 rounded-full border border-[#1f3b5c] text-[#9FB3C8]" onClick={()=> startEdit(svc)}>Edit</button>
+              </div>
+            )}
+          </div>
+        ))}
       </div>
     </div>
   );
 };
 
-const SettingRow = ({ label, value }) => (
-  <div className="card flex justify-between items-center">
-    <div className="text-sm font-semibold">{label}</div>
-    <div className="text-sm text-[#9FB3C8]">{value}</div>
-  </div>
-);
+const OwnerSettings = (p) => {
+  const s = p.settings;
+  const developerMode = Boolean(p.developerMode || p.role === "developer");
+  const update = (k, v) => p.setSettings(prev => ({...prev, [k]: v}));
+  const todayInput = dateKey(new Date());
+  const [blockDate, setBlockDate] = useState(todayInput);
+  const [blockTime, setBlockTime] = useState(SLOT_LABELS[0]);
+  const addBlockedDate = () => {
+    if (!blockDate) return;
+    p.setSettings(prev => ({...prev, blockedDates: Array.from(new Set([...(prev.blockedDates || []), blockDate]))}));
+    p.showToast("Day blocked");
+  };
+  const addBlockedSlot = () => {
+    if (!blockDate || !blockTime) return;
+    p.setSettings(prev => ({...prev, blockedSlots: Array.from(new Set([...(prev.blockedSlots || []), `${blockDate}|${blockTime}`]))}));
+    p.showToast("Time slot blocked");
+  };
+  const removeBlockedDate = value => p.setSettings(prev => ({...prev, blockedDates: (prev.blockedDates || []).filter(x => x !== value)}));
+  const removeBlockedSlot = value => p.setSettings(prev => ({...prev, blockedSlots: (prev.blockedSlots || []).filter(x => x !== value)}));
+  return (
+    <div className="pb-6">
+      <HeaderBar title={developerMode ? "Developer Admin" : "Settings"} onBack={()=> p.setScreen(developerMode ? "developerSettings" : "ownerDash")} right={
+        <button onClick={()=> { p.setSettings({...SETTINGS}); p.showToast("Settings reset to defaults"); }} className="text-xs px-3 py-1.5 rounded-full border border-[#1f3b5c] text-[#9FB3C8]">Reset</button>
+      } />
+      <div className="px-5 flex flex-col gap-3">
+
+        {developerMode && (
+          <div className="card bg-[var(--orange)]/10 border-[var(--orange)]/30">
+            <div className="text-sm font-semibold">Developer-only controls</div>
+            <div className="text-xs text-[#C7D8EA] mt-1">This area is for Tim/BrandNew setup. Dane's owner view keeps day-to-day scheduling controls separate.</div>
+            <button className="btn-secondary mt-3 !py-2 text-xs" onClick={()=> p.setScreen("ownerServices")}>Edit customer service prices</button>
+          </div>
+        )}
+
+        {!developerMode && (
+          <>
+            <div className="card">
+              <div className="label-up mb-2">Home Page</div>
+              <div className="text-[11px] text-[#9FB3C8] mb-1">Tagline kicker (small orange line)</div>
+              <input className="input" value={s.homeTaglineKicker} onChange={e=> update("homeTaglineKicker", e.target.value)} />
+              <div className="text-[11px] text-[#9FB3C8] mt-3 mb-1">Tagline (big white line)</div>
+              <textarea className="input" rows="2" value={s.homeTagline} onChange={e=> update("homeTagline", e.target.value)} />
+              <div className="text-[11px] text-[#9FB3C8] mt-3 mb-1">Footer phone / offer line</div>
+              <input className="input" value={s.homeFooterPhone} onChange={e=> update("homeFooterPhone", e.target.value)} />
+              <button className="btn-secondary mt-3 !py-2 text-xs" onClick={()=> { p.setRole("customer"); p.setScreen("home"); p.showToast("Switched to customer view"); }}>Preview as customer</button>
+            </div>
+
+            <div className="card">
+              <div className="label-up mb-2">Booking & Travel</div>
+              <div className="text-xs text-[#9FB3C8] mb-3">Service prices are managed in the developer version.</div>
+              <NumberRow label="Buffer minutes" value={s.bufferMinutes} onChange={v=> update("bufferMinutes", v)} suffix="min" />
+              <NumberRow label="Free travel radius" value={s.freeTravelRadiusMiles} onChange={v=> update("freeTravelRadiusMiles", v)} suffix="mi" />
+              <NumberRow label="Per-mile fee" value={s.perMileFeeCents/100} step="0.05" onChange={v=> update("perMileFeeCents", Math.round(v*100))} prefix="$" />
+            </div>
+
+            <div className="card">
+              <div className="label-up mb-2">Availability</div>
+              <NumberRow label="Minimum booking notice" value={s.minimumBookingNoticeHours ?? 48} onChange={v=> update("minimumBookingNoticeHours", v)} suffix="hrs" />
+              <TimeSelectRow label="Start time" value={s.workingHoursStart ?? 8} onChange={v=> update("workingHoursStart", v)} />
+              <TimeSelectRow label="End time" value={s.workingHoursEnd ?? 19.5} onChange={v=> update("workingHoursEnd", v)} />
+              <div className="grid grid-cols-2 gap-2 mt-3">
+                <input aria-label="Block date" className="input" type="date" value={blockDate} onChange={e=> setBlockDate(e.target.value)} />
+                <select aria-label="Block time slot" className="input" value={blockTime} onChange={e=> setBlockTime(e.target.value)}>
+                  {SLOT_LABELS.map(label => <option key={label} value={label}>{label}</option>)}
+                </select>
+              </div>
+              <div className="grid grid-cols-2 gap-2 mt-2">
+                <button className="btn-secondary !py-2 text-xs" onClick={addBlockedDate}>Block full day</button>
+                <button className="btn-secondary !py-2 text-xs" onClick={addBlockedSlot}>Block time slot</button>
+              </div>
+              <div className="mt-3 flex flex-col gap-2">
+                {(s.blockedDates || []).map(value => (
+                  <button key={value} className="row-tap text-left" onClick={()=> removeBlockedDate(value)}>
+                    <div className="flex-1">
+                      <div className="text-sm font-semibold">Blocked day</div>
+                      <div className="text-xs text-[#9FB3C8]">{value}</div>
+                    </div>
+                    <span className="text-xs text-[#9FB3C8]">Remove</span>
+                  </button>
+                ))}
+                {(s.blockedSlots || []).map(value => (
+                  <button key={value} className="row-tap text-left" onClick={()=> removeBlockedSlot(value)}>
+                    <div className="flex-1">
+                      <div className="text-sm font-semibold">Blocked time</div>
+                      <div className="text-xs text-[#9FB3C8]">{value.replace("|", " at ")}</div>
+                    </div>
+                    <span className="text-xs text-[#9FB3C8]">Remove</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="card">
+              <div className="label-up mb-2">Cancellations & Reschedules</div>
+              <NumberRow label="Deposit forfeits inside" value={s.cancelDepositForfeitDays ?? 7} onChange={v=> update("cancelDepositForfeitDays", v)} suffix="days" />
+              <NumberRow label="Customer reschedule cutoff" value={s.rescheduleCutoffHours ?? 48} onChange={v=> update("rescheduleCutoffHours", v)} suffix="hrs" />
+            </div>
+
+            <div className="card">
+              <div className="label-up mb-2">Business</div>
+              <div className="text-[11px] text-[#9FB3C8] mb-1">Base address</div>
+              <input className="input" value={s.baseAddress} onChange={e=> update("baseAddress", e.target.value)} />
+              <div className="text-[11px] text-[#9FB3C8] mt-3 mb-1">Business phone</div>
+              <input className="input" value={s.businessPhone || SETTINGS.businessPhone} onChange={e=> update("businessPhone", e.target.value)} />
+            </div>
+          </>
+        )}
+
+        {developerMode && (
+          <div className="card">
+            <div className="label-up mb-2">Developer Money Settings</div>
+            <label className="block text-[11px] text-[#9FB3C8] mb-1">Booking submit mode</label>
+            <select aria-label="Booking submit mode" className="input" value={s.bookingSubmissionMode || SETTINGS.bookingSubmissionMode} onChange={e=> update("bookingSubmissionMode", e.target.value)}>
+              <option value="request_only">Request only - no payment</option>
+              <option value="demo_card">Demo card placeholder</option>
+            </select>
+            <div className="text-xs text-[#9FB3C8] mt-2">Use request-only until Stripe/backend work is explicitly approved.</div>
+            <NumberRow label="Deposit amount" value={(s.depositCents ?? 2500)/100} step="1" onChange={v=> update("depositCents", Math.round(v*100))} prefix="$" />
+            <NumberRow label="App cost from Dane's cut" value={(s.companyAppFeeCents ?? 300)/100} step="0.25" onChange={v=> update("companyAppFeeCents", Math.round(v*100))} prefix="$" />
+            <div className="text-xs text-[#9FB3C8] mt-2">Customers do not see this fee. It is tracked on each online purchase or deposit until future BrandNew routing is approved.</div>
+            <label className="row-tap mt-3 justify-between">
+              <span>
+                <span className="block text-sm font-semibold">Customer pays card processing</span>
+                <span className="block text-xs text-[#9FB3C8] mt-1">Default is on so Stripe/card fees are shown before payment.</span>
+              </span>
+              <input type="checkbox" checked={Boolean(s.customerPaysCardProcessingFee)} onChange={e=> update("customerPaysCardProcessingFee", e.target.checked)} />
+            </label>
+            <NumberRow label="Card processing %" value={s.cardProcessingPercent ?? 2.9} step="0.1" onChange={v=> update("cardProcessingPercent", v)} suffix="%" />
+            <NumberRow label="Card fixed fee" value={(s.cardProcessingFixedCents ?? 30)/100} step="0.05" onChange={v=> update("cardProcessingFixedCents", Math.round(v*100))} prefix="$" />
+            <div className="text-[11px] text-[#9FB3C8] mt-3 mb-1">Card processing fee info message</div>
+            <textarea className="input" rows="3" value={s.cardProcessingInfoText || SETTINGS.cardProcessingInfoText} onChange={e=> update("cardProcessingInfoText", e.target.value)} />
+          </div>
+        )}
+
+        {developerMode && (
+          <div className="card">
+            <div className="label-up mb-2">Connections</div>
+            <ConnRow label="Stripe (payouts)" status="Not connected (demo)" />
+            <ConnRow label="SMS/Text provider" status="Owner SMS required; customer SMS limited to On the Way / I'm Here / Completed if enabled" />
+            <ConnRow label="Maps/address tools" status="Browser GPS estimate only; no maps, routing, or reverse geocoding connected" />
+            <ConnRow label="Google Calendar" status="Not connected (demo)" />
+          </div>
+        )}
+
+      </div>
+    </div>
+  );
+};
 
 const NumberRow = ({ label, value, onChange, prefix, suffix, step="1" }) => (
   <div className="flex items-center justify-between gap-3 py-1.5">
@@ -2110,6 +2837,7 @@ const NumberRow = ({ label, value, onChange, prefix, suffix, step="1" }) => (
         type="number"
         step={step}
         className="bg-transparent border-0 outline-none text-white text-sm w-16 text-right"
+        aria-label={label}
         value={value}
         onChange={e=> onChange(parseFloat(e.target.value) || 0)}
       />
@@ -2118,16 +2846,19 @@ const NumberRow = ({ label, value, onChange, prefix, suffix, step="1" }) => (
   </div>
 );
 
-const ToggleRow = ({ label, value, onChange }) => (
+const TimeSelectRow = ({ label, value, onChange }) => (
   <div className="flex items-center justify-between gap-3 py-1.5">
     <div className="text-sm flex-1 min-w-0">{label}</div>
-    <button
-      type="button"
-      onClick={onChange}
-      className={`rounded-full px-3 py-1 text-xs border ${value ? "border-[#f97316] text-[#fed7aa] bg-[#f97316]/10" : "border-[#1f3b5c] text-[#9FB3C8] bg-[#0d2236]"}`}
+    <select
+      aria-label={label}
+      className="bg-[#0d2236] border border-[#1f3b5c] rounded-lg px-2 py-1 text-white text-sm"
+      value={String(value)}
+      onChange={e => onChange(parseFloat(e.target.value))}
     >
-      {value ? "Shown to customer" : "Covered by business"}
-    </button>
+      {TIME_OPTIONS.map(option => (
+        <option key={option} value={String(option)}>{hourOptionLabel(option)}</option>
+      ))}
+    </select>
   </div>
 );
 
@@ -2135,25 +2866,6 @@ const ConnRow = ({ label, status }) => (
   <div className="flex justify-between items-center py-2">
     <div className="text-sm">{label}</div>
     <div className="text-xs text-[#9FB3C8]">{status}</div>
-  </div>
-);
-
-const OwnerBottomNav = ({ active, setScreen }) => (
-  <div className="absolute bottom-0 left-0 right-0 bg-[#08151f]/95 border-t border-[#1f3b5c] backdrop-blur">
-    <div className="flex items-center justify-around py-2 px-3">
-      {[
-        { id:"dash", target:"ownerDash", icon:"home", label:"Dash" },
-        { id:"jobs", target:"ownerJobs", icon:"cal", label:"Jobs" },
-        { id:"tracker", target:"ownerTracker", icon:"flag", label:"Tracker" },
-        { id:"reports", target:"ownerReports", icon:"chart", label:"Reports" },
-        { id:"settings", target:"ownerSettings", icon:"settings", label:"Settings" },
-      ].map(t => (
-        <button key={t.id} onClick={()=> setScreen(t.target)} className={`flex flex-col items-center gap-1 py-1 px-2 rounded-xl ${active===t.id?"nav-chip-active":"text-[#9FB3C8]"}`}>
-          <Icon name={t.icon} className="w-5 h-5" />
-          <span className="text-[10px] font-semibold">{t.label}</span>
-        </button>
-      ))}
-    </div>
   </div>
 );
 

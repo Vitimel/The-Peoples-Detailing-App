@@ -9,11 +9,11 @@ export const decodeVinSample = vin => {
   const clean = normalizeVin(vin);
   if (clean.length < 11) return null;
   const samples = {
-    "5J6RS": { year:"2024", make:"Honda", model:"CR-V", trim:"EX-L", source:"sample VIN fallback" },
-    "7SAYG": { year:"2024", make:"Tesla", model:"Model Y", trim:"Long Range", source:"sample VIN fallback" },
-    "JTMWF": { year:"2019", make:"Toyota", model:"RAV4", trim:"XLE", source:"sample VIN fallback" },
-    "1GNSK": { year:"2023", make:"Chevrolet", model:"Tahoe", trim:"LT", source:"sample VIN fallback" },
-    "1FTEW": { year:"2022", make:"Ford", model:"F-150", trim:"XLT", source:"sample VIN fallback" },
+    "5J6RS": { year:"2024", make:"Honda", model:"CR-V", source:"sample VIN fallback" },
+    "7SAYG": { year:"2024", make:"Tesla", model:"Model Y", source:"sample VIN fallback" },
+    "JTMWF": { year:"2019", make:"Toyota", model:"RAV4", source:"sample VIN fallback" },
+    "1GNSK": { year:"2023", make:"Chevrolet", model:"Tahoe", source:"sample VIN fallback" },
+    "1FTEW": { year:"2022", make:"Ford", model:"F-150", source:"sample VIN fallback" },
   };
   const prefix = Object.keys(samples).find(k => clean.startsWith(k));
   return prefix ? { ...samples[prefix], vin: clean } : null;
@@ -35,7 +35,6 @@ export const parseNhtsaVinResult = (payload, vin) => {
     year,
     make,
     model,
-    trim: row.Trim || row.Series || row.Series2 || "",
     bodyClass: row.BodyClass || "",
     driveType: row.DriveType || "",
     fuelType: row.FuelTypePrimary || "",

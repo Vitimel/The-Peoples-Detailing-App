@@ -17,7 +17,6 @@ describe('VIN lookup helpers', () => {
           ModelYear: '2003',
           Make: 'HONDA',
           Model: 'Accord',
-          Trim: 'EX',
           BodyClass: 'Coupe',
           DriveType: 'FWD',
           FuelTypePrimary: 'Gasoline',
@@ -30,7 +29,6 @@ describe('VIN lookup helpers', () => {
       year: '2003',
       make: 'HONDA',
       model: 'Accord',
-      trim: 'EX',
       source: 'NHTSA vPIC',
     });
   });
