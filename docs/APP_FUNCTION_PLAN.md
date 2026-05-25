@@ -23,6 +23,7 @@ This app should behave like a usable localStorage prototype of The Peoples Detai
 4. Customer-paid card processing remains the default future rule and is calculated only on the amount paid online today once payments are connected.
 5. The $3 app cost is not shown to customers; it is tracked as a Dane-side ledger cost on each online purchase or deposit once payments are connected.
 6. Booking starts as `confirmed`; Dane acknowledges it from Owner Jobs after receiving the notification.
+7. Open slots inside the owner minimum-booking-notice window are selectable as short-notice requests, not blocked. They start as `requested`, require Dane approval, and cannot be self-rescheduled by the customer.
 
 ## Cancellation And Reschedule Rules
 
@@ -42,6 +43,7 @@ This app should behave like a usable localStorage prototype of The Peoples Detai
 - Dane can block full days and individual time slots.
 - Booking and reschedule screens hide or disable blocked/unavailable slots.
 - Service duration plus buffer minutes should be considered when deciding if a slot is available.
+- The minimum booking notice is a short-notice approval window for customers, not a hard block for otherwise open slots.
 
 ## Owner Money And Tax Rules
 

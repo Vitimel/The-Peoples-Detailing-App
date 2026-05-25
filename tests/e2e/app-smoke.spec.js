@@ -474,7 +474,7 @@ test('owner can block a time slot from customer booking', async ({ page }) => {
   await expect(page.getByRole('button', { name: /8:00 AM.*Blocked time/i })).toBeVisible();
 });
 
-test('minimum booking notice automatically blocks near-term customer slots', async ({ page }) => {
+test('minimum booking notice turns near-term open slots into approval requests', async ({ page }) => {
   await page.goto('/?demo=1');
   await page.getByRole('button', { name: /reset demo/i }).click();
   await page.getByRole('button', { name: /^Owner$/i }).click();
@@ -483,5 +483,22 @@ test('minimum booking notice automatically blocks near-term customer slots', asy
   await page.getByRole('button', { name: /^Customer$/i }).click();
   await page.getByRole('button', { name: /Deluxe Detail/i }).click();
   await page.getByRole('button', { name: /Book Deluxe Detail/i }).click();
-  await expect(page.getByRole('button', { name: /10:00 AM.*Too soon/i })).toBeVisible();
+  await expect(page.getByRole('button', { name: /10:00 AM.*Needs approval/i })).toBeEnabled();
+  await expect(page.getByText(/Short-notice times need Dane's approval/i)).toBeVisible();
+  await page.getByRole('button', { name: /Continue to Location & Travel Fee/i }).click();
+  await page.getByRole('button', { name: /Use my current location/i }).click();
+  await page.getByRole('button', { name: /Continue to Checkout/i }).click();
+  await expect(page.getByText(/Short-notice request: Dane needs to approve this time/i)).toBeVisible();
+  await page.getByRole('button', { name: /Request This Time/i }).click();
+  await expect(page.getByRole('heading', { name: /Short-Notice Request Sent/i })).toBeVisible();
+  await expect(page.getByText(/Dane will confirm if this time works/i)).toBeVisible();
+  await page.getByRole('button', { name: /View Booking/i }).click();
+  await expect(page.getByText(/cannot be rescheduled online by the customer/i)).toBeVisible();
+  await page.getByRole('button', { name: /^Owner$/i }).click();
+  await page.locator('button.card').filter({ hasText: 'Jobs' }).click();
+  await page.getByRole('button', { name: 'Requests', exact: true }).click();
+  await page.locator('button.card').filter({ hasText: 'Deluxe Detail' }).first().click();
+  await expect(page.getByText(/Short-notice request needs approval/i)).toBeVisible();
+  await page.getByRole('button', { name: 'Confirm' }).click();
+  await expect(page.getByText('Booking confirmed')).toBeVisible();
 });

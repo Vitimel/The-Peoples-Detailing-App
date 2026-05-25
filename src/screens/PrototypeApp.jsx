@@ -299,7 +299,7 @@ const availableSlotInfo = ({ date, label, bookings, services, service, settings,
   const startHour = slotStart.getHours() + slotStart.getMinutes() / 60;
   const durationMinutes = serviceDurationMinutes(service) + (s.bufferMinutes || 0);
   const slotEnd = new Date(slotStart.getTime() + durationMinutes * 60_000);
-  if (enforceMinimumNotice && slotStart.getTime() < Date.now() + (s.minimumBookingNoticeHours || 0) * 60 * 60_000) return { available: false, reason: "Too soon" };
+  const shortNotice = enforceMinimumNotice && slotStart.getTime() < Date.now() + (s.minimumBookingNoticeHours || 0) * 60 * 60_000;
   if (s.blockedDates.includes(dateKey(slotStart))) return { available: false, reason: "Blocked day" };
   if (s.blockedSlots.includes(slotKey(slotStart, label))) return { available: false, reason: "Blocked time" };
   if (startHour < s.workingHoursStart || startHour >= s.workingHoursEnd) return { available: false, reason: "Outside hours" };
@@ -312,7 +312,7 @@ const availableSlotInfo = ({ date, label, bookings, services, service, settings,
     return rangesOverlap(slotStart, slotEnd, existingStart, existingEnd);
   });
   if (overlaps) return { available: false, reason: "Booked" };
-  return { available: true, reason: "" };
+  return { available: true, reason: shortNotice ? "Needs approval" : "", shortNotice };
 };
 
 const BottomNavShell = ({ role, screen, setScreen }) => {
@@ -566,6 +566,7 @@ const App = () => {
       status: finalDraft.status || "confirmed",
       customer:{ name:"You (Demo)", phone:"(615) 555-0123", vehicle: finalDraft.vehicleLabel || vehicleLabel(activeVehicle) },
       liveLocationOptIn: finalDraft.liveLocationOptIn,
+      shortNoticeRequest: Boolean(finalDraft.shortNoticeRequest),
       requestedAt: finalDraft.requestedAt || null,
       ownerAckStatus: finalDraft.ownerAckStatus || null,
       ownerAcknowledgedAt: finalDraft.ownerAcknowledgedAt || null,
@@ -1013,7 +1014,7 @@ const BookForm = (p) => {
       });
       return;
     }
-    p.setDraft({...p.draft, date: time.toISOString(), liveLocationOptIn: false, vehicleId: currentVehicle?.id, vehicleLabel: vehicleLabel(currentVehicle) });
+    p.setDraft({...p.draft, date: time.toISOString(), liveLocationOptIn: false, shortNoticeRequest: Boolean(info.shortNotice), vehicleId: currentVehicle?.id, vehicleLabel: vehicleLabel(currentVehicle) });
     p.setScreen("location");
   };
 
@@ -1125,6 +1126,11 @@ const BookForm = (p) => {
 
         <div className="mt-5">
           <div className="text-xs uppercase tracking-wider text-[#9FB3C8] mb-2">Select Time</div>
+          {enforceMinimumNotice && (
+            <div className="text-[11px] text-[#fed7aa] mb-2">
+              Short-notice times need Dane's approval and can't be rescheduled online. If this time might change, pick a later spot.
+            </div>
+          )}
           <div className="grid grid-cols-3 gap-2">
             {slots.map(s => {
               const sameTime = isoToTime(time.toISOString()).replace(/\s/g,"") === s.replace(/\s/g,"");
@@ -1138,7 +1144,7 @@ const BookForm = (p) => {
                   className={`py-2.5 rounded-xl border text-sm ${!info.available ? "bg-[#0a1a2c] border-[#1f3b5c] text-[#3e5775] cursor-not-allowed" : sameTime?"bg-[var(--orange)] border-[var(--orange)] text-white":"bg-[#0d2236] border-[#1f3b5c] text-white"}`}
                 >
                   <span>{s}</span>
-                  {!info.available && <span className="block text-[9px] mt-0.5">{info.reason}</span>}
+                  {(info.shortNotice || !info.available) && <span className="block text-[9px] mt-0.5">{info.reason}</span>}
                 </button>
               );
             })}
@@ -1458,6 +1464,7 @@ const Checkout = (p) => {
   const bookingSubmitMode = p.settings?.bookingSubmissionMode || SETTINGS.bookingSubmissionMode;
   const instantBookNoPaymentMode = bookingSubmitMode === "instant_book_no_payment";
   const requestOnlyMode = bookingSubmitMode === "request_only";
+  const shortNoticeRequest = Boolean(p.draft?.shortNoticeRequest);
   const noPaymentMode = instantBookNoPaymentMode || requestOnlyMode;
 
   const applyPromo = () => {
@@ -1518,11 +1525,12 @@ const Checkout = (p) => {
       customerNotificationMethod: "manual",
       ownerNotificationMethod: "manual",
       status: "requested",
+      shortNoticeRequest,
       requestedAt: Date.now(),
     };
     p.setDraft(finalDraft);
     p.confirmBooking(finalDraft);
-    p.showToast("Booking request saved. Text or call Dane to confirm.");
+    p.showToast(shortNoticeRequest ? "Short-notice request saved for Dane." : "Booking request saved. Text or call Dane to confirm.");
   };
 
   const bookConfirmedNoPayment = () => {
@@ -1574,12 +1582,17 @@ const Checkout = (p) => {
 
         <div className="mt-4">
           <div className="text-xs uppercase tracking-wider text-[#9FB3C8] mb-2">{noPaymentMode ? "Payment Preference" : "Payment Option"}</div>
+          {shortNoticeRequest && (
+            <div className="card mb-2 bg-[var(--orange)]/10 border-[var(--orange)]/30 text-xs text-[#C7D8EA]">
+              Short-notice request: Dane needs to approve this time, and customer rescheduling is handled by message or call instead of online.
+            </div>
+          )}
           <div className="grid gap-2">
             <button className={`card text-left border ${paymentChoice === "card_full" ? "border-[var(--orange)] bg-[var(--orange)]/10" : "border-[#1f3b5c]"}`} onClick={()=> setPaymentChoice("card_full")}>
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <div className="text-sm font-bold">{noPaymentMode ? "Prefer full card payment" : "Pay full amount by card"}</div>
-                  <div className="text-xs text-[#9FB3C8] mt-1">{noPaymentMode ? "Your spot is booked now. Online payment can be connected later." : "Preferred. Confirms the job and marks the balance paid."}</div>
+                  <div className="text-xs text-[#9FB3C8] mt-1">{shortNoticeRequest ? "Dane approves this short-notice request before the time is locked." : noPaymentMode ? "Your spot is booked now. Online payment can be connected later." : "Preferred. Confirms the job and marks the balance paid."}</div>
                 </div>
                 <div className="price-orange text-sm">{cents(paymentChoice === "card_full" ? total : calculateCustomerCheckoutTotals({ servicePriceCents: p.draft?.priceCents || 0, travelFeeCents: p.draft?.travelFeeCents || 0, discountCents, paymentChoice: "card_full", settings: p.settings }).totalDueTodayCents)}</div>
               </div>
@@ -1635,7 +1648,9 @@ const Checkout = (p) => {
           {noPaymentMode && <Row label="Collected now" value={<span className="text-[#4ade80] font-bold">$0.00</span>} />}
           <div className="mt-2 text-[11px] text-[#9FB3C8] leading-relaxed">
             {instantBookNoPaymentMode
-              ? "No card is charged in this version. Booking this spot holds the time and notifies Dane in the owner view."
+              ? shortNoticeRequest
+                ? "No card is charged in this version. This short-notice request goes to Dane for approval before the time is confirmed."
+                : "No card is charged in this version. Booking this spot holds the time and notifies Dane in the owner view."
               : requestOnlyMode
                 ? "No card is charged in this version. Submit the request, then text or call Dane to confirm the appointment."
               : "No surprise charges. The $3 app cost is not added to customer checkout; it is tracked from Dane's cut on each online payment."}
@@ -1644,13 +1659,13 @@ const Checkout = (p) => {
 
         <div className="flex items-center gap-2 text-xs text-[#9FB3C8] mt-3">
           <Icon name="shield" className="w-4 h-4 text-[#4ade80]" />
-          <span>{instantBookNoPaymentMode ? "Instant booking mode - no real payment is collected yet." : requestOnlyMode ? "Request-only mode - no real payment is collected yet." : "Secure checkout placeholder - Stripe can be connected later - no real payment is collected in this prototype"}</span>
+          <span>{shortNoticeRequest ? "Short-notice request - no real payment is collected yet." : instantBookNoPaymentMode ? "Instant booking mode - no real payment is collected yet." : requestOnlyMode ? "Request-only mode - no real payment is collected yet." : "Secure checkout placeholder - Stripe can be connected later - no real payment is collected in this prototype"}</span>
         </div>
 
         <div className="mt-5">
-          <button className="btn-primary glow-orange flex items-center justify-center gap-2" onClick={instantBookNoPaymentMode ? bookConfirmedNoPayment : requestOnlyMode ? requestBooking : pay}>
+          <button className="btn-primary glow-orange flex items-center justify-center gap-2" onClick={shortNoticeRequest ? requestBooking : instantBookNoPaymentMode ? bookConfirmedNoPayment : requestOnlyMode ? requestBooking : pay}>
             <Icon name="receipt" className="w-4 h-4" />
-            <span>{instantBookNoPaymentMode ? "Book This Spot - No Payment Today" : requestOnlyMode ? "Request Booking - No Payment Today" : `${paymentChoice === "card_full" ? "Pay Full Amount" : "Pay Deposit"} with Card - ${cents(total)}`}</span>
+            <span>{shortNoticeRequest ? "Request This Time - No Payment Today" : instantBookNoPaymentMode ? "Book This Spot - No Payment Today" : requestOnlyMode ? "Request Booking - No Payment Today" : `${paymentChoice === "card_full" ? "Pay Full Amount" : "Pay Deposit"} with Card - ${cents(total)}`}</span>
           </button>
         </div>
       </div>
@@ -1668,6 +1683,7 @@ const Row = ({ label, value, valueClass="", bold=false }) => (
 const Confirmation = (p) => {
   const b = p.bookings.find(b => b.id === p.activeBookingId) || p.bookings[0];
   const isRequest = b?.status === "requested";
+  const isShortNotice = isRequest && b?.shortNoticeRequest;
   const needsAck = b?.status === "confirmed" && !b?.ownerAcknowledgedAt && b?.ownerAckStatus !== "reschedule_requested";
   const requestMessage = b ? bookingRequestMessage(b, p.settings) : "";
   const businessPhone = p.settings?.businessPhone || SETTINGS.businessPhone;
@@ -1689,8 +1705,8 @@ const Confirmation = (p) => {
         <div className="w-20 h-20 rounded-full bg-[#4ade80]/15 flex items-center justify-center mb-3">
           <Icon name="check" className="w-10 h-10 text-[#4ade80]" strokeWidth={3} />
         </div>
-        <h2 className="text-2xl font-extrabold">{isRequest ? "Request Ready" : "You're Booked!"}</h2>
-        <p className="text-sm text-[#9FB3C8] mt-1">{isRequest ? "No payment was collected. Text or call Dane to confirm this appointment." : "Your spot is booked. Dane has been notified."}</p>
+        <h2 className="text-2xl font-extrabold">{isShortNotice ? "Short-Notice Request Sent" : isRequest ? "Request Ready" : "You're Booked!"}</h2>
+        <p className="text-sm text-[#9FB3C8] mt-1">{isShortNotice ? "Dane will confirm if this time works. No payment has been collected." : isRequest ? "No payment was collected. Text or call Dane to confirm this appointment." : "Your spot is booked. Dane has been notified."}</p>
       </div>
 
       <div className="px-5 mt-5">
@@ -1720,8 +1736,8 @@ const Confirmation = (p) => {
 
         {isRequest && (
           <div className="card mt-3 bg-[var(--orange)]/10 border-[var(--orange)]/30">
-            <div className="text-sm font-semibold">Send this request to Dane</div>
-            <div className="text-xs text-[#C7D8EA] mt-1">This version does not have a backend yet, so the free working bridge is text or call.</div>
+            <div className="text-sm font-semibold">{isShortNotice ? "Short-notice approval needed" : "Send this request to Dane"}</div>
+            <div className="text-xs text-[#C7D8EA] mt-1">{isShortNotice ? "Because this is inside the notice window, changes need to be handled by message or call instead of online rescheduling." : "This version does not have a backend yet, so the free working bridge is text or call."}</div>
             <div className="grid grid-cols-2 gap-2 mt-3">
               <a className="btn-primary !py-2 text-center text-sm" href={smsHref(businessPhone, requestMessage)}>Text Dane</a>
               <a className="btn-secondary !py-2 text-center text-sm" href={telHref(businessPhone)}>Call Dane</a>
@@ -1741,8 +1757,8 @@ const Confirmation = (p) => {
           <div className="flex flex-col gap-2">
             {isRequest ? (
               <>
-                <NextStepRow icon="msg" title="Text or call Dane" body="Send the request details so Dane can approve the time." />
-                <NextStepRow icon="cal" title="Dane confirms the job" body="The owner side can move a request into confirmed status." />
+                <NextStepRow icon="msg" title={isShortNotice ? "Dane reviews the time" : "Text or call Dane"} body={isShortNotice ? "Short-notice times are approved by Dane before they are confirmed." : "Send the request details so Dane can approve the time."} />
+                <NextStepRow icon="cal" title="Changes by message or call" body="This request cannot be rescheduled online by the customer because it is inside the notice window." />
                 <NextStepRow icon="receipt" title="Payment comes later" body="Stripe or deposits are not connected until approved." />
               </>
             ) : (
@@ -1852,7 +1868,8 @@ const BookingDetail = (p) => {
   const trackerIdx = Math.max(0, TRACKER_STEPS.findIndex(step => step.id === trackerStatus));
   const trackerCurrent = TRACKER_STEPS[trackerIdx] || TRACKER_STEPS[0];
   const isActiveBooking = ["requested", "confirmed"].includes(b.status);
-  const directRescheduleAllowed = isActiveBooking && canCustomerReschedule(b, p.settings);
+  const isShortNoticeRequest = b.status === "requested" && b.shortNoticeRequest;
+  const directRescheduleAllowed = isActiveBooking && !isShortNoticeRequest && canCustomerReschedule(b, p.settings);
   const cancelOutcome = customerCancelOutcome(b, p.settings);
 
   return (
@@ -1889,8 +1906,8 @@ const BookingDetail = (p) => {
 
         {b.status==="requested" && (
           <div className="card mt-3 bg-[var(--orange)]/10 border-[var(--orange)]/30">
-            <div className="text-sm font-semibold">Waiting on Dane to confirm</div>
-            <div className="text-xs text-[#C7D8EA] mt-1">No payment has been collected yet. Text or call to finish confirming this request.</div>
+            <div className="text-sm font-semibold">{isShortNoticeRequest ? "Short-notice request sent" : "Waiting on Dane to confirm"}</div>
+            <div className="text-xs text-[#C7D8EA] mt-1">{isShortNoticeRequest ? "Dane will confirm if this time works. Because this is inside the notice window, changes need to be handled by message or call instead of online rescheduling." : "No payment has been collected yet. Text or call to finish confirming this request."}</div>
             <div className="grid grid-cols-2 gap-2 mt-3">
               <a className="btn-primary !py-2 text-center text-sm" href={smsHref(p.settings?.businessPhone || SETTINGS.businessPhone, bookingRequestMessage(b, p.settings))}>Text Dane</a>
               <a className="btn-secondary !py-2 text-center text-sm" href={telHref(p.settings?.businessPhone || SETTINGS.businessPhone)}>Call Dane</a>
@@ -1958,7 +1975,9 @@ const BookingDetail = (p) => {
         {isActiveBooking && (
           <div className="text-[11px] text-[#9FB3C8] mt-2">
             {b.status === "requested"
-              ? `No payment has been collected yet. Canceling closes the request.`
+              ? isShortNoticeRequest
+                ? `No payment has been collected yet. Short-notice requests cannot be rescheduled online by the customer.`
+                : `No payment has been collected yet. Canceling closes the request.`
               : `Reschedule online until ${p.settings.rescheduleCutoffHours || 48} hours before. Cancel inside ${p.settings.cancelDepositForfeitDays || 7} days and the ${cents(b.depositCents || p.settings.depositCents)} deposit is forfeited. Current cancel outcome: ${cancelOutcome.cancellationOutcome}.`}
           </div>
         )}
@@ -2495,8 +2514,8 @@ const OwnerJobDetail = (p) => {
         </div>
         {isRequested && (
           <div className="card mt-3 bg-[var(--orange)]/10 border-[var(--orange)]/30">
-            <div className="text-sm font-semibold">Booking request needs approval</div>
-            <div className="text-xs text-[#C7D8EA] mt-1">No payment has been collected. Contact the customer, then confirm or decline the request.</div>
+            <div className="text-sm font-semibold">{b.shortNoticeRequest ? "Short-notice request needs approval" : "Booking request needs approval"}</div>
+            <div className="text-xs text-[#C7D8EA] mt-1">{b.shortNoticeRequest ? "This time is inside the notice window and cannot be rescheduled online by the customer. Message them if the time needs to move." : "No payment has been collected. Contact the customer, then confirm or decline the request."}</div>
             <div className="grid grid-cols-2 gap-2 mt-3">
               <a className="btn-primary !py-2 text-center text-sm" href={smsHref(b.customer?.phone, ownerCustomerMessage(b))}>Text Customer</a>
               <a className="btn-secondary !py-2 text-center text-sm" href={telHref(b.customer?.phone)}>Call Customer</a>
