@@ -234,6 +234,25 @@ test('typed exact Franklin address estimates travel fee before checkout', async 
   await expect(page.getByText('$42.00')).toBeVisible();
 });
 
+test('current location booking gives owner directions to GPS coordinates', async ({ page }) => {
+  await page.context().grantPermissions(['geolocation']);
+  await page.context().setGeolocation({ latitude: 35.9251, longitude: -86.8689 });
+  await resetAndEnterHome(page);
+  await page.getByRole('button', { name: /Basic Detail/i }).click();
+  await page.getByRole('button', { name: /Book Basic Detail/i }).click();
+  await page.getByRole('button', { name: /Continue to Location & Travel Fee/i }).click();
+  await page.getByRole('button', { name: /Use my current location/i }).click();
+  await expect(page.getByText(/GPS pinned for Dane's directions/i)).toBeVisible();
+  await page.getByRole('button', { name: /Continue to Checkout/i }).click();
+  await page.getByRole('button', { name: /Book This Spot/i }).click();
+  await expect(page.getByRole('heading', { name: /You're Booked/i })).toBeVisible();
+  await page.getByRole('button', { name: /^Owner$/i }).click();
+  await page.locator('button.card').filter({ hasText: 'Jobs' }).click();
+  await page.locator('button.card').filter({ hasText: 'Basic Detail' }).first().click();
+  await expect(page.getByText(/Directions use pinned GPS coordinates/i)).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Open Directions' })).toHaveAttribute('href', /destination=35\.9251%2C-86\.8689/);
+});
+
 test('promo and saved vehicle carry into instant booking', async ({ page }) => {
   await resetAndEnterHome(page);
   await page.getByRole('button', { name: /Deluxe Detail/i }).click();

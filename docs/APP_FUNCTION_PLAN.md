@@ -11,6 +11,7 @@ This app should behave like a usable localStorage prototype of The Peoples Detai
 - One frontend app is split by route: `/` is the public customer booking app, `/owner` is Dane's operations app, and `/developer` is Tim/BrandNew admin.
 - The Customer/Owner/Developer role switcher and Reset Demo controls are only visible with `?demo=1` for local/testing review.
 - NHTSA vPIC VIN lookup is the only connected external API.
+- Owner directions use ordinary Google Maps URL links. Customer browser GPS can save a pinned coordinate for owner directions when permission is granted.
 - No production Stripe, SMS, email, auth, backend, database, calendar, maps/routing, reverse geocoding, or automatic payout routing is connected.
 - No secret keys or private credentials belong in this GitHub repo or the GitHub Pages frontend.
 

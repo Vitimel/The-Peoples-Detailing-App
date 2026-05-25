@@ -207,7 +207,16 @@ const normalizeBooking = (booking, settings = SETTINGS) => {
 const hoursUntilBooking = booking => (new Date(booking.startIso).getTime() - Date.now()) / 36e5;
 const daysUntilBooking = booking => hoursUntilBooking(booking) / 24;
 const canCustomerReschedule = (booking, settings) => hoursUntilBooking(booking) >= (normalizedSettings(settings).rescheduleCutoffHours || 48);
-const directionsUrl = address => `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(address || "")}`;
+const directionsUrl = target => {
+  const lat = Number(target?.lat);
+  const lng = Number(target?.lng);
+  const destination = Number.isFinite(lat) && Number.isFinite(lng)
+    ? `${lat},${lng}`
+    : typeof target === "string"
+      ? target
+      : target?.address || "";
+  return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination)}`;
+};
 const phoneDigits = value => String(value || "").replace(/[^\d+]/g, "");
 const telHref = phone => `tel:${phoneDigits(phone)}`;
 const smsHref = (phone, body = "") => `sms:${phoneDigits(phone)}?&body=${encodeURIComponent(body)}`;
@@ -488,7 +497,7 @@ const App = () => {
       priceCents: booking.priceCents || svc.priceCents,
       date: booking.startIso,
       address: booking.address,
-      lat: null, lng: null,
+      lat: booking.lat ?? null, lng: booking.lng ?? null,
       liveLocationOptIn: booking.liveLocationOptIn,
       vehicleId: activeVehicle?.id || "vehicle-demo-1",
       vehicleLabel: booking.customer?.vehicle || vehicleLabel(activeVehicle),
@@ -534,6 +543,8 @@ const App = () => {
       priceCents: finalDraft.priceCents,
       startIso: finalDraft.date,
       address: finalDraft.address || "123 Demo St, Murfreesboro, TN 37130",
+      lat: finalDraft.lat ?? null,
+      lng: finalDraft.lng ?? null,
       travelMiles: finalDraft.travelMiles,
       travelFeeCents: finalDraft.travelFeeCents,
       discountCents: finalDraft.discountCents,
@@ -705,7 +716,7 @@ const FooterNote = () => {
   if (!isDebug) return null;
   return (
     <div className="text-center text-xs text-[#5e7894] pb-8 px-4 max-w-[600px]">
-      Prototype built from <code>App_Build_Master_Spec.md</code>. Browser GPS estimate only; no real payments or calendar.
+      Prototype built from <code>App_Build_Master_Spec.md</code>. Browser GPS and Maps links only; no real payments or calendar.
       The next step is "make it active" — see <code>App_Build_Packet/HOW_TO_MAKE_IT_ACTIVE.md</code>.
     </div>
   );
@@ -1263,6 +1274,7 @@ const LocationStep = (p) => {
   const [address, setAddress] = useState(p.draft?.address || "");
   const [useGps, setUseGps] = useState(false);
   const [miles, setMiles] = useState(p.draft?.travelMiles || 0);
+  const [coords, setCoords] = useState(() => p.draft?.lat && p.draft?.lng ? { lat: p.draft.lat, lng: p.draft.lng } : null);
   const [travelChecked, setTravelChecked] = useState(Boolean(p.draft?.address));
   const [gpsStatus, setGpsStatus] = useState("");
   const [addressStatus, setAddressStatus] = useState("");
@@ -1277,6 +1289,7 @@ const LocationStep = (p) => {
     setGpsStatus("Requesting browser location...");
 
     const useDemoLocation = () => {
+      setCoords(null);
       setAddress("Current location (demo fallback) · 218 Demo Ave, Murfreesboro, TN");
       setMiles(12.4);
       setTravelChecked(true);
@@ -1294,10 +1307,11 @@ const LocationStep = (p) => {
       ({ coords }) => {
         const customerLocation = { lat: coords.latitude, lng: coords.longitude };
         const estimatedMiles = milesBetween(MURFREESBORO_BASE, customerLocation);
+        setCoords(customerLocation);
         setAddress(`GPS location captured · ${coords.latitude.toFixed(5)}, ${coords.longitude.toFixed(5)}`);
         setMiles(Number(estimatedMiles.toFixed(1)));
         setTravelChecked(true);
-        setGpsStatus(`Browser GPS captured. Distance is estimated from ${p.settings.baseAddress || SETTINGS.baseAddress}.`);
+        setGpsStatus(`GPS pinned for Dane's directions. Travel fee is estimated from ${p.settings.baseAddress || SETTINGS.baseAddress}.`);
         setAddressStatus("");
         p.showToast("GPS location captured");
       },
@@ -1315,8 +1329,8 @@ const LocationStep = (p) => {
 
     if (useGps && miles > 0) {
       setTravelChecked(true);
-      setAddressStatus("Travel fee checked from the current location estimate.");
-      return { finalMiles: miles, finalAddress: cleanAddress };
+      setAddressStatus(coords ? "Travel fee checked. Dane's directions will use the pinned GPS location." : "Travel fee checked from the current location estimate.");
+      return { finalMiles: miles, finalAddress: cleanAddress, finalLat: coords?.lat ?? null, finalLng: coords?.lng ?? null };
     }
 
     const estimate = estimateMilesFromAddress(cleanAddress);
@@ -1331,7 +1345,7 @@ const LocationStep = (p) => {
     setMiles(finalMiles);
     setTravelChecked(true);
     setAddressStatus(`Travel fee checked from ${estimate.label} using the city or ZIP in the typed address.`);
-    return { finalMiles, finalAddress };
+    return { finalMiles, finalAddress, finalLat: null, finalLng: null };
   };
 
   const next = () => {
@@ -1346,12 +1360,12 @@ const LocationStep = (p) => {
       return;
     }
 
-    const checked = useGps ? { finalMiles: miles, finalAddress: cleanAddress } : checkTravelFee();
+    const checked = useGps ? { finalMiles: miles, finalAddress: cleanAddress, finalLat: coords?.lat ?? null, finalLng: coords?.lng ?? null } : checkTravelFee();
     if (!checked) return;
 
-    const { finalMiles, finalAddress } = checked;
+    const { finalMiles, finalAddress, finalLat, finalLng } = checked;
     const finalTravelFeeCents = calculateTravelFeeCents(finalMiles, p.settings);
-    p.setDraft({...p.draft, address: finalAddress, travelMiles: finalMiles, travelFeeCents: finalTravelFeeCents });
+    p.setDraft({...p.draft, address: finalAddress, lat: finalLat, lng: finalLng, travelMiles: finalMiles, travelFeeCents: finalTravelFeeCents });
     p.setScreen("checkout");
   };
 
@@ -1377,7 +1391,7 @@ const LocationStep = (p) => {
 
         <div className="mt-4">
           <div className="text-xs uppercase tracking-wider text-[#9FB3C8] mb-2">Service Address</div>
-          <input className="input" placeholder="Enter address, city, or ZIP, like 405 Main St, Franklin, TN 37064" value={address} onChange={e=> { setAddress(e.target.value); setAddressStatus(""); setGpsStatus(""); setUseGps(false); setTravelChecked(false); if (miles !== 0) setMiles(0); }} />
+          <input className="input" placeholder="Enter address, city, or ZIP, like 405 Main St, Franklin, TN 37064" value={address} onChange={e=> { setAddress(e.target.value); setAddressStatus(""); setGpsStatus(""); setCoords(null); setUseGps(false); setTravelChecked(false); if (miles !== 0) setMiles(0); }} />
           <button className="btn-primary mt-2 flex items-center justify-center gap-2" onClick={checkTravelFee}>
             <Icon name="check" className="w-4 h-4" />
             <span>Check travel fee</span>
@@ -2540,12 +2554,15 @@ const OwnerJobDetail = (p) => {
         <div className="card mt-3 text-sm">
           <div className="label-up mb-1">Address</div>
           {b.address}
+          {Number.isFinite(Number(b.lat)) && Number.isFinite(Number(b.lng)) && (
+            <div className="text-xs text-[#9FB3C8] mt-1">Directions use pinned GPS coordinates.</div>
+          )}
         </div>
 
         <div className="mt-4 grid grid-cols-2 gap-2">
           <a
             className="btn-primary !py-3 text-center"
-            href={directionsUrl(b.address)}
+            href={directionsUrl(b)}
             target="_blank"
             rel="noreferrer"
           >
@@ -3041,7 +3058,7 @@ const OwnerSettings = (p) => {
             <div className="label-up mb-2">Connections</div>
             <ConnRow label="Stripe (payouts)" status="Not connected (demo)" />
             <ConnRow label="SMS/Text provider" status="Owner SMS required; customer SMS limited to On the Way / I'm Here / Completed if enabled" />
-            <ConnRow label="Maps/address tools" status="Browser GPS estimate only; no maps, routing, or reverse geocoding connected" />
+            <ConnRow label="Maps/address tools" status="Maps links and browser GPS pinning only; no paid Maps API, live routing, or reverse geocoding connected" />
             <ConnRow label="Google Calendar" status="Not connected (demo)" />
           </div>
         )}
