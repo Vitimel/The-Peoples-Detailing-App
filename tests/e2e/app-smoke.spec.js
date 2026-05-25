@@ -7,10 +7,17 @@ async function resetAndEnterHome(page) {
   await expect(page.getByText('Our Services')).toBeVisible();
 }
 
+async function chooseGuestAccess(page) {
+  await expect(page.getByRole('heading', { name: 'Before You Book' })).toBeVisible();
+  await expect(page.getByText(/Book fast, save details later/i)).toBeVisible();
+  await page.getByRole('button', { name: /Continue as guest/i }).click();
+}
+
 async function reachCheckout(page) {
   await resetAndEnterHome(page);
   await page.getByRole('button', { name: /Deluxe Detail/i }).click();
   await page.getByRole('button', { name: /Book Deluxe Detail/i }).click();
+  await chooseGuestAccess(page);
   await page.getByRole('button', { name: /Continue to Location & Travel Fee/i }).click();
   await page.getByRole('button', { name: /Use my current location/i }).click();
   await page.getByRole('button', { name: /Continue to Checkout/i }).click();
@@ -92,6 +99,7 @@ test('default end time lets short 4 PM jobs fit', async ({ page }) => {
   await resetAndEnterHome(page);
   await page.getByRole('button', { name: /Monthly Maintenance/i }).click();
   await page.getByRole('button', { name: /Book Monthly Maintenance/i }).click();
+  await chooseGuestAccess(page);
   await expect(page.getByRole('button', { name: '4:00 PM', exact: true })).toBeEnabled();
 });
 
@@ -99,12 +107,14 @@ test('basic detail can use 4 PM but deluxe still needs earlier time', async ({ p
   await resetAndEnterHome(page);
   await page.getByRole('button', { name: /Basic Detail/i }).click();
   await page.getByRole('button', { name: /Book Basic Detail/i }).click();
+  await chooseGuestAccess(page);
   await expect(page.getByRole('button', { name: '4:00 PM', exact: true })).toBeEnabled();
 
   await page.getByRole('button', { name: 'Go back' }).click();
   await page.getByRole('button', { name: 'Go back' }).click();
   await page.getByRole('button', { name: /Deluxe Detail/i }).click();
   await page.getByRole('button', { name: /Book Deluxe Detail/i }).click();
+  await chooseGuestAccess(page);
   await expect(page.getByRole('button', { name: /4:00 PM.*Needs more time/i })).toBeVisible();
 });
 
@@ -112,6 +122,7 @@ test('date strip keeps the previous date visible after selecting the next day', 
   await resetAndEnterHome(page);
   await page.getByRole('button', { name: /Basic Detail/i }).click();
   await page.getByRole('button', { name: /Book Basic Detail/i }).click();
+  await chooseGuestAccess(page);
   const firstDateId = await page.locator('button[data-testid^="date-strip-day-"]').first().getAttribute('data-testid');
   const secondDate = page.locator('button[data-testid^="date-strip-day-"]').nth(1);
   await secondDate.click();
@@ -212,7 +223,7 @@ test('customer can continue as guest and choose not to save profile info', async
   await resetAndEnterHome(page);
   await page.getByRole('button', { name: /Basic Detail/i }).click();
   await page.getByRole('button', { name: /Book Basic Detail/i }).click();
-  await expect(page.getByText('Customer Access')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Before You Book' })).toBeVisible();
   await expect(page.getByRole('button', { name: /Sign in \/ Create profile/i })).toBeVisible();
   await page.getByRole('button', { name: /Continue as guest/i }).click();
   await page.getByRole('button', { name: /Continue to Location & Travel Fee/i }).click();
@@ -229,8 +240,8 @@ test('guest confirmation can prepare profile save without real auth', async ({ p
   await resetAndEnterHome(page);
   await page.getByRole('button', { name: /Monthly Maintenance/i }).click();
   await page.getByRole('button', { name: /Book Monthly Maintenance/i }).click();
-  await page.getByRole('button', { name: /Sign in \/ Create profile/i }).click();
-  await expect(page.getByText(/Profile setup will connect/i)).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Before You Book' })).toBeVisible();
+  await expect(page.getByText(/no account is created in this preview/i)).toBeVisible();
   await page.getByRole('button', { name: /Continue as guest/i }).click();
   await page.getByRole('button', { name: /Continue to Location & Travel Fee/i }).click();
   await page.getByRole('button', { name: /Use my current location/i }).click();
@@ -245,6 +256,7 @@ test('typed Nashville service address estimates travel fee before checkout', asy
   await resetAndEnterHome(page);
   await page.getByRole('button', { name: /Deluxe Detail/i }).click();
   await page.getByRole('button', { name: /Book Deluxe Detail/i }).click();
+  await chooseGuestAccess(page);
   await page.getByRole('button', { name: /Continue to Location & Travel Fee/i }).click();
   await expect(page.getByText(/Check the address before checkout/i)).toBeVisible();
   await expect(page.locator('.map-bg')).toHaveCount(0);
@@ -261,6 +273,7 @@ test('typed exact Franklin address estimates travel fee before checkout', async 
   await resetAndEnterHome(page);
   await page.getByRole('button', { name: /Deluxe Detail/i }).click();
   await page.getByRole('button', { name: /Book Deluxe Detail/i }).click();
+  await chooseGuestAccess(page);
   await page.getByRole('button', { name: /Continue to Location & Travel Fee/i }).click();
   await page.getByPlaceholder(/Enter address, city, or ZIP/i).fill('405 Main St, Franklin, TN 37064');
   await page.getByRole('button', { name: /Continue to Checkout/i }).click();
@@ -279,6 +292,7 @@ test('current location booking gives owner directions to GPS coordinates', async
   await resetAndEnterHome(page);
   await page.getByRole('button', { name: /Basic Detail/i }).click();
   await page.getByRole('button', { name: /Book Basic Detail/i }).click();
+  await chooseGuestAccess(page);
   await page.getByRole('button', { name: /Continue to Location & Travel Fee/i }).click();
   await page.getByRole('button', { name: /Use my current location/i }).click();
   await expect(page.getByText(/GPS pinned for Dane's directions/i)).toBeVisible();
@@ -296,6 +310,7 @@ test('promo and saved vehicle carry into instant booking', async ({ page }) => {
   await resetAndEnterHome(page);
   await page.getByRole('button', { name: /Deluxe Detail/i }).click();
   await page.getByRole('button', { name: /Book Deluxe Detail/i }).click();
+  await chooseGuestAccess(page);
   await page.getByRole('button', { name: /Pick a saved vehicle/i }).click();
   await page.getByPlaceholder(/White F-150/i).fill('White F-150');
   await page.getByLabel('Year').fill('2022');
@@ -395,6 +410,7 @@ test('developer settings show app cost while owner tracker statuses render', asy
   await page.getByRole('button', { name: /^Customer$/i }).click();
   await page.getByRole('button', { name: /Deluxe Detail/i }).click();
   await page.getByRole('button', { name: /Book Deluxe Detail/i }).click();
+  await chooseGuestAccess(page);
   await page.getByRole('button', { name: /Continue to Location & Travel Fee/i }).click();
   await page.getByRole('button', { name: /Use my current location/i }).click();
   await page.getByRole('button', { name: /Continue to Checkout/i }).click();
@@ -427,6 +443,7 @@ test('BrandNew app cost context stays on owner reports, not customer checkout', 
   await page.getByRole('button', { name: /Book now/i }).click();
   await page.getByRole('button', { name: /Deluxe Detail/i }).click();
   await page.getByRole('button', { name: /Book Deluxe Detail/i }).click();
+  await chooseGuestAccess(page);
   await page.getByRole('button', { name: /Continue to Location & Travel Fee/i }).click();
   await page.getByRole('button', { name: /Use my current location/i }).click();
   await page.getByRole('button', { name: /Continue to Checkout/i }).click();
@@ -525,6 +542,7 @@ test('owner can block a time slot from customer booking', async ({ page }) => {
   await page.getByRole('button', { name: /^Customer$/i }).click();
   await page.getByRole('button', { name: /Deluxe Detail/i }).click();
   await page.getByRole('button', { name: /Book Deluxe Detail/i }).click();
+  await chooseGuestAccess(page);
   await expect(page.getByRole('button', { name: /8:00 AM.*Blocked time/i })).toBeVisible();
 });
 
@@ -537,6 +555,7 @@ test('minimum booking notice turns near-term open slots into approval requests',
   await page.getByRole('button', { name: /^Customer$/i }).click();
   await page.getByRole('button', { name: /Deluxe Detail/i }).click();
   await page.getByRole('button', { name: /Book Deluxe Detail/i }).click();
+  await chooseGuestAccess(page);
   await expect(page.getByRole('button', { name: /10:00 AM.*Needs approval/i })).toBeEnabled();
   await expect(page.getByText(/Short-notice times need Dane's approval/i)).toBeVisible();
   await page.getByRole('button', { name: /Continue to Location & Travel Fee/i }).click();

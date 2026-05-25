@@ -518,7 +518,7 @@ const App = () => {
       customerAccessMode: "guest",
       profileSaveChoice: null,
     });
-    setScreen("book");
+    setScreen("customerAccess");
   };
 
   const beginReschedule = bookingId => {
@@ -847,6 +847,7 @@ const Screen = (p) => {
       case "home": return <Home {...p} />;
       case "priceList": return <PriceList {...p} />;
       case "serviceDetail": return <ServiceDetail {...p} />;
+      case "customerAccess": return <CustomerAccess {...p} />;
       case "book": return <BookForm {...p} />;
       case "location": return <LocationStep {...p} />;
       case "checkout": return <Checkout {...p} />;
@@ -1066,6 +1067,44 @@ const ServiceDetail = (p) => {
   );
 };
 
+const CustomerAccess = (p) => {
+  const svc = p.services.find(s => s.id === p.draft?.serviceId) || p.services.find(s => s.id === p.activeBookingId) || p.services[0];
+  const choose = mode => {
+    p.setDraft({ ...p.draft, customerAccessMode: mode });
+    p.setScreen("book");
+    p.showToast(mode === "account_start" ? "Profile setup can be connected later" : "Continuing as guest");
+  };
+
+  return (
+    <div className="pb-6">
+      <HeaderBar title="Before You Book" subtitle="Customer" onBack={()=> p.setScreen("serviceDetail")} />
+      <div className="px-5">
+        <div className="card flex items-center justify-between">
+          <div>
+            <div className="text-[11px] uppercase tracking-wider text-[#9FB3C8]">Service</div>
+            <div className="text-base font-bold">{svc.title}</div>
+          </div>
+          <div className="price-orange text-lg">{cents(svc.priceCents)}</div>
+        </div>
+
+        <div className="card mt-3">
+          <div className="text-lg font-bold">Book fast, save details later.</div>
+          <div className="text-sm text-[#C7D8EA] mt-2">
+            You can book as a guest today. After your booking, you can choose whether to save your name and vehicle for next time.
+          </div>
+          <div className="grid gap-2 mt-4">
+            <button className="btn-primary" onClick={()=> choose("guest")}>Continue as guest</button>
+            <button className="btn-secondary" onClick={()=> choose("account_start")}>Sign in / Create profile</button>
+          </div>
+          <div className="text-[11px] text-[#9FB3C8] mt-3">
+            Profile login is prepared for the real backend, but no account is created in this preview.
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const Stepper = ({ step }) => (
   <div className="flex items-center gap-2 px-5 mt-3 mb-3">
     {["Service","Location","Checkout"].map((label,i) => (
@@ -1090,10 +1129,6 @@ const BookForm = (p) => {
     const hour = parseSlotLabel(label).h;
     return hour >= (p.settings.workingHoursStart ?? 8) && hour < (p.settings.workingHoursEnd ?? 18);
   });
-  const setAccessMode = mode => {
-    p.setDraft({ ...p.draft, customerAccessMode: mode });
-    p.showToast(mode === "account_start" ? "Profile setup will connect when Supabase Auth is approved" : "Continuing as guest");
-  };
 
   // Build availability map from existing bookings (same source as the calendar overlay)
   const busyMap = useMemo(() => {
@@ -1164,27 +1199,6 @@ const BookForm = (p) => {
       <HeaderBar title={isReschedule ? "Reschedule Booking" : "Book Appointment"} subtitle={isReschedule ? "Pick a new date or time" : "Step 1 of 3"} onBack={()=> p.setScreen(isReschedule ? (p.role === "owner" ? "ownerJobDetail" : "bookingDetail") : "serviceDetail")} />
       {!isReschedule && <Stepper step={0} />}
       <div className="px-5">
-        {!isReschedule && (
-          <div className="card mb-3">
-            <div className="label-up mb-2">Customer Access</div>
-            <div className="text-sm font-semibold">Book now, save details when you want.</div>
-            <div className="text-xs text-[#9FB3C8] mt-1">Profiles will use Supabase Auth later. Today this keeps the flow ready without requiring login.</div>
-            <div className="grid grid-cols-2 gap-2 mt-3">
-              <button
-                className={`btn-secondary !py-2 text-xs ${p.draft?.customerAccessMode === "account_start" ? "border-[var(--orange)]" : ""}`}
-                onClick={()=> setAccessMode("account_start")}
-              >
-                Sign in / Create profile
-              </button>
-              <button
-                className={`btn-secondary !py-2 text-xs ${p.draft?.customerAccessMode !== "account_start" ? "border-[var(--orange)]" : ""}`}
-                onClick={()=> setAccessMode("guest")}
-              >
-                Continue as guest
-              </button>
-            </div>
-          </div>
-        )}
         {isReschedule && (
           <div className="card mb-3 bg-[var(--orange)]/10 border-[var(--orange)]/30">
             <div className="text-sm font-semibold">No new payment in this prototype.</div>
