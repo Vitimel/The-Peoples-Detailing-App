@@ -48,6 +48,10 @@ Keep the inbox for current, actionable, or emotionally important mail. Keep save
 - Google Play emails can be trashed.
 - Affirm emails can be trashed.
 - Old ConnectNetwork, GettingOut, GTL, CorrectPay, commissary, and similar no-reply receipts can be trashed unless they are from about the last week or tied to a current dispute/action.
+- Old product/setup/verification emails can be trashed once setup is complete, including stale Zazzle, VIZIO, Glide, Lovable, Pixel Watch, Amazon Echo, AT&T order-review, and generic support-feedback messages.
+- Old school newsletters with bulky inline images can be trashed unless they mention a current action, payment, pictures, forms, or meaningful family/school context.
+- Delivery-failure notices and typo-address duplicates can be trashed after confirming the important message was resent correctly or is no longer needed.
+- Old ClassDojo receipts/invoices can be trashed unless from about the last week or tied to a current dispute/action.
 
 ## Current Known Direct Rules
 
@@ -57,6 +61,7 @@ Keep the inbox for current, actionable, or emotionally important mail. Keep save
 - Archive PlayStation, Xfinity, Public, Venmo, bank, and loan records only when recent/current. Google Play and Affirm can be trashed. Audible purchase/account history can be trashed unless currently needed; current payment-update nags can be trashed for now.
 - Archive Amazon/Alexa/VIZIO account, parental, device-linking, and setup messages as protected/product setup.
 - Leave starred messages alone unless explicitly reviewed.
+- Keep W2/check PDFs, tax returns, Melody/TennCare/POA documents, starred work documents, and legal/healthcare/government PDFs unless the user explicitly says they are no longer needed.
 
 ## Safety Checks
 
