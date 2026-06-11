@@ -1,0 +1,1943 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Kyle Draft Cockpit</title>
+  <style>
+    :root {
+      --bg: #f6f7f9;
+      --panel: #ffffff;
+      --ink: #172033;
+      --muted: #697386;
+      --line: #d9dee7;
+      --line-strong: #b8c0ce;
+      --accent: #0f766e;
+      --accent-soft: #d8f1ed;
+      --warn: #a15c05;
+      --warn-soft: #fff1d6;
+      --danger: #a43e3e;
+      --danger-soft: #ffe4e4;
+      --good: #2f6f3e;
+      --good-soft: #e2f4e5;
+      --wr: #1d4ed8;
+      --wr-soft: #dbeafe;
+      --rb: #b45309;
+      --rb-soft: #ffedd5;
+      --qb: #4338ca;
+      --qb-soft: #e0e7ff;
+      --te: #7e22ce;
+      --te-soft: #f3e8ff;
+      --rookie: #4f6f00;
+      --rookie-soft: #eef7c5;
+      --shadow: 0 12px 35px rgba(23, 32, 51, 0.08);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      min-height: 100vh;
+    }
+
+    button, input, select {
+      font: inherit;
+    }
+
+    .app {
+      display: grid;
+      grid-template-columns: minmax(260px, 320px) minmax(0, 1fr) minmax(300px, 380px);
+      gap: 16px;
+      padding: 18px;
+      min-height: 100vh;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      min-width: 0;
+    }
+
+    .sidebar, .rightbar {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 16px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    h1, h2, h3 {
+      margin: 0;
+      letter-spacing: 0;
+    }
+
+    h1 {
+      font-size: 22px;
+      line-height: 1.15;
+      font-weight: 750;
+    }
+
+    h2 {
+      font-size: 15px;
+      line-height: 1.25;
+      font-weight: 750;
+    }
+
+    h3 {
+      font-size: 13px;
+      line-height: 1.2;
+      font-weight: 750;
+      color: var(--muted);
+      text-transform: uppercase;
+    }
+
+    .sub {
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.35;
+    }
+
+    .current {
+      padding: 16px;
+    }
+
+    .focus-row {
+      display: grid;
+      gap: 6px;
+      margin-bottom: 12px;
+    }
+
+    .focus-row label {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .pick-card {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 12px;
+      align-items: center;
+      padding: 14px;
+      border: 1px solid var(--line-strong);
+      border-radius: 8px;
+      background: #fbfcfd;
+    }
+
+    .pick-number {
+      display: grid;
+      place-items: center;
+      width: 62px;
+      height: 62px;
+      border-radius: 8px;
+      background: var(--ink);
+      color: white;
+      font-weight: 800;
+      font-size: 16px;
+    }
+
+    .owner {
+      font-size: 20px;
+      font-weight: 800;
+    }
+
+    .needs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      min-height: 24px;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: #eef1f5;
+      color: #465063;
+      font-size: 12px;
+      font-weight: 650;
+    }
+
+    .pill.warn { background: var(--warn-soft); color: var(--warn); }
+    .pill.good { background: var(--good-soft); color: var(--good); }
+    .pill.danger { background: var(--danger-soft); color: var(--danger); }
+    .pill.accent { background: var(--accent-soft); color: var(--accent); }
+    .pill.pos-wr { background: var(--wr-soft); color: var(--wr); }
+    .pill.pos-rb { background: var(--rb-soft); color: var(--rb); }
+    .pill.pos-qb { background: var(--qb-soft); color: var(--qb); }
+    .pill.pos-te { background: var(--te-soft); color: var(--te); }
+    .pill.rookie {
+      background: var(--rookie-soft);
+      color: var(--rookie);
+      border: 1px solid #c8d965;
+      font-weight: 850;
+    }
+
+    .draft-form {
+      display: grid;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .field-row {
+      display: grid;
+      grid-template-columns: 1fr 110px;
+      gap: 8px;
+    }
+
+    input, select {
+      width: 100%;
+      min-height: 42px;
+      border: 1px solid var(--line-strong);
+      border-radius: 7px;
+      background: white;
+      color: var(--ink);
+      padding: 0 11px;
+      font-size: 14px;
+    }
+
+    .actions {
+      display: grid;
+      grid-template-columns: 1fr 110px;
+      gap: 8px;
+    }
+
+    button {
+      min-height: 42px;
+      border: 0;
+      border-radius: 7px;
+      background: var(--ink);
+      color: white;
+      font-size: 14px;
+      font-weight: 750;
+      cursor: pointer;
+    }
+
+    button.secondary {
+      background: #e8ebf0;
+      color: var(--ink);
+    }
+
+    button.ghost {
+      background: transparent;
+      color: var(--muted);
+      border: 1px solid var(--line);
+    }
+
+    button:hover { filter: brightness(0.97); }
+
+    .section {
+      padding: 14px 16px;
+      border-top: 1px solid var(--line);
+    }
+
+    .section:first-child { border-top: 0; }
+
+    .board-controls {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 130px 170px;
+      gap: 8px;
+      padding: 16px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .board-guide {
+      display: grid;
+      gap: 8px;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--line);
+      background: #fbfcfd;
+    }
+
+    .sort-explain {
+      color: var(--ink);
+      font-size: 13px;
+      line-height: 1.35;
+      font-weight: 700;
+    }
+
+    .position-summary {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .top-picks {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .top-pick {
+      display: grid;
+      gap: 5px;
+      padding: 9px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      min-width: 0;
+    }
+
+    .top-pick.primary {
+      border-color: var(--accent);
+      background: var(--accent-soft);
+    }
+
+    .top-pick-label {
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 850;
+      text-transform: uppercase;
+    }
+
+    .top-pick-name {
+      font-size: 13px;
+      font-weight: 850;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .strategy-list {
+      display: grid;
+      gap: 7px;
+    }
+
+    .strategy-row {
+      display: grid;
+      gap: 4px;
+      padding: 9px;
+      border: 1px solid var(--line);
+      border-left: 4px solid var(--accent);
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    .strategy-title {
+      font-size: 13px;
+      font-weight: 850;
+    }
+
+    .rank-stack {
+      display: grid;
+      gap: 3px;
+      justify-items: end;
+      min-width: 86px;
+    }
+
+    .rank-label {
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 750;
+      text-align: right;
+    }
+
+    .score-label {
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 750;
+      text-align: right;
+    }
+
+    .board-list, .pick-log, .risk-list, .team-list, .likely-list {
+      display: grid;
+      gap: 8px;
+      max-height: calc(100vh - 180px);
+      overflow: auto;
+      padding: 12px 16px 16px;
+    }
+
+    .player-row, .log-row, .risk-row, .team-row, .likely-row, .warning-row {
+      display: grid;
+      gap: 7px;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    .team-row.focused {
+      border-color: var(--accent);
+      background: var(--accent-soft);
+    }
+
+    .player-row {
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
+      width: 100%;
+      color: inherit;
+      text-align: left;
+      cursor: pointer;
+      transition: border-color 120ms ease, transform 120ms ease, box-shadow 120ms ease;
+    }
+
+    .player-row:hover,
+    .player-row:focus-visible {
+      border-color: var(--accent);
+      box-shadow: 0 8px 18px rgba(15, 118, 110, 0.12);
+      filter: none;
+      outline: none;
+      transform: translateY(-1px);
+    }
+
+    .player-name {
+      font-size: 14px;
+      font-weight: 800;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      margin-top: 4px;
+    }
+
+    .score {
+      font-size: 18px;
+      font-weight: 850;
+      color: var(--accent);
+    }
+
+    .log-row {
+      grid-template-columns: 56px minmax(0, 1fr);
+      align-items: center;
+    }
+
+    .log-pick {
+      font-weight: 850;
+      color: var(--muted);
+    }
+
+    .log-player {
+      font-size: 14px;
+      font-weight: 750;
+    }
+
+    .tiny {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.3;
+    }
+
+    .player-detail {
+      display: grid;
+      gap: 3px;
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .player-detail strong {
+      color: #3b4556;
+      font-weight: 800;
+    }
+
+    .risk-row {
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
+    }
+
+    .likely-row {
+      grid-template-columns: 62px minmax(0, 1fr);
+      align-items: start;
+    }
+
+    .likely-pick {
+      font-weight: 850;
+      color: var(--accent);
+    }
+
+    .warning-row {
+      background: var(--warn-soft);
+      border-color: #f1cd8a;
+      color: var(--warn);
+      font-size: 13px;
+      font-weight: 750;
+    }
+
+    .risk-score {
+      min-width: 52px;
+      text-align: right;
+      font-weight: 850;
+      color: var(--danger);
+    }
+
+    .tim-strip {
+      display: grid;
+      gap: 8px;
+      padding: 12px 16px 16px;
+    }
+
+    .tim-pick {
+      display: grid;
+      grid-template-columns: 58px 1fr;
+      gap: 10px;
+      align-items: center;
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      background: #fbfcfd;
+    }
+
+    .tim-pick.done {
+      background: var(--good-soft);
+      border-color: #b9dec0;
+    }
+
+    .tim-pick.next {
+      background: var(--accent-soft);
+      border-color: #a6d8d0;
+    }
+
+    .empty {
+      padding: 18px 16px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.4;
+    }
+
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      display: none;
+      place-items: center;
+      padding: 18px;
+      background: rgba(23, 32, 51, 0.42);
+      z-index: 20;
+    }
+
+    .modal-backdrop.open {
+      display: grid;
+    }
+
+    .modal {
+      width: min(420px, 100%);
+      background: white;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      box-shadow: 0 22px 70px rgba(23, 32, 51, 0.26);
+      padding: 18px;
+    }
+
+    .modal-title {
+      font-size: 19px;
+      line-height: 1.25;
+      font-weight: 850;
+    }
+
+    .modal-copy {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.45;
+    }
+
+    .modal-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 16px;
+    }
+
+    @media (max-width: 1100px) {
+      .app {
+        grid-template-columns: 1fr;
+      }
+      .board-list, .pick-log, .risk-list, .team-list, .likely-list {
+        max-height: 440px;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .app { padding: 10px; }
+      .field-row, .actions, .board-controls, .modal-actions {
+        grid-template-columns: 1fr;
+      }
+      .top-picks {
+        grid-template-columns: 1fr;
+      }
+      .strategy-row {
+        padding: 10px;
+      }
+      .header {
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <aside class="sidebar">
+      <section class="panel">
+        <div class="header">
+          <div>
+            <h1>Kyle Draft Cockpit</h1>
+            <div class="sub">Kyle-focused board, pick path, and next-pick risk.</div>
+          </div>
+          <button class="ghost" id="resetBtn">Reset</button>
+        </div>
+        <div class="current">
+          <div class="focus-row">
+            <label>Kyle board</label>
+            <span class="pill accent">Kyle only</span>
+            <select id="focusTeam" hidden><option value="Kyle">Kyle</option></select>
+          </div>
+          <div class="pick-card">
+            <div class="pick-number" id="currentPickNo">1.01</div>
+            <div>
+              <div class="owner" id="currentOwner">Mark</div>
+              <div class="tiny" id="currentStatus">On the clock</div>
+              <div class="needs" id="currentNeeds"></div>
+            </div>
+          </div>
+          <form class="draft-form" id="draftForm">
+            <div class="field-row">
+              <input id="playerInput" list="playerOptions" placeholder="Type drafted player" autocomplete="off" />
+              <select id="posInput">
+                <option>WR</option>
+                <option>RB</option>
+                <option>QB</option>
+                <option>TE</option>
+              </select>
+            </div>
+            <datalist id="playerOptions"></datalist>
+            <div class="actions">
+              <button type="submit">Draft Player</button>
+              <button type="button" class="secondary" id="undoBtn">Undo</button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="section">
+          <h2 id="targetPathTitle">Pick Path</h2>
+          <div class="sub">Shows what is solved and where the next pressure point is.</div>
+        </div>
+        <div class="tim-strip" id="timPath"></div>
+      </section>
+
+      <section class="panel">
+        <div class="section">
+          <h2>Pick Log</h2>
+        </div>
+        <div class="pick-log" id="pickLog"></div>
+      </section>
+    </aside>
+
+    <section class="panel">
+      <div class="board-controls">
+        <input id="searchInput" placeholder="Search board" />
+        <select id="filterPos">
+          <option value="ALL">All positions</option>
+          <option value="ROOKIE">Rookies</option>
+          <option>WR</option>
+          <option>RB</option>
+          <option>QB</option>
+          <option>TE</option>
+        </select>
+        <select id="sortMode">
+          <option value="rank">Board Order</option>
+          <option value="fit">Team Fit</option>
+          <option value="risk">At Risk Before Next Pick</option>
+        </select>
+      </div>
+      <div class="board-guide">
+        <div class="sort-explain" id="sortExplain"></div>
+        <div class="top-picks" id="topPicks"></div>
+        <div class="strategy-list" id="strategyList"></div>
+        <div class="position-summary" id="positionSummary"></div>
+        <div class="tiny" id="boardLegend">Board rank is best remaining overall. Pos rank is best remaining at that position. Team fit is how much he helps the selected team. * means at risk before that team's next pick.</div>
+      </div>
+      <div class="board-list" id="boardList"></div>
+    </section>
+
+    <aside class="rightbar">
+      <section class="panel">
+        <div class="section">
+          <h2 id="likelyTitle">Likely Next Before Pick</h2>
+          <div class="sub" id="likelySub">Upcoming picks and the names each team is most likely to take.</div>
+        </div>
+        <div class="likely-list" id="likelyList"></div>
+      </section>
+
+      <section class="panel">
+        <div class="section">
+          <h2>Players Who May Be Gone</h2>
+          <div class="sub" id="dangerSub">These players may be taken before the selected team's next pick.</div>
+        </div>
+        <div class="likely-list" id="needWarnings"></div>
+        <div class="risk-list" id="riskList"></div>
+      </section>
+
+      <section class="panel">
+        <div class="section">
+          <h2>Kyle Need Tracker</h2>
+          <div class="sub">Kyle's needs fade as picks are entered.</div>
+        </div>
+        <div class="team-list" id="teamList"></div>
+      </section>
+    </aside>
+  </main>
+
+  <div class="modal-backdrop" id="confirmModal" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
+    <div class="modal">
+      <div class="modal-title" id="confirmTitle">Draft player?</div>
+      <div class="modal-copy" id="confirmCopy"></div>
+      <div class="modal-actions">
+        <button type="button" id="confirmDraftBtn">Confirm Pick</button>
+        <button type="button" class="secondary" id="cancelDraftBtn">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const draftOrder = [
+      ['1.01','Mark'],['1.02','Gattie'],['1.03','Seth'],['1.04','Noah'],['1.05','Kyle'],['1.06','Krebsy'],['1.07','Kyle'],['1.08','DJ'],['1.09','Kenna'],['1.10','Seth'],['1.11','Brob'],['1.12','Tim'],['1.13','Eric'],['1.14','Kenna'],
+      ['2.01','Kyle'],['2.02','Eric'],['2.03','Cole'],['2.04','Brob'],['2.05','Seth'],['2.06','Kenna'],['2.07','DJ'],['2.08','Seth'],['2.09','Krebsy'],['2.10','Tim'],['2.11','Kyle'],['2.12','Eric'],['2.13','Gattie'],['2.14','Mark'],
+      ['3.01','Mark'],['3.02','Eric'],['3.03','Eric'],['3.04','Matt'],['3.05','Tim'],['3.06','Krebsy'],['3.07','Noah'],['3.08','DJ'],['3.09','DJ'],['3.10','Tim'],['3.11','Brob'],['3.12','Mark'],['3.13','Matt'],['3.14','Mikey'],
+      ['4.01','Matt'],['4.02','Gattie'],['4.03','Mark'],['4.04','Brob'],['4.05','Seth'],['4.06','Kenna'],['4.07','DJ'],['4.08','Noah'],['4.09','Krebsy'],['4.10','Eric'],['4.11','Kyle'],['4.12','Seth'],['4.13','Gattie'],['4.14','Mark'],
+      ['5.01','Mark'],['5.02','Gattie'],['5.03','Seth'],['5.04','Noah'],['5.05','Kyle'],['5.06','Krebsy'],['5.07','Kyle'],['5.08','DJ'],['5.09','Kenna'],['5.10','Seth'],['5.11','Brob'],['5.12','Tim'],['5.13','Eric'],['5.14','Kenna']
+    ];
+
+    const teamBase = {
+      Tim: { keepers: '', needs: ['QB','WR','ROOKIE'] },
+      Mark: { keepers: '', needs: ['RB','TE','ROOKIE'] },
+      Gattie: { keepers: '', needs: ['RB','TE','ROOKIE'] },
+      Seth: { keepers: '', needs: ['RB','WR','ROOKIE'] },
+      Noah: { keepers: '', needs: ['RB','WR','ROOKIE'] },
+      Kyle: { keepers: 'Jayden Daniels; Bijan Robinson; Davante Adams; Chris Olave; Harold Fannin; Jameson Williams', needs: ['RB','TE','WR','ROOKIE'] },
+      Krebsy: { keepers: '', needs: ['RB','TE','ROOKIE'] },
+      DJ: { keepers: '', needs: ['WR','RB','ROOKIE'] },
+      Kenna: { keepers: '', needs: ['QB','WR','ROOKIE'] },
+      Brob: { keepers: '', needs: ['WR','RB','TE','ROOKIE'] },
+      Eric: { keepers: '', needs: ['RB','WR','ROOKIE'] },
+      Cole: { keepers: '', needs: ['QB','TE','RB','ROOKIE'] },
+      Matt: { keepers: '', needs: ['WR','RB','ROOKIE'] },
+      Mikey: { keepers: '', needs: ['RB','WR','ROOKIE'] }
+    };
+
+    const players = [
+      p('Jeremiyah Love','RB',100,'rookie cornerstone'), p('Carnell Tate','WR',96,'rookie alpha'), p('Jordyn Tyson','WR',93,'premium rookie WR'), p('Jadarian Price','RB',89,'rookie RB value'),
+      p('KC Concepcion','WR',85,'drops risk, big role'), p('Omar Cooper Jr.','WR',80,'rookie WR fallback'), p('Makai Lemon','WR',76,'talent, pass-volume concern'), p('Denzel Boston','WR',73,'rookie target competition'),
+      p('Jonah Coleman','RB',70,'rookie RB'), p('Kenyon Sadiq','TE',68,'rookie TE'), p('Eli Stowers','TE',67,'rookie TE'), p('Matthew Golden','WR',65,'later rookie WR'),
+      p("D'Andre Swift",'RB',75,'veteran RB fallback'), p('Chuba Hubbard','RB',74,'veteran RB fallback'), p('Jayden Reed','WR',82,'PPR plus burst'), p('Josh Downs','WR',79,'PPR floor'),
+      p('Khalil Shakir','WR',77,'boring points'), p('Jakobi Meyers','WR',73,'PPR floor'), p("Wan'Dale Robinson",'WR',68,'late PPR fallback'), p('Adonai Mitchell','WR',64,'depth upside'),
+      p('Parker Washington','WR',61,'role check'), p('Rashid Shaheed','WR',58,'boom/bust'), p('Romeo Doubs','WR',57,'role unclear'), p('Jalen McMillan','WR',56,'late WR'),
+      p('Dontayvion Wicks','WR',55,'late WR'), p('Demario Douglas','WR',54,'late PPR'), p('Marvin Mims','WR',53,'late upside'),
+      p('Brock Purdy','QB',80,'ideal QB target'), p('Bo Nix','QB',78,'QB value'), p('Jordan Love','QB',76,'QB fallback'), p('Jared Goff','QB',72,'QB floor'), p('Baker Mayfield','QB',69,'QB fallback'),
+      p('Dak Prescott','QB',68,'QB fallback'), p('Trevor Lawrence','QB',67,'QB fallback'), p('Tua Tagovailoa','QB',61,'late QB'),
+      p('Zach Charbonnet','RB',64,'RB depth'), p('Tyjae Spears','RB',63,'RB depth'), p('Kendre Miller','RB',62,'RB depth'), p('Jaylen Wright','RB',61,'RB depth'), p('Blake Corum','RB',60,'RB depth'),
+      p('Roschon Johnson','RB',59,'RB depth'), p('Ray Davis','RB',58,'RB depth'), p('MarShawn Lloyd','RB',57,'RB depth'),
+      p('Dalton Kincaid','TE',66,'TE value'), p('Jake Ferguson','TE',63,'TE value'), p('Pat Freiermuth','TE',60,'TE floor'), p('Isaiah Likely','TE',59,'TE upside'), p('Luke Musgrave','TE',56,'TE depth')
+    ];
+
+    const keeperProfiles = {
+      'Jayden Daniels': ['QB','starter'], 'Bijan Robinson': ['RB','starter'], 'Davante Adams': ['WR','starter'], 'Chris Olave': ['WR','starter'], 'Harold Fannin': ['TE','usable'], 'Jameson Williams': ['WR','usable']
+    };
+
+    const playerDetails = {
+      'Jordyn Tyson': {
+        fit: 'Premium rookie WR value if he slides into Kyle range.',
+        role: 'Projected outside/featured rookie WR profile with keeper upside.',
+        risk: 'Likely goes before 1.12 if the room chases rookie receivers. Do not count on him being there.'
+      },
+      'KC Concepcion': {
+        fit: 'Rookie WR upside who can help Kyle add youth and weekly ceiling.',
+        role: 'Cleveland first-round WR with route/YAC appeal; could become a manufactured-touch slot/flanker weapon.',
+        risk: 'Drops and catch consistency are the main worries.'
+      },
+      'Jadarian Price': {
+        fit: 'Rookie RB value if Kyle wants another long-term backfield asset.',
+        role: 'Rookie RB with keeper appeal and a path to future workload if the Seattle backfield opens up.',
+        risk: 'Role may not be immediate.'
+      },
+      'Jayden Reed': {
+        fit: 'Strong PPR receiver value if the rookie tier is gone.',
+        role: 'Green Bay slot/motion WR with PPR usefulness and enough explosive plays to avoid being only a floor pick.',
+        risk: 'Packers target distribution can be crowded, so week-to-week ceiling may bounce around.'
+      },
+      'Josh Downs': {
+        fit: 'Useful PPR floor receiver if Kyle wants weekly stability.',
+        role: 'Short-area target earner with full-PPR appeal.',
+        risk: 'Ceiling depends on offense and touchdown volume; better floor than league-winning upside.'
+      },
+      'Khalil Shakir': {
+        fit: 'Steady PPR depth with a useful weekly floor.',
+        role: 'Buffalo chain-mover/security blanket type with full-PPR catch volume appeal.',
+        risk: 'May not command alpha targets; value is steadiness more than takeover upside.'
+      },
+      'Jakobi Meyers': {
+        fit: 'Fallback PPR stabilizer if Reed/Downs/Shakir are gone.',
+        role: 'Veteran possession WR profile; useful when you want catches and fewer empty weeks.',
+        risk: 'Limited ceiling and team-context dependency.'
+      },
+      "Wan'Dale Robinson": {
+        fit: 'Late PPR patch if the main WR tier gets stripped.',
+        role: 'Slot/underneath WR profile who can catch enough passes to matter in full PPR.',
+        risk: 'Needs volume to pay off; not a big-play separator for the roster.'
+      },
+      'Omar Cooper Jr.': {
+        fit: 'Rookie WR fallback with keeper value if the first tier is gone.',
+        role: 'Developmental WR bet with enough draft capital/role intrigue to matter in keeper format.',
+        risk: 'Less certain than Tyson/KC; could be more future asset than immediate starter.'
+      },
+      'Makai Lemon': {
+        fit: 'Rookie WR talent with target-volume questions.',
+        role: 'Rookie WR with playmaking ability if his offense gives him enough designed work.',
+        risk: 'Environment/target volume could make him frustrating in weekly lineups.'
+      },
+      'Denzel Boston': {
+        fit: 'Later rookie WR consideration, especially if Cleveland’s WR room creates value pockets.',
+        role: 'Bigger WR profile who may compete for targets with KC Concepcion.',
+        risk: 'Target competition and role clarity are the issue.'
+      },
+      'Matthew Golden': {
+        fit: 'Third-round-ish upside swing if safer PPR names are gone.',
+        role: 'Young WR bet with keeper appeal if he earns a real offensive role.',
+        risk: 'Less floor than Downs/Shakir/Jakobi; needs role confirmation.'
+      },
+      'Adonai Mitchell': {
+        fit: 'Depth/upside WR if the draft gets picked clean.',
+        role: 'Boundary receiver profile with splash-play potential.',
+        risk: 'Not the same PPR floor as the preferred slot/target earners.'
+      },
+      'Parker Washington': {
+        fit: 'Only a fallback if role checks out and the board has thinned badly.',
+        role: 'Potential underneath/slot contributor.',
+        risk: 'Needs target share proof before he should be prioritized.'
+      },
+      'Brock Purdy': {
+        fit: 'Ideal QB target because he solves the position without overpaying in a 1QB, 4-point passing TD league.',
+        role: 'Efficient weekly starter in a strong offensive environment.',
+        risk: 'Less rushing cushion than elite fantasy QBs, so he needs passing efficiency to hold.'
+      },
+      'Bo Nix': {
+        fit: 'Good QB value if Purdy is gone or QB starts drying up before 2.10/3.05.',
+        role: 'Ascending fantasy QB option with enough production profile to stabilize the lineup.',
+        risk: 'Still less proven than the locked-in elite names.'
+      },
+      'Jordan Love': {
+        fit: 'Solid QB fallback if Purdy/Nix do not make it.',
+        role: 'Packers passing-game bet who pairs naturally with a Jayden Reed pick.',
+        risk: 'Weekly scoring can be more volatile if the offense spreads targets around.'
+      },
+      "D'Andre Swift": {
+        fit: 'Emergency veteran value only if rookie/WR targets are wiped out.',
+        role: 'Usable RB depth if the value falls.',
+        risk: 'Taking him early can worsen the WR squeeze.'
+      },
+      'Chuba Hubbard': {
+        fit: 'Similar to Swift: value if he falls, not the cleanest roster-shape pick.',
+        role: 'Veteran RB depth with usable workload if role holds.',
+        risk: 'Does not solve every roster shape question by itself.'
+      }
+    };
+
+    const rookiePlayerNames = new Set([
+      'Jeremiyah Love',
+      'Carnell Tate',
+      'Jordyn Tyson',
+      'Jadarian Price',
+      'KC Concepcion',
+      'Omar Cooper Jr.',
+      'Makai Lemon',
+      'Denzel Boston',
+      'Jonah Coleman',
+      'Kenyon Sadiq',
+      'Eli Stowers',
+      'Matthew Golden'
+    ]);
+
+    function p(name, pos, rank, note) {
+      const boardFit = {
+        'Jordyn Tyson': 100, 'Jayden Reed': 96, 'Josh Downs': 94, 'Khalil Shakir': 90, 'KC Concepcion': 88,
+        'Brock Purdy': 86, 'Bo Nix': 84, 'Jadarian Price': 82, 'Jakobi Meyers': 80, "Wan'Dale Robinson": 76,
+        'Adonai Mitchell': 68, 'Parker Washington': 64
+      }[name] || Math.round(rank * 0.72);
+      return { id: name.toLowerCase().replace(/[^a-z0-9]+/g, '-'), name, pos, rank, boardFit, note };
+    }
+
+    players.forEach(player => Object.assign(player, playerDetails[player.name] || {}));
+
+    let drafted = JSON.parse(localStorage.getItem('kyleDraftCockpitPicks') || '[]');
+
+    const el = (id) => document.getElementById(id);
+    const currentPickNo = el('currentPickNo');
+    const currentOwner = el('currentOwner');
+    const currentStatus = el('currentStatus');
+    const currentNeeds = el('currentNeeds');
+    const focusTeam = el('focusTeam');
+    const playerInput = el('playerInput');
+    const posInput = el('posInput');
+    const playerOptions = el('playerOptions');
+    const boardList = el('boardList');
+    const riskList = el('riskList');
+    const likelyList = el('likelyList');
+    const likelySub = el('likelySub');
+    const likelyTitle = el('likelyTitle');
+    const sortExplain = el('sortExplain');
+    const topPicks = el('topPicks');
+    const strategyList = el('strategyList');
+    const positionSummary = el('positionSummary');
+    const needWarnings = el('needWarnings');
+    const pickLog = el('pickLog');
+    const teamList = el('teamList');
+    const timPath = el('timPath');
+    const targetPathTitle = el('targetPathTitle');
+    const boardLegend = el('boardLegend');
+    const dangerSub = el('dangerSub');
+    const confirmModal = el('confirmModal');
+    const confirmTitle = el('confirmTitle');
+    const confirmCopy = el('confirmCopy');
+    const confirmDraftBtn = el('confirmDraftBtn');
+    const cancelDraftBtn = el('cancelDraftBtn');
+    let selectedTeam = 'Kyle';
+    let pendingDraft = null;
+
+    function esc(value) {
+      return String(value).replace(/[&<>"']/g, char => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+      }[char]));
+    }
+
+    function takenNames(draftState = drafted) {
+      return new Set(draftState.map(d => d.player.toLowerCase()));
+    }
+
+    function availablePlayers(draftState = drafted) {
+      const taken = takenNames(draftState);
+      return players.filter(player => !taken.has(player.name.toLowerCase()));
+    }
+
+    function currentIndex() {
+      return Math.min(drafted.length, draftOrder.length - 1);
+    }
+
+    function pickMeta(index = currentIndex()) {
+      const [pickNo, owner] = draftOrder[index] || ['Done', 'Complete'];
+      return { pickNo, owner, index };
+    }
+
+    function isDraftComplete() {
+      return drafted.length >= draftOrder.length;
+    }
+
+    function targetTeam() {
+      return 'Kyle';
+    }
+
+    function populateFocusTeams() {
+      const current = targetTeam();
+      focusTeam.innerHTML = `<option value="${esc(current)}" selected>${esc(current)}</option>`;
+      selectedTeam = current;
+    }
+
+    function profileForPlayer(name, pos = '') {
+      const keeper = keeperProfiles[name];
+      if (keeper) return { name, pos: keeper[0], tier: keeper[1], currentRookie: false };
+      const boardPlayer = players.find(player => player.name.toLowerCase() === name.toLowerCase());
+      if (boardPlayer) {
+        const tier = boardPlayer.rank >= 82 ? 'starter' : boardPlayer.rank >= 72 ? 'usable' : boardPlayer.rank >= 62 ? 'depth' : 'prospect';
+        return { name: boardPlayer.name, pos: boardPlayer.pos, tier, currentRookie: isRookie(boardPlayer) };
+      }
+      return { name, pos: pos || 'WR', tier: 'depth', currentRookie: false };
+    }
+
+    function keeperNames(team) {
+      return (teamBase[team]?.keepers || '').split(';').map(name => name.trim()).filter(Boolean);
+    }
+
+    function evaluateRoster(team, draftState = drafted) {
+      const roster = { QB: [], RB: [], WR: [], TE: [], currentRookie: false };
+      keeperNames(team).forEach(name => {
+        const profile = profileForPlayer(name);
+        if (roster[profile.pos]) roster[profile.pos].push(profile);
+      });
+      draftState.filter(item => item.owner === team).forEach(item => {
+        const profile = profileForPlayer(item.player, item.pos);
+        if (roster[profile.pos]) roster[profile.pos].push(profile);
+        if (profile.currentRookie) roster.currentRookie = true;
+      });
+      return roster;
+    }
+
+    function tierValue(tier) {
+      return tier === 'starter' ? 3 : tier === 'usable' ? 2 : tier === 'depth' ? 1 : 0.5;
+    }
+
+    function countTier(roster, pos, minValue) {
+      return (roster[pos] || []).filter(player => tierValue(player.tier) >= minValue).length;
+    }
+
+    function bestAt(roster, pos) {
+      return (roster[pos] || []).slice().sort((a, b) => tierValue(b.tier) - tierValue(a.tier))[0];
+    }
+
+    function severityWeight(severity) {
+      return severity === 'must-have' ? 2 : severity === 'would-like' ? 1 : severity === 'depth only' ? 0.5 : 0;
+    }
+
+    function addNeed(items, pos, severity, reason, source = 'evaluated') {
+      if (severity === 'covered') return;
+      const existing = items.find(item => item.pos === pos);
+      if (!existing || severityWeight(severity) > severityWeight(existing.severity)) {
+        if (existing) items.splice(items.indexOf(existing), 1);
+        items.push({ pos, severity, reason, source });
+      }
+    }
+
+    function deriveNeeds(team, draftState = drafted) {
+      const roster = evaluateRoster(team, draftState);
+      const items = [];
+      if (team !== 'Kyle') {
+        const solvedPositions = new Set((draftState || [])
+          .filter(item => item.owner === team)
+          .map(item => item.pos));
+        (teamBase[team]?.needs || []).forEach(pos => {
+          if (pos === 'ROOKIE') {
+            if (!roster.currentRookie) addNeed(items, pos, 'would-like', 'broad projected rookie/value need');
+            return;
+          }
+          if (!solvedPositions.has(pos)) addNeed(items, pos, 'would-like', 'broad projected team need');
+        });
+        return { roster, items };
+      }
+      const qb = bestAt(roster, 'QB');
+      if (!qb) addNeed(items, 'QB', 'must-have', 'no QB keeper');
+      else if (qb.tier === 'prospect') addNeed(items, 'QB', 'would-like', `${qb.name} is a prospect, not a locked starter`);
+      else if (qb.tier === 'depth') addNeed(items, 'QB', 'would-like', `${qb.name} is depth, not a locked starter`);
+
+      const strongRb = countTier(roster, 'RB', 2);
+      if (strongRb === 0) addNeed(items, 'RB', 'must-have', 'no reliable RB keeper');
+      else if (strongRb === 1) addNeed(items, 'RB', 'must-have', 'only one reliable RB');
+      else if (countTier(roster, 'RB', 1) < 3) addNeed(items, 'RB', 'depth only', 'could use RB depth');
+
+      const strongWr = countTier(roster, 'WR', 2);
+      if (strongWr < 2) addNeed(items, 'WR', 'must-have', 'thin WR keeper group');
+      else if (strongWr < 3) addNeed(items, 'WR', 'would-like', 'could use another strong WR');
+      else if (countTier(roster, 'WR', 1) < 4) addNeed(items, 'WR', 'depth only', 'could use WR depth');
+
+      const te = bestAt(roster, 'TE');
+      if (!te) addNeed(items, 'TE', 'must-have', 'no TE keeper');
+      else if (te.tier === 'prospect' || te.tier === 'depth') addNeed(items, 'TE', 'would-like', `${te.name} is not a locked TE starter`);
+
+      if (!roster.currentRookie) addNeed(items, 'ROOKIE', 'must-have', 'still needs a current-year rookie/value pick');
+
+      (teamBase[team]?.needs || []).forEach(pos => {
+        const current = items.find(item => item.pos === pos);
+        if (!current) addNeed(items, pos, 'depth only', 'manual note says this position could use depth', 'manual');
+      });
+
+      return { roster, items };
+    }
+
+    function needSeverity(team, position, draftState = drafted) {
+      return deriveNeeds(team, draftState).items.find(item => item.pos === position)?.severity || 'covered';
+    }
+
+    function teamNeedDetails(draftState = drafted) {
+      const state = {};
+      Object.keys(teamBase).forEach(team => {
+        state[team] = deriveNeeds(team, draftState).items;
+      });
+      return state;
+    }
+
+    function teamNeeds(draftState = drafted) {
+      const details = teamNeedDetails(draftState);
+      const state = {};
+      Object.entries(details).forEach(([team, items]) => {
+        state[team] = items.map(item => item.pos);
+      });
+      return state;
+    }
+
+    function nextTargetIndex(team = targetTeam(), draftState = drafted) {
+      for (let i = draftState.length; i < draftOrder.length; i++) {
+        if (draftOrder[i][1] === team) return i;
+      }
+      return -1;
+    }
+
+    function upcomingBeforeTarget(team = targetTeam(), draftState = drafted) {
+      const nextTarget = nextTargetIndex(team, draftState);
+      if (nextTarget < 0 || nextTarget === draftState.length) return [];
+      return draftOrder.slice(draftState.length, nextTarget).map(([pickNo, owner], offset) => ({
+        pickNo,
+        owner,
+        index: draftState.length + offset
+      }));
+    }
+
+    function isRookie(player) {
+      return rookiePlayerNames.has(player.name) || player.note.toLowerCase().includes('rookie');
+    }
+
+    function needLabel(need) {
+      return need === 'ROOKIE' ? 'rookie/value' : need;
+    }
+
+    function needDisplay(item) {
+      if (typeof item === 'string') return needLabel(item);
+      return `${needLabel(item.pos)}: ${item.severity}`;
+    }
+
+    function positionClass(pos) {
+      return pos === 'WR' ? 'pos-wr' : pos === 'RB' ? 'pos-rb' : pos === 'QB' ? 'pos-qb' : pos === 'TE' ? 'pos-te' : '';
+    }
+
+    function needClass(need) {
+      const pos = typeof need === 'string' ? need : need.pos;
+      return pos === 'ROOKIE' ? 'rookie' : positionClass(pos);
+    }
+
+    function pillHtml(label, cls = '') {
+      return `<span class="pill ${cls}">${esc(label)}</span>`;
+    }
+
+    function playerPills(player, team, options = {}) {
+      const pills = [pillHtml(player.pos, positionClass(player.pos))];
+      if (options.includeRanks) {
+        pills.push(pillHtml(`Overall #${player.overallRank}`));
+        pills.push(pillHtml(`${player.pos} #${player.positionRank}`, positionClass(player.pos)));
+      }
+      if (isRookie(player)) {
+        pills.push(pillHtml(player.rookieRank ? `Rookie #${player.rookieRank}` : 'rookie/value', 'rookie'));
+      }
+      if (team && options.includeFit !== false) {
+        pills.push(pillHtml(`${team} fit${options.compact ? '' : ':'} ${fitLabel(player.teamFitScore)}`, 'accent'));
+      }
+      return pills.join('');
+    }
+
+    function playerScoreForOwner(player, owner, pickNo, draftState = drafted) {
+      const needs = teamNeeds(draftState)[owner] || [];
+      const severity = needSeverity(owner, player.pos, draftState);
+      const round = Number(pickNo.split('.')[0]);
+      let score = player.rank;
+      if (needs.includes(player.pos)) score += severity === 'must-have' ? 34 : severity === 'would-like' ? 24 : 12;
+      if (needs.includes('ROOKIE') && isRookie(player)) score += needSeverity(owner, 'ROOKIE', draftState) === 'must-have' ? 24 : 10;
+      if (player.pos === 'QB' && needs.includes('QB')) score += 20;
+      if (player.pos === 'TE' && needs.includes('TE')) score += 10;
+      if (isRookie(player) && round === 1) score += 18;
+      if (isRookie(player) && round === 2) score += 8;
+      if (player.pos === 'QB' && round === 1) score -= 30;
+      return score;
+    }
+
+    function likelyPlayersForPick(pick, limit = 3, pool = availablePlayers(), draftState = drafted) {
+      return pool
+        .map(player => ({ ...player, ownerScore: playerScoreForOwner(player, pick.owner, pick.pickNo, draftState) }))
+        .sort((a, b) => b.ownerScore - a.ownerScore || b.rank - a.rank)
+        .slice(0, limit);
+    }
+
+    function projectionForTeam(team = targetTeam()) {
+      const nextTarget = nextTargetIndex(team);
+      const projectedTaken = [];
+      let projectedDrafted = drafted.slice();
+      let projectedAvailable = availablePlayers(projectedDrafted);
+      if (nextTarget < 0) {
+        return { team, nextTarget, nextPickNo: null, picksAway: -1, projectedAvailable, projectedTaken, projectedDrafted };
+      }
+      const picksAway = nextTarget - drafted.length;
+      draftOrder.slice(drafted.length, nextTarget).forEach(([pickNo, owner], offset) => {
+        const pick = { pickNo, owner, index: drafted.length + offset };
+        const likely = likelyPlayersForPick(pick, 1, projectedAvailable, projectedDrafted)[0];
+        if (!likely) return;
+        const projectedPick = { pickNo, owner, player: likely.name, pos: likely.pos, projected: true };
+        projectedTaken.push(projectedPick);
+        projectedDrafted = projectedDrafted.concat(projectedPick);
+        projectedAvailable = projectedAvailable.filter(player => player.name !== likely.name);
+      });
+      return {
+        team,
+        nextTarget,
+        nextPickNo: draftOrder[nextTarget]?.[0] || null,
+        picksAway,
+        projectedAvailable,
+        projectedTaken,
+        projectedDrafted
+      };
+    }
+
+    function pressureByPosition(team = targetTeam(), draftState = drafted) {
+      const counts = { QB: 0, RB: 0, WR: 0, TE: 0, ROOKIE: 0 };
+      const needs = teamNeedDetails(draftState);
+      upcomingBeforeTarget(team, draftState).forEach(pick => {
+        (needs[pick.owner] || []).forEach(need => {
+          counts[need.pos] = (counts[need.pos] || 0) + severityWeight(need.severity);
+        });
+      });
+      return counts;
+    }
+
+    function pressureByPositionUnique(team = targetTeam(), draftState = drafted) {
+      const pressure = {};
+      ['QB', 'RB', 'WR', 'TE', 'ROOKIE'].forEach(pos => {
+        pressure[pos] = { teams: new Set(), depth: 0, must: 0 };
+      });
+      const needs = teamNeedDetails(draftState);
+      upcomingBeforeTarget(team, draftState).forEach(pick => {
+        (needs[pick.owner] || []).forEach(need => {
+          pressure[need.pos].teams.add(pick.owner);
+          pressure[need.pos].depth += severityWeight(need.severity);
+          if (need.severity === 'must-have') pressure[need.pos].must += 1;
+        });
+      });
+      return Object.fromEntries(Object.entries(pressure).map(([pos, data]) => [pos, {
+        teams: data.teams.size,
+        depth: data.depth,
+        must: data.must
+      }]));
+    }
+
+    function dangerDetail(player, team = targetTeam(), draftState = drafted) {
+      const upcoming = upcomingBeforeTarget(team, draftState);
+      const needs = teamNeeds(draftState);
+      const needyOwners = upcoming
+        .filter(pick => (needs[pick.owner] || []).includes(player.pos))
+        .map(pick => pick.owner);
+      const likelyOwners = upcoming
+        .filter(pick => likelyPlayersForPick(pick, 3, availablePlayers(draftState), draftState).some(candidate => candidate.name === player.name))
+        .map(pick => `${pick.owner} ${pick.pickNo}`);
+      const reasons = [];
+      const rookieOwners = isRookie(player)
+        ? upcoming.filter(pick => (needs[pick.owner] || []).includes('ROOKIE')).map(pick => pick.owner)
+        : [];
+      const uniqueNeedyOwners = [...new Set(needyOwners)];
+      const uniqueRookieOwners = [...new Set(rookieOwners)];
+      if (uniqueNeedyOwners.length) reasons.push(`${player.pos} need: ${uniqueNeedyOwners.join(', ')}`);
+      if (uniqueRookieOwners.length) reasons.push(`rookie need: ${uniqueRookieOwners.join(', ')}`);
+      if (likelyOwners.length) reasons.push(`likely fit: ${likelyOwners.join(', ')}`);
+      if (player.rank >= 80) reasons.push('high board rank');
+      if (isRookie(player)) reasons.push('rookie premium');
+      let score = 0;
+      score += uniqueNeedyOwners.reduce((sum, owner) => sum + severityWeight(needSeverity(owner, player.pos)) * 18, 0);
+      score += uniqueRookieOwners.length * 20;
+      score += likelyOwners.length * 34;
+      score += Math.max(0, player.rank - 55) * 0.55;
+      if (isRookie(player)) score += 14;
+      return { score: Math.round(score), reasons };
+    }
+
+    function riskScore(player, team = targetTeam(), draftState = drafted) {
+      const nextTarget = nextTargetIndex(team, draftState);
+      if (nextTarget < 0) return 0;
+      return dangerDetail(player, team, draftState).score;
+    }
+
+    function teamFitScore(player, team = targetTeam(), draftState = drafted) {
+      const needs = teamNeeds(draftState)[team] || [];
+      const severity = needSeverity(team, player.pos, draftState);
+      let score = Math.round(player.rank * 0.55);
+      if (needs.includes(player.pos)) score += severity === 'must-have' ? 36 : severity === 'would-like' ? 26 : 12;
+      if (needs.includes('ROOKIE') && isRookie(player)) score += needSeverity(team, 'ROOKIE', draftState) === 'must-have' ? 24 : 10;
+      if (player.pos === 'QB' && needs.includes('QB')) score += 16;
+      if (player.pos === 'TE' && needs.includes('TE')) score += 10;
+      return Math.min(100, score);
+    }
+
+    function teamFitReason(player, team = targetTeam(), draftState = drafted) {
+      const needs = teamNeeds(draftState)[team] || [];
+      const hits = [];
+      if (needs.includes(player.pos)) hits.push(`${player.pos} need`);
+      if (needs.includes('ROOKIE') && isRookie(player)) hits.push('rookie/value need');
+      if (!hits.length && player.rank >= 80) hits.push('best-player value');
+      if (!hits.length) return `${team} fit: depth or value pick more than a direct need.`;
+      return `${team} fit: ${hits.join(' plus ')}.`;
+    }
+
+    function rankMaps(pool = availablePlayers()) {
+      const overall = {};
+      const byPosition = {};
+      const rookies = {};
+      pool
+        .slice()
+        .sort((a, b) => b.rank - a.rank)
+        .forEach((player, index) => {
+          overall[player.name] = index + 1;
+        });
+      ['QB', 'RB', 'WR', 'TE'].forEach(pos => {
+        pool
+          .filter(player => player.pos === pos)
+          .sort((a, b) => b.rank - a.rank)
+          .forEach((player, index) => {
+            byPosition[player.name] = index + 1;
+          });
+      });
+      pool
+        .filter(isRookie)
+        .sort((a, b) => b.rank - a.rank)
+        .forEach((player, index) => {
+          rookies[player.name] = index + 1;
+        });
+      return { overall, byPosition, rookies };
+    }
+
+    function fitLabel(score) {
+      if (score >= 95) return 'Elite';
+      if (score >= 85) return 'Strong';
+      if (score >= 75) return 'Useful';
+      return 'Depth';
+    }
+
+    function dangerLabel(score) {
+      if (score >= 450) return 'Very High';
+      if (score >= 230) return 'High';
+      if (score >= 90) return 'Medium';
+      return 'Low';
+    }
+
+    function dangerClass(score) {
+      if (score >= 230) return 'danger';
+      if (score >= 90) return 'warn';
+      return 'good';
+    }
+
+    function isAtRisk(score) {
+      return score >= 230;
+    }
+
+    function playerNameWithRisk(player) {
+      return `${player.name}${isAtRisk(player.dangerScore || 0) ? ' *' : ''}`;
+    }
+
+    function sortExplanation(sort) {
+      const team = targetTeam();
+      if (sort === 'fit') return `Team Fit order: players who help ${team} the most appear first.`;
+      if (sort === 'risk') return `At Risk Before Next Pick order: players most likely to disappear before ${team}'s next pick appear first.`;
+      return 'Board Order: best remaining players by our draft board appear first.';
+    }
+
+    function dangerReasonText(player, detail) {
+      if (detail.reasons.length) return detail.reasons.join(' | ');
+      if (player.rank >= 75) return 'strong board value';
+      return `lower pressure before ${targetTeam()} right now`;
+    }
+
+    function renderPositionSummary(pool = availablePlayers()) {
+      const chunks = ['WR', 'RB', 'QB', 'TE'].map(pos => {
+        const positionPool = pool.filter(player => player.pos === pos).sort((a, b) => b.rank - a.rank);
+        const top = positionPool[0] ? `top ${positionPool[0].name}` : 'none left';
+        return pillHtml(`${pos}: ${positionPool.length} left, ${top}`, positionClass(pos));
+      });
+      const rookiePool = pool.filter(isRookie).sort((a, b) => b.rank - a.rank);
+      const rookieTop = rookiePool[0] ? `top ${rookiePool[0].name}` : 'none left';
+      chunks.push(pillHtml(`Rookies: ${rookiePool.length} left, ${rookieTop}`, 'rookie'));
+      positionSummary.innerHTML = chunks.join('');
+    }
+
+    function topPickLabel(index) {
+      if (index === 0) return 'Top pick';
+      if (index === 1) return 'Backup pick';
+      return 'Third choice';
+    }
+
+    function sortName(sort) {
+      if (sort === 'fit') return 'team fit';
+      if (sort === 'risk') return 'at-risk';
+      return 'board order';
+    }
+
+    function enrichedAvailablePlayers(team = targetTeam(), pool = availablePlayers(), fitDraftState = drafted, dangerDraftState = drafted) {
+      const ranks = rankMaps(pool);
+      return pool.map(player => {
+        const danger = dangerDetail(player, team, dangerDraftState);
+        return {
+          ...player,
+          danger,
+          dangerScore: danger.score,
+          teamFitScore: teamFitScore(player, team, fitDraftState),
+          overallRank: ranks.overall[player.name],
+          positionRank: ranks.byPosition[player.name],
+          rookieRank: ranks.rookies[player.name]
+        };
+      });
+    }
+
+    function topChoicesForTeam(team = targetTeam(), limit = 3, pool = enrichedAvailablePlayers(team)) {
+      return pool
+        .slice()
+        .sort((a, b) => b.teamFitScore - a.teamFitScore || b.dangerScore - a.dangerScore || b.rank - a.rank)
+        .slice(0, limit);
+    }
+
+    function positionPressureLevel(pos, team = targetTeam(), draftState = drafted) {
+      const data = pressureByPositionUnique(team, draftState)[pos] || { teams: 0, depth: 0 };
+      if (data.teams >= 5 || data.depth >= 7) return 'high';
+      if (data.teams >= 3 || data.depth >= 4) return 'medium';
+      return 'low';
+    }
+
+    function bestFaller(team = targetTeam(), pool = enrichedAvailablePlayers(team)) {
+      const topOverall = pool.slice().sort((a, b) => b.rank - a.rank)[0];
+      if (!topOverall) return null;
+      if (topOverall.rank >= 85 || (topOverall.overallRank <= 3 && topOverall.teamFitScore >= 75)) return topOverall;
+      return null;
+    }
+
+    function waitOrAttackPosition(team, pos, pool = enrichedAvailablePlayers(team), draftState = drafted) {
+      const pressure = pressureByPositionUnique(team, draftState)[pos] || { teams: 0, depth: 0 };
+      const level = positionPressureLevel(pos, team, draftState);
+      const options = pool.filter(player => player.pos === pos).sort((a, b) => b.teamFitScore - a.teamFitScore || b.rank - a.rank);
+      if (!options.length) return null;
+      if (level === 'high') {
+        return {
+          title: `Beat the ${pos} run`,
+          body: `${pressure.teams} unique teams before ${team} need ${needLabel(pos)}, so ${playerNameWithRisk(options[0])} may not make it back.`
+        };
+      }
+      if (level === 'low' && options.length >= 2) {
+        return {
+          title: `Can wait on ${pos}`,
+          body: `${needLabel(pos)} pressure is low before ${team}'s next pick, and ${options.slice(0, 2).map(playerNameWithRisk).join(' / ')} are still on the board.`
+        };
+      }
+      return null;
+    }
+
+    function projectedGoneCandidates(team, projection, limit = 3) {
+      if (!projection || projection.picksAway <= 0) return [];
+      const survivorNames = new Set(projection.projectedAvailable.map(player => player.name));
+      const takenByName = Object.fromEntries(projection.projectedTaken.map(item => [item.player, item]));
+      return topChoicesForTeam(team, 10, enrichedAvailablePlayers(team))
+        .filter(player => !survivorNames.has(player.name) && takenByName[player.name])
+        .slice(0, limit)
+        .map(player => ({ player, pick: takenByName[player.name] }));
+    }
+
+    function projectedPositionCall(team, needs, pool, projection) {
+      const primaryNeeds = needs.filter(need => need.pos !== 'ROOKIE' && need.severity !== 'depth only');
+      const best = primaryNeeds
+        .map(need => {
+          const pressure = pressureByPositionUnique(team)[need.pos] || { teams: 0, depth: 0 };
+          const options = pool.filter(player => player.pos === need.pos).sort((a, b) => b.teamFitScore - a.teamFitScore || b.rank - a.rank);
+          return { need, pressure, options };
+        })
+        .filter(item => item.options.length)
+        .sort((a, b) => b.pressure.depth - a.pressure.depth || b.pressure.teams - a.pressure.teams)[0];
+      if (!best) return null;
+      const names = best.options.slice(0, 3).map(playerNameWithRisk).join(', ');
+      const level = positionPressureLevel(best.need.pos, team);
+      return {
+        title: `Position call: ${best.need.pos}`,
+        body: `${needLabel(best.need.pos)} pressure is ${level} before ${team}'s ${projection.nextPickNo}. Likely surviving options: ${names}.`
+      };
+    }
+
+    function projectedStrategySuggestions(team, pool, projection) {
+      const suggestions = [];
+      const needs = teamNeedDetails(projection.projectedDrafted)[team] || [];
+      const topTeamChoices = topChoicesForTeam(team, 3, pool);
+      const gone = projectedGoneCandidates(team, projection, 2);
+      if (gone[0]) {
+        suggestions.push({
+          title: `Projected gone before ${projection.nextPickNo}`,
+          body: `${gone[0].player.name} is likely to be taken around ${gone[0].pick.pickNo} by ${gone[0].pick.owner}, so do not treat him as a ${projection.nextPickNo} fallback.`
+        });
+      }
+      if (topTeamChoices.length) {
+        suggestions.push({
+          title: `Be ready at ${projection.nextPickNo}`,
+          body: `Best projected choices: ${topTeamChoices.map(playerNameWithRisk).join(', ')}. Actual picks override this projection as soon as you enter them.`
+        });
+      }
+      const balance = topTeamChoices.find(player => needs.some(need => need.pos === player.pos) && needs.some(need => need.pos === 'ROOKIE') && isRookie(player));
+      if (balance) {
+        suggestions.push({
+          title: 'Roster balance',
+          body: `${playerNameWithRisk(balance)} projects as available and helps ${team} cover ${needLabel(balance.pos)} plus rookie/value.`
+        });
+      }
+      const positionCall = projectedPositionCall(team, needs, pool, projection);
+      if (positionCall && !suggestions.some(item => item.title === positionCall.title)) suggestions.push(positionCall);
+      return suggestions.slice(0, 3);
+    }
+
+    function strategySuggestions(team = targetTeam(), pool = enrichedAvailablePlayers(team), projection = null) {
+      if (projection && projection.picksAway > 0) return projectedStrategySuggestions(team, pool, projection);
+      const suggestions = [];
+      const needs = teamNeedDetails()[team] || [];
+      const topTeamChoices = topChoicesForTeam(team, 3, pool);
+      const faller = bestFaller(team, pool);
+      if (faller) {
+        suggestions.push({
+          title: 'Take the faller',
+          body: `${playerNameWithRisk(faller)} is still here with a ${faller.rank} PPR grade and ${fitLabel(faller.teamFitScore).toLowerCase()} ${team} fit.`
+        });
+      }
+      const balance = topTeamChoices.find(player => needs.some(need => need.pos === player.pos) && needs.some(need => need.pos === 'ROOKIE') && isRookie(player));
+      if (balance) {
+        suggestions.push({
+          title: 'Roster balance',
+          body: `${playerNameWithRisk(balance)} helps ${team} cover ${needLabel(balance.pos)} plus rookie/value in one pick.`
+        });
+      }
+      const primaryNeeds = needs.filter(need => need.pos !== 'ROOKIE' && need.severity !== 'depth only');
+      const attack = primaryNeeds.map(need => waitOrAttackPosition(team, need.pos, pool)).find(Boolean);
+      if (attack) suggestions.push(attack);
+      if (suggestions.length < 3) {
+        const wait = primaryNeeds.map(need => waitOrAttackPosition(team, need.pos, pool)).find(item => item && item.title.startsWith('Can wait'));
+        if (wait && !suggestions.some(item => item.title === wait.title)) suggestions.push(wait);
+      }
+      if (suggestions.length < 3 && topTeamChoices[0]) {
+        suggestions.push({
+          title: 'Best current choice',
+          body: `${playerNameWithRisk(topTeamChoices[0])} is the best blend of grade, fit, and board risk for ${team} right now.`
+        });
+      }
+      return suggestions.slice(0, 3);
+    }
+
+    function renderStrategySuggestions(team, pool, projection = null) {
+      const suggestions = strategySuggestions(team, pool, projection);
+      const projectionNote = projection && projection.picksAway > 0
+        ? `<div class="tiny">Projection is not a live draft guarantee. It removes likely picks before ${esc(team)} at ${esc(projection.nextPickNo)} based on needs and board grade.</div>`
+        : '';
+      strategyList.innerHTML = projectionNote + (suggestions.map(item => `
+        <div class="strategy-row">
+          <div class="strategy-title">${esc(item.title)}</div>
+          <div class="tiny">${esc(item.body)}</div>
+        </div>
+      `).join('') || '<div class="empty">No strong strategy signal yet. Use Board Order for value and Team Fit for roster need.</div>');
+    }
+
+    function solvedNeedText(item) {
+      const known = players.find(player => player.name.toLowerCase() === item.player.toLowerCase());
+      const solved = [needLabel(item.pos)];
+      if (known && isRookie(known)) solved.push('rookie/value');
+      return `Solved: ${[...new Set(solved)].join(' + ')}`;
+    }
+
+    function pickPathWatchText(team, pick, isNext) {
+      const needs = (teamNeedDetails()[team] || []).map(needDisplay);
+      const projection = isNext ? projectionForTeam(team) : null;
+      if (projection && projection.picksAway > 0) {
+        const projectedPool = enrichedAvailablePlayers(team, projection.projectedAvailable, projection.projectedDrafted, drafted);
+        const projectedChoices = topChoicesForTeam(team, 3, projectedPool).map(player => playerNameWithRisk(player));
+        const gone = projectedGoneCandidates(team, projection, 3).map(item => `${item.player.name} around ${item.pick.pickNo}`);
+        const choiceText = projectedChoices.length ? projectedChoices.join(', ') : 'no projected matching board players';
+        const goneText = gone.length ? ` Likely gone before then: ${gone.join(', ')}.` : '';
+        return `Projected at ${projection.nextPickNo}: ${choiceText}.${goneText}`;
+      }
+      const topChoices = topChoicesForTeam(team, 3).map(player => playerNameWithRisk(player));
+      const needsText = needs.length ? needs.join(', ') : 'best value';
+      const choiceText = topChoices.length ? topChoices.join(', ') : 'no matching board players';
+      return `${isNext ? 'Priority' : 'Plan ahead'}: ${needsText}. Watch: ${choiceText}.`;
+    }
+
+    function teamNeedPillsHtml(team) {
+      const needs = teamNeedDetails()[team] || [];
+      return needs.map(need => pillHtml(needDisplay(need), needClass(need))).join('') || '<span class="pill good">best value</span>';
+    }
+
+    function solvedPillsHtml(item) {
+      const known = players.find(player => player.name.toLowerCase() === item.player.toLowerCase());
+      const pills = [pillHtml(needLabel(item.pos), positionClass(item.pos))];
+      if (known && isRookie(known)) pills.push(pillHtml('rookie/value', 'rookie'));
+      return pills.join('');
+    }
+
+    function mainPressureText(team = targetTeam()) {
+      const pressure = Object.entries(pressureByPositionUnique())
+        .filter(([, data]) => data.teams > 0)
+        .sort((a, b) => b[1].depth - a[1].depth);
+      if (!pressure.length) return `No picks before ${team}'s next pick.`;
+      const [need, data] = pressure[0];
+      return `Main pressure: ${data.teams} unique team${data.teams === 1 ? '' : 's'} before ${team} need ${needLabel(need)} (${data.depth} total need depth).`;
+    }
+
+    function pickPathSummary(team = targetTeam()) {
+      const needs = (teamNeedDetails()[team] || []).map(needDisplay);
+      const nextTarget = nextTargetIndex();
+      const nextPick = nextTarget >= 0 ? draftOrder[nextTarget][0] : 'none left';
+      return `
+        <div class="tim-pick next">
+          <div class="log-pick">${esc(nextPick)}</div>
+          <div>
+            <div class="log-player">${esc(team)} board summary</div>
+            <div class="meta">${teamNeedPillsHtml(team)}</div>
+            <div class="tiny">Still needs: ${esc(needs.join(', ') || 'best value')}. ${esc(mainPressureText(team))} * = at risk before next pick.</div>
+          </div>
+        </div>
+      `;
+    }
+
+    function topPickContextLabel(index, sort, projection) {
+      if (projection && projection.picksAway > 0) {
+        if (index === 0) return `Projected top at ${projection.nextPickNo}`;
+        if (index === 1) return `Projected backup at ${projection.nextPickNo}`;
+        return `Projected third at ${projection.nextPickNo}`;
+      }
+      return `${topPickLabel(index)} by ${sortName(sort)}`;
+    }
+
+    function renderTopPicks(list, sort, team, projection = null) {
+      const top = list.slice(0, 3);
+      const nextTarget = nextTargetIndex();
+      const fallen = nextTarget === drafted.length
+        ? top.filter(player => isAtRisk(player.dangerScore)).map(player => playerNameWithRisk(player))
+        : [];
+      topPicks.innerHTML = top.map((player, index) => `
+        <div class="top-pick ${index === 0 ? 'primary' : ''}">
+          <div class="top-pick-label">${esc(topPickContextLabel(index, sort, projection))}</div>
+          <div class="top-pick-name">${esc(playerNameWithRisk(player))}</div>
+          <div class="meta">
+            ${playerPills(player, team, { compact: true })}
+            <span class="pill">PPR grade ${player.rank}</span>
+            <span class="pill ${dangerClass(player.dangerScore)}">${isAtRisk(player.dangerScore) ? '* ' : ''}${esc(dangerLabel(player.dangerScore))}</span>
+          </div>
+        </div>
+      `).join('') + (fallen.length ? `<div class="warning-row">Fell to ${esc(team)}: ${esc(fallen.join(', '))} was at risk but is still available.</div>` : '') || '<div class="empty">No top choices match this filter.</div>';
+    }
+
+    function renderPills(container, needs) {
+      container.innerHTML = '';
+      if (!needs || needs.length === 0) {
+        container.insertAdjacentHTML('beforeend', '<span class="pill good">needs covered</span>');
+        return;
+      }
+      needs.forEach(need => {
+        container.insertAdjacentHTML('beforeend', pillHtml(needDisplay(need), needClass(need)));
+      });
+    }
+
+    function renderCurrent() {
+      const meta = pickMeta();
+      const needs = teamNeedDetails();
+      currentPickNo.textContent = meta.pickNo;
+      currentOwner.textContent = meta.owner;
+      currentStatus.textContent = isDraftComplete() ? 'Draft complete' : 'On the clock';
+      renderPills(currentNeeds, needs[meta.owner] || []);
+      playerInput.value = '';
+      posInput.value = 'WR';
+    }
+
+    function renderOptions() {
+      playerOptions.innerHTML = availablePlayers()
+        .map(player => `<option value="${player.name}"></option>`)
+        .join('');
+    }
+
+    function filterAndSortBoardList(list, filter, search, sort) {
+      const filtered = list
+        .filter(player => filter === 'ALL' || (filter === 'ROOKIE' ? isRookie(player) : player.pos === filter))
+        .filter(player => !search || player.name.toLowerCase().includes(search));
+      filtered.sort((a, b) => {
+        if (sort === 'risk') return b.dangerScore - a.dangerScore || b.teamFitScore - a.teamFitScore;
+        if (sort === 'rank') return b.rank - a.rank;
+        return b.teamFitScore - a.teamFitScore || b.dangerScore - a.dangerScore;
+      });
+      return filtered;
+    }
+
+    function renderBoard() {
+      const search = el('searchInput').value.trim().toLowerCase();
+      const filter = el('filterPos').value;
+      const sort = el('sortMode').value;
+      const team = targetTeam();
+      const pool = availablePlayers();
+      const projection = projectionForTeam(team);
+      const projectedMode = projection.picksAway > 0;
+      renderPositionSummary(pool);
+      sortExplain.textContent = sortExplanation(sort);
+      boardLegend.textContent = `Board rank is best remaining overall. Pos rank is best remaining at that position. Team fit is how much he helps ${team}. * At risk before ${team}'s next pick. ${projectedMode ? `Top choices and advice are projected for ${projection.nextPickNo}; the center board is still the live draft board.` : 'No star means more likely to survive.'}`;
+      const list = filterAndSortBoardList(enrichedAvailablePlayers(team), filter, search, sort);
+      const adviceList = projectedMode
+        ? filterAndSortBoardList(enrichedAvailablePlayers(team, projection.projectedAvailable, projection.projectedDrafted, drafted), filter, search, sort)
+        : list;
+      renderTopPicks(adviceList, sort, team, projectedMode ? projection : null);
+      renderStrategySuggestions(team, adviceList, projectedMode ? projection : null);
+      const meta = pickMeta();
+      boardList.innerHTML = list.map(player => `
+        <button class="player-row" type="button" data-player="${esc(player.name)}" aria-label="Draft ${esc(player.name)} for ${esc(meta.owner)}">
+          <div>
+            <div class="player-name">${esc(playerNameWithRisk(player))}</div>
+            <div class="meta">
+              ${playerPills(player, team, { includeRanks: true, includeFit: false })}
+              <span class="pill accent">${esc(team)} fit: ${esc(fitLabel(player.teamFitScore))}</span>
+              <span class="pill ${dangerClass(player.dangerScore)}">${isAtRisk(player.dangerScore) ? '* ' : ''}At risk: ${esc(dangerLabel(player.dangerScore))}</span>
+            </div>
+            <div class="tiny">${esc(player.note)} | ${esc(dangerReasonText(player, player.danger))}</div>
+            <div class="player-detail">
+              <div><strong>Fit:</strong> ${esc(player.fit || teamFitReason(player, team))}</div>
+              ${player.role ? `<div><strong>Role:</strong> ${esc(player.role)}</div>` : ''}
+              ${player.risk ? `<div><strong>Risk:</strong> ${esc(player.risk)}</div>` : ''}
+            </div>
+            <div class="tiny">Click to draft for ${esc(meta.owner)} at ${esc(meta.pickNo)}</div>
+          </div>
+          <div class="rank-stack">
+            <div class="rank-label">Board #${player.overallRank}</div>
+            <div class="score">${player.rank}/100</div>
+            <div class="score-label">grade</div>
+          </div>
+        </button>
+      `).join('') || '<div class="empty">No available players match this filter.</div>';
+    }
+
+    function renderLikelyNext() {
+      const team = targetTeam();
+      const upcoming = upcomingBeforeTarget().slice(0, 10);
+      const nextTarget = nextTargetIndex();
+      likelyTitle.textContent = `Likely Next Before ${team}`;
+      if (isDraftComplete()) {
+        likelySub.textContent = 'Draft is complete.';
+        likelyList.innerHTML = '<div class="empty">No upcoming picks remain.</div>';
+        return;
+      }
+      if (nextTarget === drafted.length) {
+        likelySub.textContent = `${team} is on the clock. Use the center board.`;
+        likelyList.innerHTML = `<div class="empty">${esc(team)} is picking now. Use Board Order for value, or switch to Team Fit if you want the best roster match.</div>`;
+        return;
+      }
+      if (upcoming.length === 0) {
+        likelySub.textContent = `No remaining ${team} pick in the tracked draft range.`;
+        likelyList.innerHTML = `<div class="empty">No upcoming picks before ${esc(team)}.</div>`;
+        return;
+      }
+      const nextPickNo = draftOrder[nextTarget][0];
+      likelySub.textContent = `${upcoming.length} picks shown before ${team} at ${nextPickNo}.`;
+      let projectedPool = availablePlayers();
+      let projectedDrafted = drafted.slice();
+      likelyList.innerHTML = upcoming.map(pick => {
+        const needs = teamNeedDetails(projectedDrafted)[pick.owner] || [];
+        const likely = likelyPlayersForPick(pick, 3, projectedPool, projectedDrafted);
+        if (likely[0]) {
+          projectedDrafted = projectedDrafted.concat({ pickNo: pick.pickNo, owner: pick.owner, player: likely[0].name, pos: likely[0].pos, projected: true });
+          projectedPool = projectedPool.filter(player => player.name !== likely[0].name);
+        }
+        return `
+          <div class="likely-row">
+            <div class="likely-pick">${esc(pick.pickNo)}</div>
+            <div>
+              <div class="player-name">${esc(pick.owner)}</div>
+              <div class="meta">${needs.map(need => pillHtml(needDisplay(need), needClass(need))).join('') || '<span class="pill good">covered</span>'}</div>
+              <div class="tiny">Likely: ${likely.map(player => `${esc(player.name)} (${esc(player.pos)})`).join(', ')}</div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderRisk() {
+      const team = targetTeam();
+      const nextTarget = nextTargetIndex();
+      if (nextTarget < 0) {
+        dangerSub.textContent = `No remaining ${team} picks in this draft file.`;
+        needWarnings.innerHTML = '';
+        riskList.innerHTML = `<div class="empty">${esc(team)} has no remaining tracked picks.</div>`;
+        return;
+      }
+      const [pickNo] = draftOrder[nextTarget];
+      const picksAway = nextTarget - drafted.length;
+      if (picksAway === 0) {
+        dangerSub.textContent = `${team} is on the clock.`;
+        needWarnings.innerHTML = '';
+        riskList.innerHTML = `<div class="empty">Make ${esc(team)}'s pick from the center board.</div>`;
+        return;
+      }
+      dangerSub.textContent = `${picksAway} picks until ${team} at ${pickNo}. Starred players may be gone before then.`;
+      const pressure = pressureByPositionUnique();
+      needWarnings.innerHTML = Object.entries(pressure)
+        .filter(([, data]) => data.teams > 0)
+        .sort((a, b) => b[1].depth - a[1].depth)
+        .map(([position, data]) => `<div class="warning-row">${data.teams} unique team${data.teams === 1 ? '' : 's'} before ${esc(team)} need ${esc(needLabel(position))} (${data.depth} total need depth${data.must ? `, ${data.must} must-have` : ''})</div>`)
+        .join('');
+      const list = availablePlayers()
+        .map(player => ({ ...player, danger: dangerDetail(player) }))
+        .map(player => ({ ...player, dangerScore: player.danger.score, teamFitScore: teamFitScore(player, team) }))
+        .sort((a, b) => b.dangerScore - a.dangerScore || b.teamFitScore - a.teamFitScore)
+        .slice(0, 10);
+      riskList.innerHTML = list.map(player => `
+        <div class="risk-row">
+          <div>
+            <div class="player-name">${esc(playerNameWithRisk(player))}</div>
+            <div class="meta">
+              ${playerPills(player, team, { includeFit: false })}
+              <span class="pill accent">${esc(team)} fit: ${esc(fitLabel(player.teamFitScore))}</span>
+              <span class="pill ${dangerClass(player.dangerScore)}">${isAtRisk(player.dangerScore) ? '* ' : ''}At risk: ${esc(dangerLabel(player.dangerScore))}</span>
+            </div>
+            <div class="tiny">${esc(dangerReasonText(player, player.danger))}</div>
+          </div>
+          <div class="risk-score">${isAtRisk(player.dangerScore) ? '* ' : ''}${esc(dangerLabel(player.dangerScore))}</div>
+        </div>
+      `).join('');
+    }
+
+    function renderLog() {
+      pickLog.innerHTML = drafted.slice().reverse().map(item => `
+        <div class="log-row">
+          <div class="log-pick">${item.pickNo}</div>
+          <div>
+            <div class="log-player">${esc(item.player)}</div>
+            <div class="tiny">${esc(item.owner)} · ${esc(item.pos)}</div>
+          </div>
+        </div>
+      `).join('') || '<div class="empty">No picks entered yet.</div>';
+    }
+
+    function renderTeams() {
+      const needs = teamNeedDetails();
+      const focused = targetTeam();
+      teamList.innerHTML = [[focused, teamBase[focused]]].map(([team, data]) => `
+        <div class="team-row ${team === focused ? 'focused' : ''}">
+          <div class="player-name">${esc(team)}</div>
+          <div class="tiny">Kyle roster view only</div>
+          <div class="needs">${(needs[team] || []).map(need => pillHtml(needDisplay(need), needClass(need))).join('') || '<span class="pill good">covered</span>'}</div>
+          <div class="tiny">${esc((needs[team] || []).map(need => `${needDisplay(need)} - ${need.reason}`).join(' | ') || 'Roster looks covered by evaluated keepers/picks.')}</div>
+        </div>
+      `).join('');
+    }
+
+    function renderTargetPath() {
+      const team = targetTeam();
+      targetPathTitle.textContent = `${team} Pick Path`;
+      const targetPicks = draftOrder.map(([pickNo, owner], index) => ({ pickNo, owner, index })).filter(pick => pick.owner === team);
+      const rows = targetPicks.map(pick => {
+        const done = drafted.find(item => item.pickNo === pick.pickNo);
+        const next = nextTargetIndex() === pick.index;
+        const past = pick.index < drafted.length;
+        return `
+          <div class="tim-pick ${done ? 'done' : next ? 'next' : ''}">
+            <div class="log-pick">${pick.pickNo}</div>
+            <div>
+              <div class="log-player">${done ? esc(done.player) : next ? `Next ${esc(team)} pick` : past ? 'Passed' : 'Upcoming'}</div>
+              <div class="meta">${done ? solvedPillsHtml(done) : teamNeedPillsHtml(team)}</div>
+              <div class="tiny">${done ? esc(solvedNeedText(done)) : esc(pickPathWatchText(team, pick, next))}</div>
+            </div>
+          </div>
+        `;
+      }).join('');
+      timPath.innerHTML = pickPathSummary(team) + (rows || `<div class="empty">No picks found for ${esc(team)} in this draft range.</div>`);
+    }
+
+    function save() {
+      localStorage.setItem('kyleDraftCockpitPicks', JSON.stringify(drafted));
+    }
+
+    function render() {
+      populateFocusTeams();
+      renderCurrent();
+      renderOptions();
+      renderBoard();
+      renderLikelyNext();
+      renderRisk();
+      renderLog();
+      renderTeams();
+      renderTargetPath();
+      save();
+    }
+
+    function openConfirmDraft(player) {
+      if (isDraftComplete()) return;
+      const meta = pickMeta();
+      const team = targetTeam();
+      const enriched = enrichedAvailablePlayers(team).find(item => item.name === player.name) || {
+        ...player,
+        dangerScore: riskScore(player),
+        teamFitScore: teamFitScore(player, team)
+      };
+      pendingDraft = { player: player.name, pos: player.pos, pickNo: meta.pickNo, owner: meta.owner };
+      confirmTitle.textContent = `Draft ${playerNameWithRisk(enriched)}?`;
+      confirmCopy.innerHTML = `
+        ${esc(meta.owner)} is on the clock at ${esc(meta.pickNo)}. Confirming removes ${esc(playerNameWithRisk(enriched))} from the board and updates ${esc(meta.owner)}'s needs.
+        <br><br><strong>${esc(team)} fit:</strong> ${esc(player.fit || teamFitReason(player, team))}
+        <br><strong>* note:</strong> ${isAtRisk(enriched.dangerScore) ? `${esc(player.name)} may be gone before ${esc(team)} picks again.` : `No star means ${esc(player.name)} is more likely to survive to ${esc(team)}'s next pick.`}
+        ${player.risk ? `<br><strong>Risk:</strong> ${esc(player.risk)}` : ''}
+      `;
+      confirmModal.classList.add('open');
+      confirmDraftBtn.focus();
+    }
+
+    function closeConfirmDraft() {
+      pendingDraft = null;
+      confirmModal.classList.remove('open');
+    }
+
+    function commitDraft(item) {
+      if (!item || isDraftComplete()) return;
+      drafted.push(item);
+      closeConfirmDraft();
+      render();
+      playerInput.focus();
+    }
+
+    el('draftForm').addEventListener('submit', event => {
+      event.preventDefault();
+      const name = playerInput.value.trim();
+      if (!name) return;
+      const meta = pickMeta();
+      const known = players.find(player => player.name.toLowerCase() === name.toLowerCase());
+      const pos = known ? known.pos : posInput.value;
+      commitDraft({ pickNo: meta.pickNo, owner: meta.owner, player: known ? known.name : name, pos });
+    });
+
+    boardList.addEventListener('click', event => {
+      const row = event.target.closest('[data-player]');
+      if (!row) return;
+      const player = availablePlayers().find(item => item.name === row.dataset.player);
+      if (player) openConfirmDraft(player);
+    });
+
+    confirmDraftBtn.addEventListener('click', () => commitDraft(pendingDraft));
+    cancelDraftBtn.addEventListener('click', closeConfirmDraft);
+    confirmModal.addEventListener('click', event => {
+      if (event.target === confirmModal) closeConfirmDraft();
+    });
+    document.addEventListener('keydown', event => {
+      if (event.key === 'Escape' && confirmModal.classList.contains('open')) closeConfirmDraft();
+    });
+
+    el('undoBtn').addEventListener('click', () => {
+      drafted.pop();
+      render();
+    });
+
+    el('resetBtn').addEventListener('click', () => {
+      if (confirm('Clear all entered picks?')) {
+        drafted = [];
+        render();
+      }
+    });
+
+    focusTeam.addEventListener('input', () => {
+      selectedTeam = 'Kyle';
+      render();
+    });
+
+    ['searchInput','filterPos','sortMode'].forEach(id => el(id).addEventListener('input', render));
+
+    playerInput.addEventListener('input', () => {
+      const known = players.find(player => player.name.toLowerCase() === playerInput.value.trim().toLowerCase());
+      if (known) posInput.value = known.pos;
+    });
+
+    render();
+  </script>
+</body>
+</html>
