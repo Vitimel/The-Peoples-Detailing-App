@@ -20,6 +20,16 @@
       --danger-soft: #ffe4e4;
       --good: #2f6f3e;
       --good-soft: #e2f4e5;
+      --wr: #1d4ed8;
+      --wr-soft: #dbeafe;
+      --rb: #b45309;
+      --rb-soft: #ffedd5;
+      --qb: #4338ca;
+      --qb-soft: #e0e7ff;
+      --te: #7e22ce;
+      --te-soft: #f3e8ff;
+      --rookie: #4f6f00;
+      --rookie-soft: #eef7c5;
       --shadow: 0 12px 35px rgba(23, 32, 51, 0.08);
       font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     }
@@ -167,6 +177,16 @@
     .pill.good { background: var(--good-soft); color: var(--good); }
     .pill.danger { background: var(--danger-soft); color: var(--danger); }
     .pill.accent { background: var(--accent-soft); color: var(--accent); }
+    .pill.pos-wr { background: var(--wr-soft); color: var(--wr); }
+    .pill.pos-rb { background: var(--rb-soft); color: var(--rb); }
+    .pill.pos-qb { background: var(--qb-soft); color: var(--qb); }
+    .pill.pos-te { background: var(--te-soft); color: var(--te); }
+    .pill.rookie {
+      background: var(--rookie-soft);
+      color: var(--rookie);
+      border: 1px solid #c8d965;
+      font-weight: 850;
+    }
 
     .draft-form {
       display: grid;
@@ -1086,6 +1106,34 @@
       return `${needLabel(item.pos)}: ${item.severity}`;
     }
 
+    function positionClass(pos) {
+      return pos === 'WR' ? 'pos-wr' : pos === 'RB' ? 'pos-rb' : pos === 'QB' ? 'pos-qb' : pos === 'TE' ? 'pos-te' : '';
+    }
+
+    function needClass(need) {
+      const pos = typeof need === 'string' ? need : need.pos;
+      return pos === 'ROOKIE' ? 'rookie' : positionClass(pos);
+    }
+
+    function pillHtml(label, cls = '') {
+      return `<span class="pill ${cls}">${esc(label)}</span>`;
+    }
+
+    function playerPills(player, team, options = {}) {
+      const pills = [pillHtml(player.pos, positionClass(player.pos))];
+      if (options.includeRanks) {
+        pills.push(pillHtml(`Overall #${player.overallRank}`));
+        pills.push(pillHtml(`${player.pos} #${player.positionRank}`, positionClass(player.pos)));
+      }
+      if (isRookie(player)) {
+        pills.push(pillHtml(player.rookieRank ? `Rookie #${player.rookieRank}` : 'rookie/value', 'rookie'));
+      }
+      if (team && options.includeFit !== false) {
+        pills.push(pillHtml(`${team} fit${options.compact ? '' : ':'} ${fitLabel(player.teamFitScore)}`, 'accent'));
+      }
+      return pills.join('');
+    }
+
     function playerScoreForOwner(player, owner, pickNo) {
       const needs = teamNeeds()[owner] || [];
       const severity = needSeverity(owner, player.pos);
@@ -1268,11 +1316,11 @@
       const chunks = ['WR', 'RB', 'QB', 'TE'].map(pos => {
         const positionPool = pool.filter(player => player.pos === pos).sort((a, b) => b.rank - a.rank);
         const top = positionPool[0] ? `top ${positionPool[0].name}` : 'none left';
-        return `<span class="pill">${pos}: ${positionPool.length} left, ${esc(top)}</span>`;
+        return pillHtml(`${pos}: ${positionPool.length} left, ${top}`, positionClass(pos));
       });
       const rookiePool = pool.filter(isRookie).sort((a, b) => b.rank - a.rank);
       const rookieTop = rookiePool[0] ? `top ${rookiePool[0].name}` : 'none left';
-      chunks.push(`<span class="pill accent">Rookies: ${rookiePool.length} left, ${esc(rookieTop)}</span>`);
+      chunks.push(pillHtml(`Rookies: ${rookiePool.length} left, ${rookieTop}`, 'rookie'));
       positionSummary.innerHTML = chunks.join('');
     }
 
@@ -1404,6 +1452,18 @@
       return `${isNext ? 'Priority' : 'Plan ahead'}: ${needsText}. Watch: ${choiceText}.`;
     }
 
+    function teamNeedPillsHtml(team) {
+      const needs = teamNeedDetails()[team] || [];
+      return needs.map(need => pillHtml(needDisplay(need), needClass(need))).join('') || '<span class="pill good">best value</span>';
+    }
+
+    function solvedPillsHtml(item) {
+      const known = players.find(player => player.name.toLowerCase() === item.player.toLowerCase());
+      const pills = [pillHtml(needLabel(item.pos), positionClass(item.pos))];
+      if (known && isRookie(known)) pills.push(pillHtml('rookie/value', 'rookie'));
+      return pills.join('');
+    }
+
     function mainPressureText(team = targetTeam()) {
       const pressure = Object.entries(pressureByPositionUnique())
         .filter(([, data]) => data.teams > 0)
@@ -1422,6 +1482,7 @@
           <div class="log-pick">${esc(nextPick)}</div>
           <div>
             <div class="log-player">${esc(team)} board summary</div>
+            <div class="meta">${teamNeedPillsHtml(team)}</div>
             <div class="tiny">Still needs: ${esc(needs.join(', ') || 'best value')}. ${esc(mainPressureText(team))} * = at risk before next pick.</div>
           </div>
         </div>
@@ -1439,9 +1500,8 @@
           <div class="top-pick-label">${esc(topPickLabel(index))} by ${esc(sortName(sort))}</div>
           <div class="top-pick-name">${esc(playerNameWithRisk(player))}</div>
           <div class="meta">
-            <span class="pill">${esc(player.pos)}</span>
+            ${playerPills(player, team, { compact: true })}
             <span class="pill">PPR grade ${player.rank}</span>
-            <span class="pill accent">${esc(team)} fit ${esc(fitLabel(player.teamFitScore))}</span>
             <span class="pill ${dangerClass(player.dangerScore)}">${isAtRisk(player.dangerScore) ? '* ' : ''}${esc(dangerLabel(player.dangerScore))}</span>
           </div>
         </div>
@@ -1455,9 +1515,7 @@
         return;
       }
       needs.forEach(need => {
-        const pos = typeof need === 'string' ? need : need.pos;
-        const cls = pos === 'QB' ? 'warn' : pos === 'WR' ? 'accent' : pos === 'RB' ? 'danger' : '';
-        container.insertAdjacentHTML('beforeend', `<span class="pill ${cls}">${esc(needDisplay(need))}</span>`);
+        container.insertAdjacentHTML('beforeend', pillHtml(needDisplay(need), needClass(need)));
       });
     }
 
@@ -1503,10 +1561,7 @@
           <div>
             <div class="player-name">${esc(playerNameWithRisk(player))}</div>
             <div class="meta">
-              <span class="pill">${esc(player.pos)}</span>
-              <span class="pill">Overall #${player.overallRank}</span>
-              <span class="pill">${esc(player.pos)} #${player.positionRank}</span>
-              ${player.rookieRank ? `<span class="pill accent">Rookie #${player.rookieRank}</span>` : ''}
+              ${playerPills(player, team, { includeRanks: true, includeFit: false })}
               <span class="pill accent">${esc(team)} fit: ${esc(fitLabel(player.teamFitScore))}</span>
               <span class="pill ${dangerClass(player.dangerScore)}">${isAtRisk(player.dangerScore) ? '* ' : ''}At risk: ${esc(dangerLabel(player.dangerScore))}</span>
             </div>
@@ -1561,7 +1616,7 @@
             <div class="likely-pick">${esc(pick.pickNo)}</div>
             <div>
               <div class="player-name">${esc(pick.owner)}</div>
-              <div class="meta">${needs.map(need => `<span class="pill">${esc(needDisplay(need))}</span>`).join('') || '<span class="pill good">covered</span>'}</div>
+              <div class="meta">${needs.map(need => pillHtml(needDisplay(need), needClass(need))).join('') || '<span class="pill good">covered</span>'}</div>
               <div class="tiny">Likely: ${likely.map(player => `${esc(player.name)} (${esc(player.pos)})`).join(', ')}</div>
             </div>
           </div>
@@ -1603,7 +1658,7 @@
           <div>
             <div class="player-name">${esc(playerNameWithRisk(player))}</div>
             <div class="meta">
-              <span class="pill">${esc(player.pos)}</span>
+              ${playerPills(player, team, { includeFit: false })}
               <span class="pill accent">${esc(team)} fit: ${esc(fitLabel(player.teamFitScore))}</span>
               <span class="pill ${dangerClass(player.dangerScore)}">${isAtRisk(player.dangerScore) ? '* ' : ''}At risk: ${esc(dangerLabel(player.dangerScore))}</span>
             </div>
@@ -1633,7 +1688,7 @@
         <div class="team-row ${team === focused ? 'focused' : ''}">
           <div class="player-name">${esc(team)}</div>
           <div class="tiny">${esc(data.keepers)}</div>
-          <div class="needs">${(needs[team] || []).map(need => `<span class="pill">${esc(needDisplay(need))}</span>`).join('') || '<span class="pill good">covered</span>'}</div>
+          <div class="needs">${(needs[team] || []).map(need => pillHtml(needDisplay(need), needClass(need))).join('') || '<span class="pill good">covered</span>'}</div>
           <div class="tiny">${esc((needs[team] || []).map(need => `${needDisplay(need)} - ${need.reason}`).join(' | ') || 'Roster looks covered by evaluated keepers/picks.')}</div>
         </div>
       `).join('');
@@ -1652,6 +1707,7 @@
             <div class="log-pick">${pick.pickNo}</div>
             <div>
               <div class="log-player">${done ? esc(done.player) : next ? `Next ${esc(team)} pick` : past ? 'Passed' : 'Upcoming'}</div>
+              <div class="meta">${done ? solvedPillsHtml(done) : teamNeedPillsHtml(team)}</div>
               <div class="tiny">${done ? esc(solvedNeedText(done)) : esc(pickPathWatchText(team, pick, next))}</div>
             </div>
           </div>
