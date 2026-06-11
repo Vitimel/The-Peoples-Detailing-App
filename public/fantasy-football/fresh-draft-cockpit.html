@@ -886,133 +886,159 @@
     let teamBase = freshSetup?.teamBase || {};
 
     const players = [
-      p('Jeremiyah Love','RB',100,'rookie cornerstone'), p('Carnell Tate','WR',96,'rookie alpha'), p('Jordyn Tyson','WR',93,'premium rookie WR'), p('Jadarian Price','RB',89,'rookie RB value'),
-      p('KC Concepcion','WR',85,'drops risk, big role'), p('Omar Cooper Jr.','WR',80,'rookie WR fallback'), p('Makai Lemon','WR',76,'talent, pass-volume concern'), p('Denzel Boston','WR',73,'rookie target competition'),
-      p('Jonah Coleman','RB',70,'rookie RB'), p('Kenyon Sadiq','TE',68,'rookie TE'), p('Eli Stowers','TE',67,'rookie TE'), p('Matthew Golden','WR',65,'later rookie WR'),
-      p("D'Andre Swift",'RB',75,'veteran RB fallback'), p('Chuba Hubbard','RB',74,'veteran RB fallback'), p('Jayden Reed','WR',82,'PPR plus burst'), p('Josh Downs','WR',79,'PPR floor'),
-      p('Khalil Shakir','WR',77,'boring points'), p('Jakobi Meyers','WR',73,'PPR floor'), p("Wan'Dale Robinson",'WR',68,'late PPR fallback'), p('Adonai Mitchell','WR',64,'depth upside'),
-      p('Parker Washington','WR',61,'role check'), p('Rashid Shaheed','WR',58,'boom/bust'), p('Romeo Doubs','WR',57,'role unclear'), p('Jalen McMillan','WR',56,'late WR'),
-      p('Dontayvion Wicks','WR',55,'late WR'), p('Demario Douglas','WR',54,'late PPR'), p('Marvin Mims','WR',53,'late upside'),
-      p('Brock Purdy','QB',80,'ideal QB target'), p('Bo Nix','QB',78,'QB value'), p('Jordan Love','QB',76,'QB fallback'), p('Jared Goff','QB',72,'QB floor'), p('Baker Mayfield','QB',69,'QB fallback'),
-      p('Dak Prescott','QB',68,'QB fallback'), p('Trevor Lawrence','QB',67,'QB fallback'), p('Tua Tagovailoa','QB',61,'late QB'),
-      p('Zach Charbonnet','RB',64,'RB depth'), p('Tyjae Spears','RB',63,'RB depth'), p('Kendre Miller','RB',62,'RB depth'), p('Jaylen Wright','RB',61,'RB depth'), p('Blake Corum','RB',60,'RB depth'),
-      p('Roschon Johnson','RB',59,'RB depth'), p('Ray Davis','RB',58,'RB depth'), p('MarShawn Lloyd','RB',57,'RB depth'),
-      p('Dalton Kincaid','TE',66,'TE value'), p('Jake Ferguson','TE',63,'TE value'), p('Pat Freiermuth','TE',60,'TE floor'), p('Isaiah Likely','TE',59,'TE upside'), p('Luke Musgrave','TE',56,'TE depth')
+      p("Ja'Marr Chase","WR",100,"ECR #1 | WR1 | CIN"),
+      p("Puka Nacua","WR",100,"ECR #2 | WR2 | LAR"),
+      p("Bijan Robinson","RB",100,"ECR #3 | RB1 | ATL"),
+      p("Jahmyr Gibbs","RB",100,"ECR #4 | RB2 | DET"),
+      p("Jaxon Smith-Njigba","WR",99,"ECR #5 | WR3 | SEA"),
+      p("Amon-Ra St. Brown","WR",99,"ECR #6 | WR4 | DET"),
+      p("Christian McCaffrey","RB",99,"ECR #7 | RB3 | SF"),
+      p("CeeDee Lamb","WR",98,"ECR #8 | WR5 | DAL"),
+      p("Justin Jefferson","WR",98,"ECR #9 | WR6 | MIN"),
+      p("Jonathan Taylor","RB",98,"ECR #10 | RB4 | IND"),
+      p("Drake London","WR",97,"ECR #11 | WR7 | ATL"),
+      p("Nico Collins","WR",97,"ECR #12 | WR8 | HOU"),
+      p("De'Von Achane","RB",96,"ECR #13 | RB5 | MIA"),
+      p("Ashton Jeanty","RB",96,"ECR #14 | RB6 | LV"),
+      p("A.J. Brown","WR",96,"ECR #15 | WR9 | NE"),
+      p("George Pickens","WR",95,"ECR #16 | WR10 | DAL"),
+      p("Trey McBride","TE",95,"ECR #17 | TE1 | ARI"),
+      p("Chris Olave","WR",95,"ECR #18 | WR11 | NO"),
+      p("Chase Brown","RB",94,"ECR #19 | RB7 | CIN"),
+      p("Brock Bowers","TE",94,"ECR #20 | TE2 | LV"),
+      p("James Cook III","RB",94,"ECR #21 | RB8 | BUF"),
+      p("Rashee Rice","WR",93,"ECR #22 | WR12 | KC"),
+      p("Josh Allen","QB",93,"ECR #23 | QB1 | BUF"),
+      p("Malik Nabers","WR",93,"ECR #24 | WR13 | NYG"),
+      p("Omarion Hampton","RB",92,"ECR #25 | RB9 | LAC"),
+      p("Tetairoa McMillan","WR",92,"ECR #26 | WR14 | CAR"),
+      p("DeVonta Smith","WR",92,"ECR #27 | WR15 | PHI"),
+      p("Saquon Barkley","RB",91,"ECR #28 | RB10 | PHI"),
+      p("Garrett Wilson","WR",91,"ECR #29 | WR16 | NYJ"),
+      p("Lamar Jackson","QB",91,"ECR #30 | QB2 | BAL"),
+      p("Kenneth Walker III","RB",90,"ECR #31 | RB11 | KC"),
+      p("Ladd McConkey","WR",90,"ECR #32 | WR17 | LAC"),
+      p("Drake Maye","QB",89,"ECR #33 | QB3 | NE"),
+      p("Tee Higgins","WR",89,"ECR #34 | WR18 | CIN"),
+      p("Jeremiyah Love","RB",89,"ECR #35 | RB12 | ARI"),
+      p("Colston Loveland","TE",88,"ECR #36 | TE3 | CHI"),
+      p("Zay Flowers","WR",88,"ECR #37 | WR19 | BAL"),
+      p("Jaylen Waddle","WR",88,"ECR #38 | WR20 | DEN"),
+      p("Derrick Henry","RB",87,"ECR #39 | RB13 | BAL"),
+      p("Breece Hall","RB",87,"ECR #40 | RB14 | NYJ"),
+      p("Terry McLaurin","WR",87,"ECR #41 | WR21 | WAS"),
+      p("Luther Burden III","WR",86,"ECR #42 | WR22 | CHI"),
+      p("Joe Burrow","QB",86,"ECR #43 | QB4 | CIN"),
+      p("Josh Jacobs","RB",86,"ECR #44 | RB15 | GB"),
+      p("Kyren Williams","RB",85,"ECR #45 | RB16 | LAR"),
+      p("Emeka Egbuka","WR",85,"ECR #46 | WR23 | TB"),
+      p("Travis Etienne Jr.","RB",85,"ECR #47 | RB17 | NO"),
+      p("Javonte Williams","RB",84,"ECR #48 | RB18 | DAL"),
+      p("Davante Adams","WR",84,"ECR #49 | WR24 | LAR"),
+      p("Mike Evans","WR",84,"ECR #50 | WR25 | SF"),
+      p("Jameson Williams","WR",83,"ECR #51 | WR26 | DET"),
+      p("Tyler Warren","TE",83,"ECR #52 | TE4 | IND"),
+      p("Jayden Daniels","QB",82,"ECR #53 | QB5 | WAS"),
+      p("Cam Skattebo","RB",82,"ECR #54 | RB19 | NYG"),
+      p("Jalen Hurts","QB",82,"ECR #55 | QB6 | PHI"),
+      p("Christian Watson","WR",81,"ECR #56 | WR27 | GB"),
+      p("Bucky Irving","RB",81,"ECR #57 | RB20 | TB"),
+      p("DJ Moore","WR",81,"ECR #58 | WR28 | BUF"),
+      p("TreVeyon Henderson","RB",80,"ECR #59 | RB21 | NE"),
+      p("Quinshon Judkins","RB",80,"ECR #60 | RB22 | CLE"),
+      p("Rome Odunze","WR",80,"ECR #61 | WR29 | CHI"),
+      p("D'Andre Swift","RB",79,"ECR #62 | RB23 | CHI"),
+      p("Carnell Tate","WR",79,"ECR #63 | WR30 | TEN"),
+      p("Jaylen Warren","RB",79,"ECR #64 | RB24 | PIT"),
+      p("Marvin Harrison Jr.","WR",78,"ECR #65 | WR31 | ARI"),
+      p("David Montgomery","RB",78,"ECR #66 | RB25 | HOU"),
+      p("Harold Fannin Jr.","TE",78,"ECR #67 | TE5 | CLE"),
+      p("Justin Herbert","QB",77,"ECR #68 | QB7 | LAC"),
+      p("Caleb Williams","QB",77,"ECR #69 | QB8 | CHI"),
+      p("Tucker Kraft","TE",77,"ECR #70 | TE6 | GB"),
+      p("Courtland Sutton","WR",76,"ECR #71 | WR32 | DEN"),
+      p("Bhayshul Tuten","RB",76,"ECR #72 | RB26 | JAC"),
+      p("DK Metcalf","WR",75,"ECR #73 | WR33 | PIT"),
+      p("Alec Pierce","WR",75,"ECR #74 | WR34 | IND"),
+      p("RJ Harvey","RB",75,"ECR #75 | RB27 | DEN"),
+      p("Chris Godwin Jr.","WR",74,"ECR #76 | WR35 | TB"),
+      p("Michael Wilson","WR",74,"ECR #77 | WR36 | ARI"),
+      p("Chuba Hubbard","RB",74,"ECR #78 | RB28 | CAR"),
+      p("Jaxson Dart","QB",73,"ECR #79 | QB9 | NYG"),
+      p("Trevor Lawrence","QB",73,"ECR #80 | QB10 | JAC"),
+      p("Kyle Pitts Sr.","TE",73,"ECR #81 | TE7 | ATL"),
+      p("Dak Prescott","QB",72,"ECR #82 | QB11 | DAL"),
+      p("Jadarian Price","RB",72,"ECR #83 | RB29 | SEA"),
+      p("Jordyn Tyson","WR",72,"ECR #84 | WR37 | NO"),
+      p("Tony Pollard","RB",71,"ECR #85 | RB30 | TEN"),
+      p("Rhamondre Stevenson","RB",71,"ECR #86 | RB31 | NE"),
+      p("Michael Pittman Jr.","WR",71,"ECR #87 | WR38 | PIT"),
+      p("Rico Dowdle","RB",70,"ECR #88 | RB32 | PIT"),
+      p("Jakobi Meyers","WR",70,"ECR #89 | WR39 | JAC"),
+      p("Sam LaPorta","TE",70,"ECR #90 | TE8 | DET"),
+      p("Wan'Dale Robinson","WR",69,"ECR #91 | WR40 | TEN"),
+      p("Brian Thomas Jr.","WR",69,"ECR #92 | WR41 | JAC"),
+      p("Makai Lemon","WR",68,"ECR #93 | WR42 | PHI"),
+      p("Brock Purdy","QB",68,"ECR #94 | QB12 | SF"),
+      p("Parker Washington","WR",68,"ECR #95 | WR43 | JAC"),
+      p("Kyle Monangai","RB",67,"ECR #96 | RB33 | CHI"),
+      p("Ricky Pearsall","WR",67,"ECR #97 | WR44 | SF"),
+      p("Josh Downs","WR",67,"ECR #98 | WR45 | IND"),
+      p("Patrick Mahomes II","QB",66,"ECR #99 | QB13 | KC"),
+      p("Kenneth Gainwell","RB",66,"ECR #100 | RB34 | TB"),
+      p("Bo Nix","QB",66,"ECR #101 | QB14 | DEN"),
+      p("Aaron Jones Sr.","RB",65,"ECR #102 | RB35 | MIN"),
+      p("Jake Ferguson","TE",65,"ECR #103 | TE9 | DAL"),
+      p("Travis Kelce","TE",65,"ECR #104 | TE10 | KC"),
+      p("Matthew Stafford","QB",64,"ECR #105 | QB15 | LAR"),
+      p("Jordan Addison","WR",64,"ECR #106 | WR46 | MIN"),
+      p("Dalton Kincaid","TE",64,"ECR #107 | TE11 | BUF"),
+      p("J.K. Dobbins","RB",63,"ECR #108 | RB36 | DEN"),
+      p("Blake Corum","RB",63,"ECR #109 | RB37 | LAR"),
+      p("Jared Goff","QB",63,"ECR #110 | QB16 | DET"),
+      p("Jayden Reed","WR",62,"ECR #111 | WR47 | GB"),
+      p("Khalil Shakir","WR",62,"ECR #112 | WR48 | BUF"),
+      p("Kyler Murray","QB",61,"ECR #113 | QB17 | MIN"),
+      p("Quentin Johnston","WR",61,"ECR #114 | WR49 | LAC"),
+      p("George Kittle","TE",61,"ECR #115 | TE12 | SF"),
+      p("Jordan Love","QB",60,"ECR #116 | QB18 | GB"),
+      p("Rachaad White","RB",60,"ECR #117 | RB38 | WAS"),
+      p("Jayden Higgins","WR",60,"ECR #118 | WR50 | HOU"),
+      p("Baker Mayfield","QB",59,"ECR #119 | QB19 | TB"),
+      p("Tyler Shough","QB",59,"ECR #120 | QB20 | NO"),
+      p("Dallas Goedert","TE",59,"ECR #121 | TE13 | PHI"),
+      p("Jacory Croskey-Merritt","RB",58,"ECR #122 | RB39 | WAS"),
+      p("Isaiah Likely","TE",58,"ECR #123 | TE14 | NYG"),
+      p("Xavier Worthy","WR",58,"ECR #124 | WR51 | KC"),
+      p("Tyler Allgeier","RB",57,"ECR #125 | RB40 | ARI"),
+      p("Tyrone Tracy Jr.","RB",57,"ECR #126 | RB41 | NYG"),
+      p("KC Concepcion","WR",57,"ECR #127 | WR52 | CLE"),
+      p("Jordan Mason","RB",56,"ECR #128 | RB42 | MIN"),
+      p("Romeo Doubs","WR",56,"ECR #129 | WR53 | NE"),
+      p("Malik Willis","QB",56,"ECR #130 | QB21 | MIA"),
+      p("Jalen Coker","WR",55,"ECR #131 | WR54 | CAR"),
+      p("Woody Marks","RB",55,"ECR #132 | RB43 | HOU"),
+      p("C.J. Stroud","QB",54,"ECR #133 | QB22 | HOU"),
+      p("Mark Andrews","TE",54,"ECR #134 | TE15 | BAL"),
+      p("Matthew Golden","WR",54,"ECR #135 | WR55 | GB"),
+      p("Sam Darnold","QB",53,"ECR #136 | QB23 | SEA"),
+      p("Juwan Johnson","TE",53,"ECR #137 | TE16 | NO"),
+      p("Tyjae Spears","RB",53,"ECR #138 | RB44 | TEN"),
+      p("Zach Charbonnet","RB",52,"ECR #139 | RB45 | SEA"),
+      p("Oronde Gadsden II","TE",52,"ECR #140 | TE17 | LAC")
     ];
 
     const keeperProfiles = {};
 
-    const playerDetails = {
-      'Jordyn Tyson': {
-        fit: 'Premium rookie WR value if he slides past his expected range.',
-        role: 'Projected outside/featured rookie WR profile with keeper upside.',
-        risk: 'Likely goes before 1.12 if the room chases rookie receivers. Do not count on him being there.'
-      },
-      'KC Concepcion': {
-        fit: 'Rookie WR upside if the top tier is gone.',
-        role: 'Cleveland first-round WR with route/YAC appeal; could become a manufactured-touch slot/flanker weapon.',
-        risk: 'Drops and catch consistency are the main worries.'
-      },
-      'Jadarian Price': {
-        fit: 'Rookie RB value if you want another long-term backfield asset.',
-        role: 'Rookie RB with keeper appeal and a path to future workload if the Seattle backfield opens up.',
-        risk: 'Role may not be immediate.'
-      },
-      'Jayden Reed': {
-        fit: 'Clean veteran pivot if the rookie tier is gone.',
-        role: 'Green Bay slot/motion WR with PPR usefulness and enough explosive plays to avoid being only a floor pick.',
-        risk: 'Packers target distribution can be crowded, so week-to-week ceiling may bounce around.'
-      },
-      'Josh Downs': {
-        fit: 'Useful PPR pick: steady catches, slot usage, and weekly flex utility.',
-        role: 'Short-area target earner with full-PPR appeal.',
-        risk: 'Ceiling depends on offense and touchdown volume; better floor than league-winning upside.'
-      },
-      'Khalil Shakir': {
-        fit: 'Boring points in the best way. Good answer if you need reliable WR depth after an upside pick.',
-        role: 'Buffalo chain-mover/security blanket type with full-PPR catch volume appeal.',
-        risk: 'May not command alpha targets; value is steadiness more than takeover upside.'
-      },
-      'Jakobi Meyers': {
-        fit: 'Fallback PPR stabilizer if Reed/Downs/Shakir are gone.',
-        role: 'Veteran possession WR profile; useful when you want catches and fewer empty weeks.',
-        risk: 'Limited ceiling and team-context dependency.'
-      },
-      "Wan'Dale Robinson": {
-        fit: 'Late PPR patch if the main WR tier gets stripped.',
-        role: 'Slot/underneath WR profile who can catch enough passes to matter in full PPR.',
-        risk: 'Needs volume to pay off; not a big-play separator for the roster.'
-      },
-      'Omar Cooper Jr.': {
-        fit: 'Rookie WR fallback if Tyson/KC are gone and you still want rookie value.',
-        role: 'Developmental WR bet with enough draft capital/role intrigue to matter in keeper format.',
-        risk: 'Less certain than Tyson/KC; could be more future asset than immediate starter.'
-      },
-      'Makai Lemon': {
-        fit: 'Talent is good, but passing volume is the concern.',
-        role: 'Rookie WR with playmaking ability if his offense gives him enough designed work.',
-        risk: 'Environment/target volume could make him frustrating in weekly lineups.'
-      },
-      'Denzel Boston': {
-        fit: 'Later rookie WR consideration, especially if Cleveland’s WR room creates value pockets.',
-        role: 'Bigger WR profile who may compete for targets with KC Concepcion.',
-        risk: 'Target competition and role clarity are the issue.'
-      },
-      'Matthew Golden': {
-        fit: 'Third-round-ish upside swing if safer PPR names are gone.',
-        role: 'Young WR bet with keeper appeal if he earns a real offensive role.',
-        risk: 'Less floor than Downs/Shakir/Jakobi; needs role confirmation.'
-      },
-      'Adonai Mitchell': {
-        fit: 'Depth/upside WR if the draft gets picked clean.',
-        role: 'Boundary receiver profile with splash-play potential.',
-        risk: 'Not the same PPR floor as the preferred slot/target earners.'
-      },
-      'Parker Washington': {
-        fit: 'Only a fallback if role checks out and the board has thinned badly.',
-        role: 'Potential underneath/slot contributor.',
-        risk: 'Needs target share proof before he should be prioritized.'
-      },
-      'Brock Purdy': {
-        fit: 'Ideal QB target because he solves the position without overpaying in a 1QB, 4-point passing TD league.',
-        role: 'Efficient weekly starter in a strong offensive environment.',
-        risk: 'Less rushing cushion than elite fantasy QBs, so he needs passing efficiency to hold.'
-      },
-      'Bo Nix': {
-        fit: 'Good QB value if Purdy is gone or QB starts drying up before 2.10/3.05.',
-        role: 'Ascending fantasy QB option with enough production profile to stabilize the lineup.',
-        risk: 'Still less proven than the locked-in elite names.'
-      },
-      'Jordan Love': {
-        fit: 'Solid QB fallback if Purdy/Nix do not make it.',
-        role: 'Packers passing-game bet who pairs naturally with a Jayden Reed pick.',
-        risk: 'Weekly scoring can be more volatile if the offense spreads targets around.'
-      },
-      "D'Andre Swift": {
-        fit: 'Emergency veteran value only if rookie/WR targets are wiped out.',
-        role: 'Usable RB depth if the value falls.',
-        risk: 'Taking him early can worsen the WR squeeze.'
-      },
-      'Chuba Hubbard': {
-        fit: 'Similar to Swift: value if he falls, not the cleanest roster-shape pick.',
-        role: 'Veteran RB depth with usable workload if role holds.',
-        risk: 'Does not solve every roster shape question by itself.'
-      }
-    };
+    const playerDetails = {};
 
     const rookiePlayerNames = new Set([
-      'Jeremiyah Love',
-      'Carnell Tate',
-      'Jordyn Tyson',
-      'Jadarian Price',
-      'KC Concepcion',
-      'Omar Cooper Jr.',
-      'Makai Lemon',
-      'Denzel Boston',
-      'Jonah Coleman',
-      'Kenyon Sadiq',
-      'Eli Stowers',
-      'Matthew Golden'
+      "Jeremiyah Love",
+      "Carnell Tate",
+      "Jadarian Price",
+      "Jordyn Tyson",
+      "Makai Lemon",
+      "KC Concepcion"
     ]);
 
     function p(name, pos, rank, note) {
