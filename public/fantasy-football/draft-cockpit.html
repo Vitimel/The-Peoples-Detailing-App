@@ -934,12 +934,12 @@
       }[char]));
     }
 
-    function takenNames() {
-      return new Set(drafted.map(d => d.player.toLowerCase()));
+    function takenNames(draftState = drafted) {
+      return new Set(draftState.map(d => d.player.toLowerCase()));
     }
 
-    function availablePlayers() {
-      const taken = takenNames();
+    function availablePlayers(draftState = drafted) {
+      const taken = takenNames(draftState);
       return players.filter(player => !taken.has(player.name.toLowerCase()));
     }
 
@@ -983,13 +983,13 @@
       return (teamBase[team]?.keepers || '').split(';').map(name => name.trim()).filter(Boolean);
     }
 
-    function evaluateRoster(team) {
+    function evaluateRoster(team, draftState = drafted) {
       const roster = { QB: [], RB: [], WR: [], TE: [], currentRookie: false };
       keeperNames(team).forEach(name => {
         const profile = profileForPlayer(name);
         if (roster[profile.pos]) roster[profile.pos].push(profile);
       });
-      drafted.filter(item => item.owner === team).forEach(item => {
+      draftState.filter(item => item.owner === team).forEach(item => {
         const profile = profileForPlayer(item.player, item.pos);
         if (roster[profile.pos]) roster[profile.pos].push(profile);
         if (profile.currentRookie) roster.currentRookie = true;
@@ -1022,8 +1022,8 @@
       }
     }
 
-    function deriveNeeds(team) {
-      const roster = evaluateRoster(team);
+    function deriveNeeds(team, draftState = drafted) {
+      const roster = evaluateRoster(team, draftState);
       const items = [];
       const qb = bestAt(roster, 'QB');
       if (!qb) addNeed(items, 'QB', 'must-have', 'no QB keeper');
@@ -1054,20 +1054,20 @@
       return { roster, items };
     }
 
-    function needSeverity(team, position) {
-      return deriveNeeds(team).items.find(item => item.pos === position)?.severity || 'covered';
+    function needSeverity(team, position, draftState = drafted) {
+      return deriveNeeds(team, draftState).items.find(item => item.pos === position)?.severity || 'covered';
     }
 
-    function teamNeedDetails() {
+    function teamNeedDetails(draftState = drafted) {
       const state = {};
       Object.keys(teamBase).forEach(team => {
-        state[team] = deriveNeeds(team).items;
+        state[team] = deriveNeeds(team, draftState).items;
       });
       return state;
     }
 
-    function teamNeeds() {
-      const details = teamNeedDetails();
+    function teamNeeds(draftState = drafted) {
+      const details = teamNeedDetails(draftState);
       const state = {};
       Object.entries(details).forEach(([team, items]) => {
         state[team] = items.map(item => item.pos);
@@ -1075,21 +1075,20 @@
       return state;
     }
 
-    function nextTargetIndex() {
-      const team = targetTeam();
-      for (let i = drafted.length; i < draftOrder.length; i++) {
+    function nextTargetIndex(team = targetTeam(), draftState = drafted) {
+      for (let i = draftState.length; i < draftOrder.length; i++) {
         if (draftOrder[i][1] === team) return i;
       }
       return -1;
     }
 
-    function upcomingBeforeTarget() {
-      const nextTarget = nextTargetIndex();
-      if (nextTarget < 0 || nextTarget === drafted.length) return [];
-      return draftOrder.slice(drafted.length, nextTarget).map(([pickNo, owner], offset) => ({
+    function upcomingBeforeTarget(team = targetTeam(), draftState = drafted) {
+      const nextTarget = nextTargetIndex(team, draftState);
+      if (nextTarget < 0 || nextTarget === draftState.length) return [];
+      return draftOrder.slice(draftState.length, nextTarget).map(([pickNo, owner], offset) => ({
         pickNo,
         owner,
-        index: drafted.length + offset
+        index: draftState.length + offset
       }));
     }
 
@@ -1134,13 +1133,13 @@
       return pills.join('');
     }
 
-    function playerScoreForOwner(player, owner, pickNo) {
-      const needs = teamNeeds()[owner] || [];
-      const severity = needSeverity(owner, player.pos);
+    function playerScoreForOwner(player, owner, pickNo, draftState = drafted) {
+      const needs = teamNeeds(draftState)[owner] || [];
+      const severity = needSeverity(owner, player.pos, draftState);
       const round = Number(pickNo.split('.')[0]);
       let score = player.rank;
       if (needs.includes(player.pos)) score += severity === 'must-have' ? 34 : severity === 'would-like' ? 24 : 12;
-      if (needs.includes('ROOKIE') && isRookie(player)) score += needSeverity(owner, 'ROOKIE') === 'must-have' ? 24 : 10;
+      if (needs.includes('ROOKIE') && isRookie(player)) score += needSeverity(owner, 'ROOKIE', draftState) === 'must-have' ? 24 : 10;
       if (player.pos === 'QB' && needs.includes('QB')) score += 20;
       if (player.pos === 'TE' && needs.includes('TE')) score += 10;
       if (isRookie(player) && round === 1) score += 18;
@@ -1149,17 +1148,46 @@
       return score;
     }
 
-    function likelyPlayersForPick(pick, limit = 3, pool = availablePlayers()) {
+    function likelyPlayersForPick(pick, limit = 3, pool = availablePlayers(), draftState = drafted) {
       return pool
-        .map(player => ({ ...player, ownerScore: playerScoreForOwner(player, pick.owner, pick.pickNo) }))
+        .map(player => ({ ...player, ownerScore: playerScoreForOwner(player, pick.owner, pick.pickNo, draftState) }))
         .sort((a, b) => b.ownerScore - a.ownerScore || b.rank - a.rank)
         .slice(0, limit);
     }
 
-    function pressureByPosition() {
+    function projectionForTeam(team = targetTeam()) {
+      const nextTarget = nextTargetIndex(team);
+      const projectedTaken = [];
+      let projectedDrafted = drafted.slice();
+      let projectedAvailable = availablePlayers(projectedDrafted);
+      if (nextTarget < 0) {
+        return { team, nextTarget, nextPickNo: null, picksAway: -1, projectedAvailable, projectedTaken, projectedDrafted };
+      }
+      const picksAway = nextTarget - drafted.length;
+      draftOrder.slice(drafted.length, nextTarget).forEach(([pickNo, owner], offset) => {
+        const pick = { pickNo, owner, index: drafted.length + offset };
+        const likely = likelyPlayersForPick(pick, 1, projectedAvailable, projectedDrafted)[0];
+        if (!likely) return;
+        const projectedPick = { pickNo, owner, player: likely.name, pos: likely.pos, projected: true };
+        projectedTaken.push(projectedPick);
+        projectedDrafted = projectedDrafted.concat(projectedPick);
+        projectedAvailable = projectedAvailable.filter(player => player.name !== likely.name);
+      });
+      return {
+        team,
+        nextTarget,
+        nextPickNo: draftOrder[nextTarget]?.[0] || null,
+        picksAway,
+        projectedAvailable,
+        projectedTaken,
+        projectedDrafted
+      };
+    }
+
+    function pressureByPosition(team = targetTeam(), draftState = drafted) {
       const counts = { QB: 0, RB: 0, WR: 0, TE: 0, ROOKIE: 0 };
-      const needs = teamNeedDetails();
-      upcomingBeforeTarget().forEach(pick => {
+      const needs = teamNeedDetails(draftState);
+      upcomingBeforeTarget(team, draftState).forEach(pick => {
         (needs[pick.owner] || []).forEach(need => {
           counts[need.pos] = (counts[need.pos] || 0) + severityWeight(need.severity);
         });
@@ -1167,13 +1195,13 @@
       return counts;
     }
 
-    function pressureByPositionUnique() {
+    function pressureByPositionUnique(team = targetTeam(), draftState = drafted) {
       const pressure = {};
       ['QB', 'RB', 'WR', 'TE', 'ROOKIE'].forEach(pos => {
         pressure[pos] = { teams: new Set(), depth: 0, must: 0 };
       });
-      const needs = teamNeedDetails();
-      upcomingBeforeTarget().forEach(pick => {
+      const needs = teamNeedDetails(draftState);
+      upcomingBeforeTarget(team, draftState).forEach(pick => {
         (needs[pick.owner] || []).forEach(need => {
           pressure[need.pos].teams.add(pick.owner);
           pressure[need.pos].depth += severityWeight(need.severity);
@@ -1187,14 +1215,14 @@
       }]));
     }
 
-    function dangerDetail(player) {
-      const upcoming = upcomingBeforeTarget();
-      const needs = teamNeeds();
+    function dangerDetail(player, team = targetTeam(), draftState = drafted) {
+      const upcoming = upcomingBeforeTarget(team, draftState);
+      const needs = teamNeeds(draftState);
       const needyOwners = upcoming
         .filter(pick => (needs[pick.owner] || []).includes(player.pos))
         .map(pick => pick.owner);
       const likelyOwners = upcoming
-        .filter(pick => likelyPlayersForPick(pick, 3).some(candidate => candidate.name === player.name))
+        .filter(pick => likelyPlayersForPick(pick, 3, availablePlayers(draftState), draftState).some(candidate => candidate.name === player.name))
         .map(pick => `${pick.owner} ${pick.pickNo}`);
       const reasons = [];
       const rookieOwners = isRookie(player)
@@ -1216,26 +1244,26 @@
       return { score: Math.round(score), reasons };
     }
 
-    function riskScore(player) {
-      const nextTarget = nextTargetIndex();
+    function riskScore(player, team = targetTeam(), draftState = drafted) {
+      const nextTarget = nextTargetIndex(team, draftState);
       if (nextTarget < 0) return 0;
-      return dangerDetail(player).score;
+      return dangerDetail(player, team, draftState).score;
     }
 
-    function teamFitScore(player, team = targetTeam()) {
-      const needs = teamNeeds()[team] || [];
-      const severity = needSeverity(team, player.pos);
+    function teamFitScore(player, team = targetTeam(), draftState = drafted) {
+      const needs = teamNeeds(draftState)[team] || [];
+      const severity = needSeverity(team, player.pos, draftState);
       let score = Math.round(player.rank * 0.55);
       if (needs.includes(player.pos)) score += severity === 'must-have' ? 36 : severity === 'would-like' ? 26 : 12;
-      if (needs.includes('ROOKIE') && isRookie(player)) score += needSeverity(team, 'ROOKIE') === 'must-have' ? 24 : 10;
+      if (needs.includes('ROOKIE') && isRookie(player)) score += needSeverity(team, 'ROOKIE', draftState) === 'must-have' ? 24 : 10;
       if (player.pos === 'QB' && needs.includes('QB')) score += 16;
       if (player.pos === 'TE' && needs.includes('TE')) score += 10;
       if (team === 'Tim') score = Math.max(score, player.timFit);
       return Math.min(100, score);
     }
 
-    function teamFitReason(player, team = targetTeam()) {
-      const needs = teamNeeds()[team] || [];
+    function teamFitReason(player, team = targetTeam(), draftState = drafted) {
+      const needs = teamNeeds(draftState)[team] || [];
       const hits = [];
       if (needs.includes(player.pos)) hits.push(`${player.pos} need`);
       if (needs.includes('ROOKIE') && isRookie(player)) hits.push('rookie/value need');
@@ -1336,15 +1364,15 @@
       return 'board order';
     }
 
-    function enrichedAvailablePlayers(team = targetTeam()) {
-      const ranks = rankMaps();
-      return availablePlayers().map(player => {
-        const danger = dangerDetail(player);
+    function enrichedAvailablePlayers(team = targetTeam(), pool = availablePlayers(), fitDraftState = drafted, dangerDraftState = drafted) {
+      const ranks = rankMaps(pool);
+      return pool.map(player => {
+        const danger = dangerDetail(player, team, dangerDraftState);
         return {
           ...player,
           danger,
           dangerScore: danger.score,
-          teamFitScore: teamFitScore(player, team),
+          teamFitScore: teamFitScore(player, team, fitDraftState),
           overallRank: ranks.overall[player.name],
           positionRank: ranks.byPosition[player.name],
           rookieRank: ranks.rookies[player.name]
@@ -1359,8 +1387,8 @@
         .slice(0, limit);
     }
 
-    function positionPressureLevel(pos) {
-      const data = pressureByPositionUnique()[pos] || { teams: 0, depth: 0 };
+    function positionPressureLevel(pos, team = targetTeam(), draftState = drafted) {
+      const data = pressureByPositionUnique(team, draftState)[pos] || { teams: 0, depth: 0 };
       if (data.teams >= 5 || data.depth >= 7) return 'high';
       if (data.teams >= 3 || data.depth >= 4) return 'medium';
       return 'low';
@@ -1373,9 +1401,9 @@
       return null;
     }
 
-    function waitOrAttackPosition(team, pos, pool = enrichedAvailablePlayers(team)) {
-      const pressure = pressureByPositionUnique()[pos] || { teams: 0, depth: 0 };
-      const level = positionPressureLevel(pos);
+    function waitOrAttackPosition(team, pos, pool = enrichedAvailablePlayers(team), draftState = drafted) {
+      const pressure = pressureByPositionUnique(team, draftState)[pos] || { teams: 0, depth: 0 };
+      const level = positionPressureLevel(pos, team, draftState);
       const options = pool.filter(player => player.pos === pos).sort((a, b) => b.teamFitScore - a.teamFitScore || b.rank - a.rank);
       if (!options.length) return null;
       if (level === 'high') {
@@ -1393,7 +1421,66 @@
       return null;
     }
 
-    function strategySuggestions(team = targetTeam(), pool = enrichedAvailablePlayers(team)) {
+    function projectedGoneCandidates(team, projection, limit = 3) {
+      if (!projection || projection.picksAway <= 0) return [];
+      const survivorNames = new Set(projection.projectedAvailable.map(player => player.name));
+      const takenByName = Object.fromEntries(projection.projectedTaken.map(item => [item.player, item]));
+      return topChoicesForTeam(team, 10, enrichedAvailablePlayers(team))
+        .filter(player => !survivorNames.has(player.name) && takenByName[player.name])
+        .slice(0, limit)
+        .map(player => ({ player, pick: takenByName[player.name] }));
+    }
+
+    function projectedPositionCall(team, needs, pool, projection) {
+      const primaryNeeds = needs.filter(need => need.pos !== 'ROOKIE' && need.severity !== 'depth only');
+      const best = primaryNeeds
+        .map(need => {
+          const pressure = pressureByPositionUnique(team)[need.pos] || { teams: 0, depth: 0 };
+          const options = pool.filter(player => player.pos === need.pos).sort((a, b) => b.teamFitScore - a.teamFitScore || b.rank - a.rank);
+          return { need, pressure, options };
+        })
+        .filter(item => item.options.length)
+        .sort((a, b) => b.pressure.depth - a.pressure.depth || b.pressure.teams - a.pressure.teams)[0];
+      if (!best) return null;
+      const names = best.options.slice(0, 3).map(playerNameWithRisk).join(', ');
+      const level = positionPressureLevel(best.need.pos, team);
+      return {
+        title: `Position call: ${best.need.pos}`,
+        body: `${needLabel(best.need.pos)} pressure is ${level} before ${team}'s ${projection.nextPickNo}. Likely surviving options: ${names}.`
+      };
+    }
+
+    function projectedStrategySuggestions(team, pool, projection) {
+      const suggestions = [];
+      const needs = teamNeedDetails(projection.projectedDrafted)[team] || [];
+      const topTeamChoices = topChoicesForTeam(team, 3, pool);
+      const gone = projectedGoneCandidates(team, projection, 2);
+      if (gone[0]) {
+        suggestions.push({
+          title: `Projected gone before ${projection.nextPickNo}`,
+          body: `${gone[0].player.name} is likely to be taken around ${gone[0].pick.pickNo} by ${gone[0].pick.owner}, so do not treat him as a ${projection.nextPickNo} fallback.`
+        });
+      }
+      if (topTeamChoices.length) {
+        suggestions.push({
+          title: `Be ready at ${projection.nextPickNo}`,
+          body: `Best projected choices: ${topTeamChoices.map(playerNameWithRisk).join(', ')}. Actual picks override this projection as soon as you enter them.`
+        });
+      }
+      const balance = topTeamChoices.find(player => needs.some(need => need.pos === player.pos) && needs.some(need => need.pos === 'ROOKIE') && isRookie(player));
+      if (balance) {
+        suggestions.push({
+          title: 'Roster balance',
+          body: `${playerNameWithRisk(balance)} projects as available and helps ${team} cover ${needLabel(balance.pos)} plus rookie/value.`
+        });
+      }
+      const positionCall = projectedPositionCall(team, needs, pool, projection);
+      if (positionCall && !suggestions.some(item => item.title === positionCall.title)) suggestions.push(positionCall);
+      return suggestions.slice(0, 3);
+    }
+
+    function strategySuggestions(team = targetTeam(), pool = enrichedAvailablePlayers(team), projection = null) {
+      if (projection && projection.picksAway > 0) return projectedStrategySuggestions(team, pool, projection);
       const suggestions = [];
       const needs = teamNeedDetails()[team] || [];
       const topTeamChoices = topChoicesForTeam(team, 3, pool);
@@ -1427,14 +1514,17 @@
       return suggestions.slice(0, 3);
     }
 
-    function renderStrategySuggestions(team, pool) {
-      const suggestions = strategySuggestions(team, pool);
-      strategyList.innerHTML = suggestions.map(item => `
+    function renderStrategySuggestions(team, pool, projection = null) {
+      const suggestions = strategySuggestions(team, pool, projection);
+      const projectionNote = projection && projection.picksAway > 0
+        ? `<div class="tiny">Projection is not a live draft guarantee. It removes likely picks before ${esc(team)} at ${esc(projection.nextPickNo)} based on needs and board grade.</div>`
+        : '';
+      strategyList.innerHTML = projectionNote + (suggestions.map(item => `
         <div class="strategy-row">
           <div class="strategy-title">${esc(item.title)}</div>
           <div class="tiny">${esc(item.body)}</div>
         </div>
-      `).join('') || '<div class="empty">No strong strategy signal yet. Use Board Order for value and Team Fit for roster need.</div>';
+      `).join('') || '<div class="empty">No strong strategy signal yet. Use Board Order for value and Team Fit for roster need.</div>');
     }
 
     function solvedNeedText(item) {
@@ -1446,6 +1536,15 @@
 
     function pickPathWatchText(team, pick, isNext) {
       const needs = (teamNeedDetails()[team] || []).map(needDisplay);
+      const projection = isNext ? projectionForTeam(team) : null;
+      if (projection && projection.picksAway > 0) {
+        const projectedPool = enrichedAvailablePlayers(team, projection.projectedAvailable, projection.projectedDrafted, drafted);
+        const projectedChoices = topChoicesForTeam(team, 3, projectedPool).map(player => playerNameWithRisk(player));
+        const gone = projectedGoneCandidates(team, projection, 3).map(item => `${item.player.name} around ${item.pick.pickNo}`);
+        const choiceText = projectedChoices.length ? projectedChoices.join(', ') : 'no projected matching board players';
+        const goneText = gone.length ? ` Likely gone before then: ${gone.join(', ')}.` : '';
+        return `Projected at ${projection.nextPickNo}: ${choiceText}.${goneText}`;
+      }
       const topChoices = topChoicesForTeam(team, 3).map(player => playerNameWithRisk(player));
       const needsText = needs.length ? needs.join(', ') : 'best value';
       const choiceText = topChoices.length ? topChoices.join(', ') : 'no matching board players';
@@ -1489,7 +1588,16 @@
       `;
     }
 
-    function renderTopPicks(list, sort, team) {
+    function topPickContextLabel(index, sort, projection) {
+      if (projection && projection.picksAway > 0) {
+        if (index === 0) return `Projected top at ${projection.nextPickNo}`;
+        if (index === 1) return `Projected backup at ${projection.nextPickNo}`;
+        return `Projected third at ${projection.nextPickNo}`;
+      }
+      return `${topPickLabel(index)} by ${sortName(sort)}`;
+    }
+
+    function renderTopPicks(list, sort, team, projection = null) {
       const top = list.slice(0, 3);
       const nextTarget = nextTargetIndex();
       const fallen = nextTarget === drafted.length
@@ -1497,7 +1605,7 @@
         : [];
       topPicks.innerHTML = top.map((player, index) => `
         <div class="top-pick ${index === 0 ? 'primary' : ''}">
-          <div class="top-pick-label">${esc(topPickLabel(index))} by ${esc(sortName(sort))}</div>
+          <div class="top-pick-label">${esc(topPickContextLabel(index, sort, projection))}</div>
           <div class="top-pick-name">${esc(playerNameWithRisk(player))}</div>
           <div class="meta">
             ${playerPills(player, team, { compact: true })}
@@ -1536,25 +1644,35 @@
         .join('');
     }
 
+    function filterAndSortBoardList(list, filter, search, sort) {
+      const filtered = list
+        .filter(player => filter === 'ALL' || (filter === 'ROOKIE' ? isRookie(player) : player.pos === filter))
+        .filter(player => !search || player.name.toLowerCase().includes(search));
+      filtered.sort((a, b) => {
+        if (sort === 'risk') return b.dangerScore - a.dangerScore || b.teamFitScore - a.teamFitScore;
+        if (sort === 'rank') return b.rank - a.rank;
+        return b.teamFitScore - a.teamFitScore || b.dangerScore - a.dangerScore;
+      });
+      return filtered;
+    }
+
     function renderBoard() {
       const search = el('searchInput').value.trim().toLowerCase();
       const filter = el('filterPos').value;
       const sort = el('sortMode').value;
       const team = targetTeam();
       const pool = availablePlayers();
+      const projection = projectionForTeam(team);
+      const projectedMode = projection.picksAway > 0;
       renderPositionSummary(pool);
       sortExplain.textContent = sortExplanation(sort);
-      boardLegend.textContent = `Board rank is best remaining overall. Pos rank is best remaining at that position. Team fit is how much he helps ${team}. * At risk before ${team}'s next pick. No star means more likely to survive.`;
-      const list = enrichedAvailablePlayers(team)
-        .filter(player => filter === 'ALL' || (filter === 'ROOKIE' ? isRookie(player) : player.pos === filter))
-        .filter(player => !search || player.name.toLowerCase().includes(search));
-      list.sort((a, b) => {
-        if (sort === 'risk') return b.dangerScore - a.dangerScore || b.teamFitScore - a.teamFitScore;
-        if (sort === 'rank') return b.rank - a.rank;
-        return b.teamFitScore - a.teamFitScore || b.dangerScore - a.dangerScore;
-      });
-      renderTopPicks(list, sort, team);
-      renderStrategySuggestions(team, list);
+      boardLegend.textContent = `Board rank is best remaining overall. Pos rank is best remaining at that position. Team fit is how much he helps ${team}. * At risk before ${team}'s next pick. ${projectedMode ? `Top choices and advice are projected for ${projection.nextPickNo}; the center board is still the live draft board.` : 'No star means more likely to survive.'}`;
+      const list = filterAndSortBoardList(enrichedAvailablePlayers(team), filter, search, sort);
+      const adviceList = projectedMode
+        ? filterAndSortBoardList(enrichedAvailablePlayers(team, projection.projectedAvailable, projection.projectedDrafted, drafted), filter, search, sort)
+        : list;
+      renderTopPicks(adviceList, sort, team, projectedMode ? projection : null);
+      renderStrategySuggestions(team, adviceList, projectedMode ? projection : null);
       const meta = pickMeta();
       boardList.innerHTML = list.map(player => `
         <button class="player-row" type="button" data-player="${esc(player.name)}" aria-label="Draft ${esc(player.name)} for ${esc(meta.owner)}">
@@ -1605,10 +1723,12 @@
       const nextPickNo = draftOrder[nextTarget][0];
       likelySub.textContent = `${upcoming.length} picks shown before ${team} at ${nextPickNo}.`;
       let projectedPool = availablePlayers();
+      let projectedDrafted = drafted.slice();
       likelyList.innerHTML = upcoming.map(pick => {
-        const needs = teamNeedDetails()[pick.owner] || [];
-        const likely = likelyPlayersForPick(pick, 3, projectedPool);
+        const needs = teamNeedDetails(projectedDrafted)[pick.owner] || [];
+        const likely = likelyPlayersForPick(pick, 3, projectedPool, projectedDrafted);
         if (likely[0]) {
+          projectedDrafted = projectedDrafted.concat({ pickNo: pick.pickNo, owner: pick.owner, player: likely[0].name, pos: likely[0].pos, projected: true });
           projectedPool = projectedPool.filter(player => player.name !== likely[0].name);
         }
         return `
