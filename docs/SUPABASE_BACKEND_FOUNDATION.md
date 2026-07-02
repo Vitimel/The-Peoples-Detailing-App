@@ -59,6 +59,13 @@ The guest claim-token migration in `supabase/migrations/20260702170000_guest_cla
 - hashed claim-token storage in `bookings.claim_token_hash`, so the raw token is not stored in the database.
 - claim-token matching for future guest cancellation, reschedule, message, and account-claim RPCs.
 
+The guest claim audit migration in `supabase/migrations/20260702202000_guest_claim_audit_rpc.sql` adds:
+
+- a hardened `claim_guest_booking` handoff for signed-in customers with the matching raw claim token.
+- attachment of any earlier guest booking messages to the customer profile.
+- default-vehicle/profile preservation when the guest booking is saved into an account.
+- a `guest_booking_claimed` status event so the safe booking timeline records the account handoff.
+
 The customer booking read migration in `supabase/migrations/20260702180000_customer_booking_read_rpc.sql` adds:
 
 - `get_customer_booking` for claimed users, staff, or guests with the raw claim token.
@@ -147,6 +154,7 @@ The adapter sends the public anon key for guest/public calls and can send a sign
 - message rows become in-app message records with booking, audience, direction, body, and timestamp.
 - booking timeline reads use `get_booking_timeline` so owners, claimed customers, and guests with a claim token can see safe status history without raw `status_events` table access.
 - app booking drafts become the safe `create_guest_booking(payload jsonb)` RPC payload.
+- guest save-profile flows call `claim_guest_booking` so the backend owns the guest-to-profile handoff instead of the frontend mutating raw booking/profile rows.
 - owner actions call the future `owner_*` RPCs rather than writing raw table rows directly.
 - owner job dashboards can call `owner_list_jobs` instead of stitching raw tables together in the frontend.
 - owner notification screens can call `owner_list_notifications` to show SMS-placeholder alerts without touching raw notification tables.

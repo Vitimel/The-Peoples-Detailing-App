@@ -255,6 +255,24 @@ describe('checkout fee logic', () => {
     expect(migration).toContain('grant execute on function public.claim_guest_booking(uuid, text) to authenticated');
   });
 
+  it('keeps guest claim handoff audited and attached to profile data', () => {
+    const migration = readFileSync('supabase/migrations/20260702202000_guest_claim_audit_rpc.sql', 'utf8');
+    expect(migration).toContain('create or replace function public.claim_guest_booking');
+    expect(migration).toContain('sign in required');
+    expect(migration).toContain('claimed_by_user_id is null');
+    expect(migration).toContain('public.booking_claim_token_matches(claim_token_hash, claim_token_hash_input)');
+    expect(migration).toContain('update public.messages');
+    expect(migration).toContain('set customer_profile_id = profile_id');
+    expect(migration).toContain('default_vehicle_id = saved_vehicle_id');
+    expect(migration).toContain("'guest_booking_claimed'");
+    expect(migration).toContain('grant execute on function public.claim_guest_booking(uuid, text) to authenticated');
+    expect(migration).not.toContain('stored_hash = token_input');
+    expect(migration).not.toContain('app_fee_ledger_entries');
+    expect(migration).not.toContain('payment_placeholders');
+    expect(migration).not.toContain('sms_notifications');
+    expect(migration).not.toMatch(/stripe\.com|twilio|telnyx|service-role/i);
+  });
+
   it('lets customers re-open bookings through safe token-gated read RPCs', () => {
     const migration = readFileSync('supabase/migrations/20260702180000_customer_booking_read_rpc.sql', 'utf8');
     expect(migration).toContain('create or replace function public.get_customer_booking');

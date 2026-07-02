@@ -100,6 +100,7 @@ Before wiring the real login UI, verify the Auth REST adapter can sign up/sign i
 
 - A new Supabase Auth customer automatically gets a `profiles` row with role `customer`.
 - Customer A can claim a guest booking only with the matching raw claim token.
+- Claiming a guest booking attaches prior booking messages to Customer A's profile and writes `guest_booking_claimed` to the safe timeline.
 - Customer A can read/manage only claimed Customer A bookings.
 - Customer A can list claimed bookings through `get_customer_bookings` without stored claim hashes, raw auth user IDs, app-fee ledger rows, payment placeholder internals, or SMS queue rows.
 - Customer A can read claimed booking history through `get_booking_timeline`.

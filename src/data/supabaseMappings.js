@@ -340,6 +340,11 @@ export const buildSupabaseBookingTimelinePayload = input => ({
   claim_token_hash_input: input?.claim_token || input?.claimToken || input?.claim_token_hash || input?.claimTokenHash || null,
 });
 
+export const buildSupabaseGuestClaimPayload = input => ({
+  booking_id_input: input?.booking_id || input?.bookingId || "",
+  claim_token_hash_input: input?.claim_token || input?.claimToken || input?.claim_token_hash || input?.claimTokenHash || null,
+});
+
 export const buildSupabaseReschedulePayload = input => ({
   booking_id_input: input?.booking_id || input?.bookingId || "",
   new_start_at_input: input?.new_start_at || input?.newStartAt || input?.startIso || input?.date || "",

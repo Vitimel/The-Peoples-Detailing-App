@@ -107,6 +107,7 @@ describe('Supabase live verification docs', () => {
     expect(runner).toContain('developer_assign_app_role');
     expect(runner).toContain('owner_acknowledge_booking');
     expect(runner).toContain('claim_guest_booking');
+    expect(runner).toContain('guest_booking_claimed');
     expect(runner).toContain('get_customer_booking');
     expect(runner).toContain('get_customer_booking_messages');
     expect(runner).toContain('get_booking_timeline');

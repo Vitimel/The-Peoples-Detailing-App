@@ -5,6 +5,7 @@ import {
   buildSupabaseCustomerBookingReadPayload,
   buildSupabaseCustomerProfilePayload,
   buildSupabaseBusinessSettingPayload,
+  buildSupabaseGuestClaimPayload,
   buildSupabaseGuestBookingPayload,
   buildSupabaseIntegrationStatusPayload,
   buildSupabaseMessagePayload,
@@ -156,6 +157,10 @@ export const createSupabaseRestAdapter = ({
       }
       return result;
     },
+    claimGuestBooking: input => requestJson("/rest/v1/rpc/claim_guest_booking", {
+      method: "POST",
+      body: JSON.stringify(buildSupabaseGuestClaimPayload(input)),
+    }),
     cancelBooking: input => requestJson("/rest/v1/rpc/customer_cancel_booking", {
       method: "POST",
       body: JSON.stringify(buildSupabaseCancelPayload(input)),
@@ -367,6 +372,7 @@ export const getIntegrationStatus = () => {
       customerReadRpcs: "repo_ready_not_applied",
       customerHistoryReadRpcs: "repo_ready_not_applied",
       bookingTimelineReadRpcs: "repo_ready_not_applied",
+      guestClaimRpcs: "repo_ready_not_applied",
       customerProfileVehicleRpcs: "repo_ready_not_applied",
       messageReadRpcs: "repo_ready_not_applied",
       publicAvailabilityReadRpcs: "repo_ready_not_applied",

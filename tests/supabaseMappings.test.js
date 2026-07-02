@@ -6,6 +6,7 @@ import {
   buildSupabaseCancelPayload,
   buildSupabaseCustomerBookingReadPayload,
   buildSupabaseCustomerProfilePayload,
+  buildSupabaseGuestClaimPayload,
   buildSupabaseGuestBookingPayload,
   buildSupabaseIntegrationStatusPayload,
   buildSupabaseMessagePayload,
@@ -318,6 +319,14 @@ describe('Supabase mapping helpers', () => {
     });
 
     expect(buildSupabaseBookingTimelinePayload({
+      bookingId: 'booking-1',
+      claimToken: 'claim-token',
+    })).toEqual({
+      booking_id_input: 'booking-1',
+      claim_token_hash_input: 'claim-token',
+    });
+
+    expect(buildSupabaseGuestClaimPayload({
       bookingId: 'booking-1',
       claimToken: 'claim-token',
     })).toEqual({

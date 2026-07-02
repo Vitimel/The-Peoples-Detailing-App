@@ -379,6 +379,15 @@ const main = async () => {
   }, customerA.token);
   log("pass", "customer A can claim booking with raw token");
 
+  const claimedTimelineRead = await rpc("get_booking_timeline", {
+    booking_id_input: bookingId,
+    claim_token_hash_input: null,
+  }, customerA.token);
+  if (!Array.isArray(claimedTimelineRead.data) || !claimedTimelineRead.data.some(event => event.event_type === "guest_booking_claimed")) {
+    fail("claimed customer timeline read", "Claimed customer timeline did not include guest_booking_claimed event");
+  }
+  log("pass", "claimed customer can read claim event in safe timeline");
+
   const customerAHistory = await rpc("get_customer_bookings", {}, customerA.token);
   if (!Array.isArray(customerAHistory.data) || !customerAHistory.data.some(row => row.id === bookingId)) {
     fail("customer A safe booking history", "Claimed booking was missing from customer-safe history");
