@@ -43,6 +43,8 @@ VITE_USE_SUPABASE=false
 
 Keep `VITE_USE_SUPABASE=false` until Auth/RLS is tested. Never add the Supabase service-role key to GitHub Pages, `.env`, or committed files.
 
+When Auth is wired later, pass the signed-in user's Supabase access token into the adapter for customer, owner, and developer RPCs. Public/guest reads and guest booking can still use the anon key.
+
 ## First Live Verification
 
 Start with the repo smoke check:

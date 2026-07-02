@@ -64,6 +64,8 @@ Manually bootstrap Tim once by setting his `public.profiles.role` to `developer`
 
 Never put the service-role key in GitHub Pages, `.env`, or frontend code.
 
+The frontend adapter should use the anon key for public/guest calls and a signed-in user's Supabase access token for customer, owner, and developer RPCs. Do not test owner/developer RPCs with the anon key alone.
+
 ## Anonymous Customer Checks
 
 - Public services can be read with the anon key.

@@ -28,6 +28,7 @@ describe('app data layer readiness', () => {
     expect(status.dataAdapter.developerAdminRpcs).toBe('repo_ready_not_applied');
     expect(status.dataAdapter.developerAdminReadRpcs).toBe('repo_ready_not_applied');
     expect(status.dataAdapter.authRoleRpcs).toBe('repo_ready_not_applied');
+    expect(status.auth.supabaseAccessTokenAdapter).toBe('repo_ready_not_live');
     expect(status.auth.rowLevelSecurity).toBe('repo_ready_requires_live_verification');
     expect(getSupabaseConfigStatus()).toMatchObject({
       configured: false,
@@ -105,6 +106,53 @@ describe('app data layer readiness', () => {
     await expect(adapter.loadBusinessSettings()).resolves.toEqual({ minimumBookingNoticeHours: 48 });
     await expect(adapter.loadCustomerBookings()).resolves.toMatchObject([{ id: 'booking-1', serviceId: 'basic', priceCents: 15000, startIso: '2026-07-05T14:00:00.000Z', customerAccessMode: 'profile' }]);
     expect(fetchImpl.mock.calls.map(call => call[0])).toContain('https://example.supabase.co/rest/v1/rpc/get_customer_bookings');
+  });
+
+  it('uses a Supabase user access token when one is available', async () => {
+    const fetchImpl = vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      json: async () => 'ok-id',
+    }));
+    const adapter = createSupabaseRestAdapter({
+      url: 'https://example.supabase.co',
+      anonKey: 'anon_test_key',
+      accessToken: 'user_access_token',
+      fetchImpl,
+    });
+
+    await adapter.ownerAcknowledgeBooking('booking-1');
+
+    expect(fetchImpl).toHaveBeenCalledWith('https://example.supabase.co/rest/v1/rpc/owner_acknowledge_booking', expect.objectContaining({
+      headers: expect.objectContaining({
+        apikey: 'anon_test_key',
+        Authorization: 'Bearer user_access_token',
+      }),
+    }));
+  });
+
+  it('can resolve a fresh Supabase user token for each request', async () => {
+    const fetchImpl = vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      json: async () => 'ok-id',
+    }));
+    const getAccessToken = vi.fn()
+      .mockResolvedValueOnce('first_user_token')
+      .mockResolvedValueOnce('second_user_token');
+    const adapter = createSupabaseRestAdapter({
+      url: 'https://example.supabase.co',
+      anonKey: 'anon_test_key',
+      getAccessToken,
+      fetchImpl,
+    });
+
+    await adapter.ownerAcknowledgeBooking('booking-1');
+    await adapter.developerUpdateBusinessSetting({ key: 'deposit_cents', value: 2500 });
+
+    expect(getAccessToken).toHaveBeenCalledTimes(2);
+    expect(fetchImpl.mock.calls[0][1].headers.Authorization).toBe('Bearer first_user_token');
+    expect(fetchImpl.mock.calls[1][1].headers.Authorization).toBe('Bearer second_user_token');
   });
 
   it('defines future owner operation RPC calls without connecting a live backend', async () => {

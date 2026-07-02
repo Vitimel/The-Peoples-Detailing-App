@@ -43,20 +43,34 @@ export const getSupabaseConfigStatus = () => {
   };
 };
 
-export const createSupabaseRestAdapter = ({ url, anonKey, fetchImpl = globalThis.fetch } = {}) => {
+export const createSupabaseRestAdapter = ({
+  url,
+  anonKey,
+  accessToken,
+  getAccessToken,
+  fetchImpl = globalThis.fetch,
+} = {}) => {
   const baseUrl = String(url || "").replace(/\/+$/, "");
-  const headers = {
-    apikey: anonKey || "",
-    Authorization: `Bearer ${anonKey || ""}`,
-    "Content-Type": "application/json",
+  const resolveBearerToken = async () => {
+    if (typeof getAccessToken === "function") {
+      const token = await getAccessToken();
+      if (token) return token;
+    }
+    return accessToken || anonKey || "";
   };
 
   const requestJson = async (path, options = {}) => {
     if (!baseUrl || !anonKey) throw new Error("Supabase URL and anon key are required");
     if (!fetchImpl) throw new Error("Fetch is unavailable");
+    const bearerToken = await resolveBearerToken();
     const response = await fetchImpl(`${baseUrl}${path}`, {
       ...options,
-      headers: { ...headers, ...(options.headers || {}) },
+      headers: {
+        apikey: anonKey || "",
+        Authorization: `Bearer ${bearerToken}`,
+        "Content-Type": "application/json",
+        ...(options.headers || {}),
+      },
     });
     if (!response.ok) {
       const message = await response.text().catch(() => "");
@@ -253,6 +267,7 @@ export const getIntegrationStatus = () => {
     },
     auth: {
       supabaseAuth: "required_before_real_customer_data",
+      supabaseAccessTokenAdapter: "repo_ready_not_live",
       rowLevelSecurity: "repo_ready_requires_live_verification",
     },
     hosting: {

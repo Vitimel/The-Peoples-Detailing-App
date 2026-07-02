@@ -101,6 +101,8 @@ The customer booking list migration in `supabase/migrations/20260702192000_custo
 
 `src/data/appDataLayer.js` keeps localStorage active, but now has a disabled Supabase REST adapter that is shaped like the future live data source.
 
+The adapter sends the public anon key for guest/public calls and can send a signed-in Supabase user's JWT through `accessToken` or `getAccessToken()` for owner, developer, and claimed-customer RPCs. It does not use or expect a service-role key in frontend code.
+
 `src/data/supabaseMappings.js` handles the translation boundary:
 
 - service rows become app services with `priceCents`, `durationHours`, service copy, and buffer metadata.
