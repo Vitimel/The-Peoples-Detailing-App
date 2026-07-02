@@ -108,6 +108,7 @@ The customer booking list migration in `supabase/migrations/20260702192000_custo
 - booking rows become app bookings with `serviceId`, `startIso`, guest/profile fields, short-notice status, owner acknowledgment state, tracker fields, and payment/cancellation status fields.
 - availability block rows become owner scheduling blocks with `type`, `date`, `timeLabel`, and reason.
 - public availability reads use `get_public_availability` so the customer UI can see unavailable slots without raw booking or owner-note access.
+- booking message reads use `get_customer_booking_messages` so owners, claimed customers, and guests with a claim token do not need raw `messages` table access.
 - message rows become in-app message records with booking, audience, direction, body, and timestamp.
 - app booking drafts become the safe `create_guest_booking(payload jsonb)` RPC payload.
 - owner actions call the future `owner_*` RPCs rather than writing raw table rows directly.

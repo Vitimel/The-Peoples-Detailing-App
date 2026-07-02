@@ -85,7 +85,10 @@ export const createSupabaseRestAdapter = ({ url, anonKey, fetchImpl = globalThis
       method: "POST",
       body: JSON.stringify(buildSupabasePublicAvailabilityPayload(input)),
     }).then(rows => (Array.isArray(rows) ? rows : []).map(mapSupabaseAvailabilityBlockRow)),
-    loadBookingMessages: bookingId => requestJson(`/rest/v1/messages?select=*&booking_id=eq.${encodeURIComponent(bookingId)}&order=created_at.asc`).then(rows => rows.map(mapSupabaseMessageRow)),
+    loadBookingMessages: input => requestJson("/rest/v1/rpc/get_customer_booking_messages", {
+      method: "POST",
+      body: JSON.stringify(buildSupabaseCustomerBookingReadPayload(input)),
+    }).then(rows => (Array.isArray(rows) ? rows : []).map(mapSupabaseMessageRow)),
     loadCustomerBooking: input => requestJson("/rest/v1/rpc/get_customer_booking", {
       method: "POST",
       body: JSON.stringify(buildSupabaseCustomerBookingReadPayload(input)),
@@ -232,6 +235,7 @@ export const getIntegrationStatus = () => {
       customerLifecycleRpcs: "repo_ready_not_applied",
       customerReadRpcs: "repo_ready_not_applied",
       customerHistoryReadRpcs: "repo_ready_not_applied",
+      messageReadRpcs: "repo_ready_not_applied",
       publicAvailabilityReadRpcs: "repo_ready_not_applied",
       developerAdminRpcs: "repo_ready_not_applied",
       developerAdminReadRpcs: "repo_ready_not_applied",

@@ -23,6 +23,7 @@ describe('app data layer readiness', () => {
     expect(status.dataAdapter.customerLifecycleRpcs).toBe('repo_ready_not_applied');
     expect(status.dataAdapter.customerReadRpcs).toBe('repo_ready_not_applied');
     expect(status.dataAdapter.customerHistoryReadRpcs).toBe('repo_ready_not_applied');
+    expect(status.dataAdapter.messageReadRpcs).toBe('repo_ready_not_applied');
     expect(status.dataAdapter.publicAvailabilityReadRpcs).toBe('repo_ready_not_applied');
     expect(status.dataAdapter.developerAdminRpcs).toBe('repo_ready_not_applied');
     expect(status.dataAdapter.developerAdminReadRpcs).toBe('repo_ready_not_applied');
@@ -180,10 +181,8 @@ describe('app data layer readiness', () => {
 
   it('defines future customer lifecycle RPC calls without connecting a live backend', async () => {
     const fetchImpl = vi.fn(async url => {
-      const payload = url.includes('/messages?select=')
-        ? [{ id: 'msg-1', booking_id: 'booking-1', body: 'Hello', audience: 'owner', direction: 'inbound' }]
-        : url.includes('/rpc/get_customer_booking_messages')
-          ? [{ id: 'msg-2', booking_id: 'booking-1', body: 'Guest read', audience: 'customer', direction: 'outbound' }]
+      const payload = url.includes('/rpc/get_customer_booking_messages')
+        ? [{ id: 'msg-2', booking_id: 'booking-1', body: 'Guest read', audience: 'customer', direction: 'outbound' }]
         : url.includes('/rpc/get_customer_booking')
           ? { id: 'booking-1', service_id: 'basic', service_title: 'Basic Detail', price_cents: 15000, start_at: '2026-07-05T14:00:00.000Z', end_at: '2026-07-05T17:30:00.000Z', status: 'confirmed', guest_name: 'Tim' }
         : 'ok-id';
@@ -199,7 +198,7 @@ describe('app data layer readiness', () => {
       fetchImpl,
     });
 
-    await expect(adapter.loadBookingMessages('booking 1')).resolves.toMatchObject([{ id: 'msg-1', bookingId: 'booking-1', body: 'Hello' }]);
+    await expect(adapter.loadBookingMessages({ bookingId: 'booking-1', claimToken: 'claim-token' })).resolves.toMatchObject([{ id: 'msg-2', bookingId: 'booking-1', body: 'Guest read' }]);
     await expect(adapter.loadCustomerBooking({ bookingId: 'booking-1', claimToken: 'claim-token' })).resolves.toMatchObject({ id: 'booking-1', serviceId: 'basic', endIso: '2026-07-05T17:30:00.000Z', guestName: 'Tim' });
     await expect(adapter.loadCustomerBookingMessages({ bookingId: 'booking-1', claimToken: 'claim-token' })).resolves.toMatchObject([{ id: 'msg-2', bookingId: 'booking-1', body: 'Guest read' }]);
     await adapter.cancelBooking({ bookingId: 'booking-1', claimToken: 'claim-token', reason: 'Schedule changed' });
@@ -207,13 +206,17 @@ describe('app data layer readiness', () => {
     await adapter.createBookingMessage({ bookingId: 'booking-1', body: 'Can I move this?', claimToken: 'claim-token' });
 
     expect(fetchImpl.mock.calls.map(call => call[0])).toEqual([
-      'https://example.supabase.co/rest/v1/messages?select=*&booking_id=eq.booking%201&order=created_at.asc',
+      'https://example.supabase.co/rest/v1/rpc/get_customer_booking_messages',
       'https://example.supabase.co/rest/v1/rpc/get_customer_booking',
       'https://example.supabase.co/rest/v1/rpc/get_customer_booking_messages',
       'https://example.supabase.co/rest/v1/rpc/customer_cancel_booking',
       'https://example.supabase.co/rest/v1/rpc/reschedule_booking',
       'https://example.supabase.co/rest/v1/rpc/create_booking_message',
     ]);
+    expect(JSON.parse(fetchImpl.mock.calls[0][1].body)).toEqual({
+      booking_id_input: 'booking-1',
+      claim_token_hash_input: 'claim-token',
+    });
     expect(JSON.parse(fetchImpl.mock.calls[1][1].body)).toEqual({
       booking_id_input: 'booking-1',
       claim_token_hash_input: 'claim-token',
