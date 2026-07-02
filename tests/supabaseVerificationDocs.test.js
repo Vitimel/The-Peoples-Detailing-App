@@ -25,6 +25,9 @@ describe('Supabase live verification docs', () => {
   it('documents the live checks that prove backend business logic before cutover', () => {
     const checklist = read('docs/SUPABASE_LIVE_VERIFICATION_CHECKLIST.md');
     const requiredPhrases = [
+      'npm run verify:supabase-api',
+      'SUPABASE_DEVELOPER_EMAIL',
+      'SUPABASE_CUSTOMER_B_PASSWORD',
       'create_guest_booking',
       'short-notice',
       'blocked full day',
@@ -58,5 +61,23 @@ describe('Supabase live verification docs', () => {
     expect(smoke).toContain('visible_to_customer');
     expect(smoke).toContain('live_mode');
     expect(smoke).not.toMatch(/twilio|telnyx|stripe\.com|service-role/i);
+  });
+
+  it('exposes a no-dependency Supabase API/RLS runner without live-provider keys', () => {
+    const packageJson = JSON.parse(read('package.json'));
+    const runner = read('scripts/verify-supabase-api.mjs');
+
+    expect(packageJson.scripts['verify:supabase-api']).toBe('node scripts/verify-supabase-api.mjs --mutating');
+    expect(runner).toContain('SUPABASE_URL');
+    expect(runner).toContain('SUPABASE_ANON_KEY');
+    expect(runner).toContain('SUPABASE_DEVELOPER_EMAIL');
+    expect(runner).toContain('developer_assign_app_role');
+    expect(runner).toContain('owner_acknowledge_booking');
+    expect(runner).toContain('claim_guest_booking');
+    expect(runner).toContain('owner_set_availability_block');
+    expect(runner).toContain('company_app_fee_cents');
+    expect(runner).toContain('stripe_live_mode');
+    expect(runner).toContain('sms_provider');
+    expect(runner).not.toMatch(/SERVICE_ROLE|service-role|STRIPE_SECRET|TWILIO_AUTH|TELNYX_API/i);
   });
 });

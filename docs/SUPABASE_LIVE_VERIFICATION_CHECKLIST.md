@@ -31,6 +31,26 @@ The Supabase SQL Editor can run as an elevated database role, so it can bypass t
 
 Before turning `VITE_USE_SUPABASE=true`, also verify the API behavior below with the public anon key and signed-in test accounts.
 
+## API/RLS Runner
+
+After the SQL smoke check passes, use the repo's no-dependency Node runner against the same Supabase project:
+
+```powershell
+$env:SUPABASE_URL="https://your-project.supabase.co"
+$env:SUPABASE_ANON_KEY="your-public-anon-key"
+$env:SUPABASE_DEVELOPER_EMAIL="tim-test@example.com"
+$env:SUPABASE_DEVELOPER_PASSWORD="test-password"
+$env:SUPABASE_OWNER_EMAIL="dane-test@example.com"
+$env:SUPABASE_OWNER_PASSWORD="test-password"
+$env:SUPABASE_CUSTOMER_A_EMAIL="customer-a-test@example.com"
+$env:SUPABASE_CUSTOMER_A_PASSWORD="test-password"
+$env:SUPABASE_CUSTOMER_B_EMAIL="customer-b-test@example.com"
+$env:SUPABASE_CUSTOMER_B_PASSWORD="test-password"
+npm run verify:supabase-api
+```
+
+Use a fresh/test Supabase project or obvious test accounts. The runner creates test bookings, messages, role assignments, and availability blocks so it can prove real API behavior. It does not use paid services, service-role keys, live SMS, live Stripe, maps, or new dependencies.
+
 ## Test Accounts
 
 Create these Supabase Auth users:
