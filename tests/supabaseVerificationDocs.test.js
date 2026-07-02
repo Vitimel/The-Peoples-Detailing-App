@@ -29,6 +29,7 @@ describe('Supabase live verification docs', () => {
       'SUPABASE_DEVELOPER_EMAIL',
       'SUPABASE_CUSTOMER_B_PASSWORD',
       'create_guest_booking',
+      'get_checkout_quote',
       'get_customer_booking',
       'get_customer_booking_messages',
       'get_booking_timeline',
@@ -74,6 +75,7 @@ describe('Supabase live verification docs', () => {
     const smoke = read('supabase/verification/live_smoke_checks.sql');
     expect(smoke).toContain('rollback;');
     expect(smoke).toContain('public.create_guest_booking');
+    expect(smoke).toContain('public.get_checkout_quote');
     expect(smoke).toContain('public.get_customer_booking');
     expect(smoke).toContain('public.get_customer_booking_messages');
     expect(smoke).toContain('public.get_booking_timeline');
@@ -108,6 +110,7 @@ describe('Supabase live verification docs', () => {
     expect(runner).toContain('SUPABASE_DEVELOPER_EMAIL');
     expect(runner).toContain('developer_assign_app_role');
     expect(runner).toContain('owner_acknowledge_booking');
+    expect(runner).toContain('get_checkout_quote');
     expect(runner).toContain('claim_guest_booking');
     expect(runner).toContain('guest_booking_claimed');
     expect(runner).toContain('get_customer_booking');

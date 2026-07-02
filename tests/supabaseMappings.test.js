@@ -4,6 +4,7 @@ import {
   buildSupabaseBookingTimelinePayload,
   buildSupabaseBusinessSettingPayload,
   buildSupabaseCancelPayload,
+  buildSupabaseCheckoutQuotePayload,
   buildSupabaseCustomerBookingReadPayload,
   buildSupabaseCustomerProfilePayload,
   buildSupabaseGuestClaimPayload,
@@ -22,6 +23,7 @@ import {
   mapSupabaseAvailabilityBlockRow,
   mapSupabaseBookingRow,
   mapSupabaseBusinessSettingsRows,
+  mapSupabaseCheckoutQuote,
   mapSupabaseCustomerProfile,
   mapSupabaseDeveloperAdminSnapshot,
   mapSupabaseLaunchReadiness,
@@ -203,6 +205,61 @@ describe('Supabase mapping helpers', () => {
       guest_name: 'Tim',
       guest_phone: '(615) 555-0123',
       guest_vehicle_label: 'Daily driver',
+    });
+  });
+
+  it('maps and builds customer-safe checkout quote payloads', () => {
+    expect(buildSupabaseCheckoutQuotePayload({
+      serviceId: 'basic',
+      travelFeeCents: 400,
+      discountCents: 1000,
+      paymentChoice: 'deposit_cash_balance',
+    })).toEqual({
+      payload: {
+        service_id: 'basic',
+        travel_fee_cents: 400,
+        discount_cents: 1000,
+        payment_choice: 'deposit_cash_balance',
+      },
+    });
+
+    expect(mapSupabaseCheckoutQuote({
+      service_id: 'basic',
+      service_title: 'Basic Detail',
+      service_price_cents: 15000,
+      travel_fee_cents: 400,
+      discount_cents: 1000,
+      subtotal_cents: 15400,
+      job_total_cents: 14400,
+      payment_choice: 'deposit_cash_balance',
+      amount_paid_before_card_fee_cents: 2500,
+      card_processing_fee_cents: 103,
+      total_due_today_cents: 2603,
+      balance_due_cents: 11900,
+      payment_status: 'balance_due',
+      customer_pays_card_processing_fee: true,
+      card_processing_percent: 2.9,
+      card_processing_fixed_cents: 30,
+      app_fee_visible_to_customer: false,
+      app_fee_routing_status: 'ledger_only',
+      live_payment_status: 'not_connected',
+      no_real_payment_collected: true,
+    })).toMatchObject({
+      serviceId: 'basic',
+      serviceTitle: 'Basic Detail',
+      servicePriceCents: 15000,
+      travelFeeCents: 400,
+      discountCents: 1000,
+      subtotalCents: 15400,
+      jobTotalCents: 14400,
+      paymentChoice: 'deposit_cash_balance',
+      cardProcessingFeeCents: 103,
+      totalDueTodayCents: 2603,
+      balanceDueCents: 11900,
+      appFeeVisibleToCustomer: false,
+      appFeeRoutingStatus: 'ledger_only',
+      livePaymentStatus: 'not_connected',
+      noRealPaymentCollected: true,
     });
   });
 

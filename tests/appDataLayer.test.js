@@ -19,6 +19,7 @@ describe('app data layer readiness', () => {
     const status = getIntegrationStatus();
     expect(status.dataAdapter.supabase).toBe('repo_ready_disabled');
     expect(status.dataAdapter.bookingRpc).toBe('repo_ready_not_applied');
+    expect(status.dataAdapter.checkoutQuoteRpc).toBe('repo_ready_not_applied');
     expect(status.dataAdapter.bookingOverlapConstraint).toBe('repo_ready_not_applied');
     expect(status.dataAdapter.ownerOperationRpcs).toBe('repo_ready_not_applied');
     expect(status.dataAdapter.ownerCloseoutRpcs).toBe('repo_ready_not_applied');
@@ -97,6 +98,29 @@ describe('app data layer readiness', () => {
         ? [{ id: 'basic', title: 'Basic Detail', price_cents: 15000, duration_minutes: 180, buffer_minutes: 30, visible: true }]
         : url.includes('/business_settings')
           ? [{ key: 'minimum_booking_notice_hours', value: 48 }]
+          : url.includes('/rpc/get_checkout_quote')
+            ? {
+                service_id: 'basic',
+                service_title: 'Basic Detail',
+                service_price_cents: 15000,
+                travel_fee_cents: 400,
+                discount_cents: 0,
+                subtotal_cents: 15400,
+                job_total_cents: 15400,
+                payment_choice: 'deposit_cash_balance',
+                amount_paid_before_card_fee_cents: 2500,
+                card_processing_fee_cents: 103,
+                total_due_today_cents: 2603,
+                balance_due_cents: 12900,
+                payment_status: 'balance_due',
+                customer_pays_card_processing_fee: true,
+                card_processing_percent: 2.9,
+                card_processing_fixed_cents: 30,
+                app_fee_visible_to_customer: false,
+                app_fee_routing_status: 'ledger_only',
+                live_payment_status: 'not_connected',
+                no_real_payment_collected: true,
+              }
           : url.includes('/rpc/get_customer_bookings')
             ? [{ id: 'booking-1', service_id: 'basic', service_title: 'Basic Detail', price_cents: 15000, start_at: '2026-07-05T14:00:00.000Z', end_at: '2026-07-05T17:30:00.000Z', address: '218 Demo Ave', status: 'confirmed', customer_access_mode: 'profile' }]
           : [{ id: 'booking-1', service_id: 'basic', service_title: 'Basic Detail', price_cents: 15000, start_at: '2026-07-05T14:00:00.000Z', address: '218 Demo Ave', status: 'confirmed' }];
@@ -114,8 +138,38 @@ describe('app data layer readiness', () => {
 
     await expect(adapter.loadServices()).resolves.toMatchObject([{ id: 'basic', priceCents: 15000, durationHours: '3' }]);
     await expect(adapter.loadBusinessSettings()).resolves.toEqual({ minimumBookingNoticeHours: 48 });
+    await expect(adapter.loadCheckoutQuote({
+      serviceId: 'basic',
+      travelFeeCents: 400,
+      discountCents: 0,
+      paymentChoice: 'deposit_cash_balance',
+    })).resolves.toMatchObject({
+      serviceId: 'basic',
+      servicePriceCents: 15000,
+      travelFeeCents: 400,
+      subtotalCents: 15400,
+      jobTotalCents: 15400,
+      paymentChoice: 'deposit_cash_balance',
+      amountPaidBeforeCardFeeCents: 2500,
+      cardProcessingFeeCents: 103,
+      totalDueTodayCents: 2603,
+      balanceDueCents: 12900,
+      appFeeVisibleToCustomer: false,
+      appFeeRoutingStatus: 'ledger_only',
+      livePaymentStatus: 'not_connected',
+      noRealPaymentCollected: true,
+    });
     await expect(adapter.loadCustomerBookings()).resolves.toMatchObject([{ id: 'booking-1', serviceId: 'basic', priceCents: 15000, startIso: '2026-07-05T14:00:00.000Z', customerAccessMode: 'profile' }]);
     expect(fetchImpl.mock.calls.map(call => call[0])).toContain('https://example.supabase.co/rest/v1/rpc/get_customer_bookings');
+    expect(fetchImpl.mock.calls.map(call => call[0])).toContain('https://example.supabase.co/rest/v1/rpc/get_checkout_quote');
+    expect(JSON.parse(fetchImpl.mock.calls.find(call => call[0].includes('/rpc/get_checkout_quote'))[1].body)).toEqual({
+      payload: {
+        service_id: 'basic',
+        travel_fee_cents: 400,
+        discount_cents: 0,
+        payment_choice: 'deposit_cash_balance',
+      },
+    });
   });
 
   it('uses a Supabase user access token when one is available', async () => {

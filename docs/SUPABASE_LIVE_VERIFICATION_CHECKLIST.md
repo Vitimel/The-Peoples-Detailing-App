@@ -74,6 +74,9 @@ Before wiring the real login UI, verify the Auth REST adapter can sign up/sign i
 - Public safe business settings can be read with the anon key.
 - Public availability can be read through `get_public_availability`.
 - Public availability includes manual owner blocks and active booked/requested slots without exposing owner reasons, customer contact, claim tokens, payment records, or SMS records.
+- Public checkout totals can be quoted through `get_checkout_quote`.
+- Checkout quote includes service price, travel fee, discount, deposit/full/pay-later choice, card-processing fee, due today, and balance due.
+- Checkout quote does not expose `company_app_fee_cents`, hidden app-fee amounts, payment placeholder rows, app-fee ledger rows, or SMS queue rows.
 - Hidden settings are not readable by anon/customer: `company_app_fee_cents`, `owner_sms_estimate_cents`, `sms_provider`, card-processing internals unless intentionally exposed later.
 - `create_guest_booking` works with a valid service, future time, address, guest name, phone, and vehicle label.
 - `create_guest_booking` returns both `booking_id` and a one-time raw `claim_token`.

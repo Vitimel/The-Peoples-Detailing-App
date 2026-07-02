@@ -152,6 +152,29 @@ const main = async () => {
   }
   log("pass", "anon reads only safe business settings");
 
+  const quote = await rpc("get_checkout_quote", {
+    payload: {
+      service_id: "basic",
+      travel_fee_cents: 400,
+      discount_cents: 0,
+      payment_choice: "deposit_cash_balance",
+    },
+  });
+  if (quote.data?.service_id !== "basic" || quote.data?.payment_choice !== "deposit_cash_balance") {
+    fail("anon checkout quote", "Checkout quote did not return the requested service/payment shape");
+  }
+  if (quote.data?.app_fee_visible_to_customer !== false) {
+    fail("anon checkout quote", "Checkout quote made the hidden app fee visible");
+  }
+  if (quote.data?.live_payment_status !== "not_connected" || quote.data?.no_real_payment_collected !== true) {
+    fail("anon checkout quote", "Checkout quote did not preserve no-real-payment status");
+  }
+  const quoteText = JSON.stringify(quote.data);
+  for (const forbidden of ["company_app_fee_cents", "app_fee_cents", "payment_placeholders", "app_fee_ledger_entries", "sms_notifications"]) {
+    if (quoteText.includes(forbidden)) fail("anon checkout quote", `Checkout quote exposed ${forbidden}`);
+  }
+  log("pass", "anon can load customer-safe checkout quote");
+
   const developer = await signIn({
     email: env("SUPABASE_DEVELOPER_EMAIL"),
     password: env("SUPABASE_DEVELOPER_PASSWORD"),

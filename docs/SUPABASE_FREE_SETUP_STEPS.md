@@ -30,7 +30,8 @@ Run these SQL files in order through Supabase SQL Editor or Supabase CLI:
 18. `supabase/migrations/20260702201000_booking_timeline_read_rpc.sql`
 19. `supabase/migrations/20260702202000_guest_claim_audit_rpc.sql`
 20. `supabase/migrations/20260702203000_developer_launch_readiness_rpc.sql`
-21. `supabase/seed.sql`
+21. `supabase/migrations/20260702204000_checkout_quote_rpc.sql`
+22. `supabase/seed.sql`
 
 ## First Developer Bootstrap
 
@@ -77,6 +78,7 @@ Before storing real customer data:
 - Confirm the frontend Supabase adapter maps service/settings/booking rows into the same shapes used by the localStorage app.
 - Confirm blocked days/times are enforced by the RPC.
 - Confirm public availability can be read through `get_public_availability` without exposing owner reasons or customer data.
+- Confirm checkout totals can be quoted through `get_checkout_quote` without exposing the hidden `$3.00` app fee.
 - Confirm overlapping active bookings are rejected by the RPC.
 - Confirm short-notice bookings become `requested`.
 - Confirm owner/developer roles can acknowledge confirmed bookings.

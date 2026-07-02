@@ -28,6 +28,7 @@ declare
   ];
   expected_functions text[] := array[
     'create_guest_booking',
+    'get_checkout_quote',
     'claim_guest_booking',
     'get_customer_booking',
     'get_customer_booking_messages',

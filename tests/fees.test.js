@@ -139,6 +139,27 @@ describe('checkout fee logic', () => {
     expect(migration).not.toContain("'company_app_fee_cents',\n    'deposit_cents'");
   });
 
+  it('keeps checkout quote math server-side without exposing the hidden app fee', () => {
+    const migration = readFileSync('supabase/migrations/20260702204000_checkout_quote_rpc.sql', 'utf8');
+    expect(migration).toContain('create or replace function public.get_checkout_quote');
+    expect(migration).toContain('service_id is required');
+    expect(migration).toContain('payment_choice must be card_full, deposit_cash_balance, or pay_later');
+    expect(migration).toContain("public.setting_number('deposit_cents', 2500)");
+    expect(migration).toContain("public.setting_number('card_processing_percent', 2.9)");
+    expect(migration).toContain("public.setting_number('card_processing_fixed_cents', 30)");
+    expect(migration).toContain("'app_fee_visible_to_customer', false");
+    expect(migration).toContain("'app_fee_routing_status', 'ledger_only'");
+    expect(migration).toContain("'live_payment_status', 'not_connected'");
+    expect(migration).toContain("'no_real_payment_collected', true");
+    expect(migration).toContain('grant execute on function public.get_checkout_quote(jsonb) to anon, authenticated');
+    expect(migration).not.toContain("'company_app_fee_cents'");
+    expect(migration).not.toContain("'app_fee_cents'");
+    expect(migration).not.toContain('payment_placeholders');
+    expect(migration).not.toContain('app_fee_ledger_entries');
+    expect(migration).not.toContain('sms_notifications');
+    expect(migration).not.toMatch(/stripe\.com|checkout\.sessions|payment_intents|twilio|telnyx|service-role/i);
+  });
+
   it('keeps owner operations server-side and role-gated for the future backend', () => {
     const migration = readFileSync('supabase/migrations/20260702143000_owner_operations_rpc.sql', 'utf8');
     expect(migration).toContain('create or replace function public.assert_owner_or_developer');

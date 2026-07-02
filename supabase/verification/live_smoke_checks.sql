@@ -52,6 +52,7 @@ begin
   from (
     values
       ('create_guest_booking'),
+      ('get_checkout_quote'),
       ('claim_guest_booking'),
       ('owner_acknowledge_booking'),
       ('owner_decide_booking_request'),
@@ -186,6 +187,34 @@ begin
   select value into stripe_live from public.business_settings where key = 'stripe_live_mode';
   if stripe_live is distinct from '"locked"'::jsonb then
     raise exception 'Expected Stripe live mode to stay locked, got %', stripe_live;
+  end if;
+end $$;
+
+do $$
+declare
+  quote jsonb;
+begin
+  quote := public.get_checkout_quote(jsonb_build_object(
+    'service_id', 'basic',
+    'travel_fee_cents', 400,
+    'discount_cents', 0,
+    'payment_choice', 'deposit_cash_balance'
+  ));
+
+  if quote->>'service_id' <> 'basic' then
+    raise exception 'checkout quote did not return expected service';
+  end if;
+
+  if (quote->>'app_fee_visible_to_customer')::boolean is distinct from false then
+    raise exception 'checkout quote made hidden app fee visible';
+  end if;
+
+  if quote::text ~ 'company_app_fee_cents|app_fee_cents|payment_placeholders|app_fee_ledger_entries|sms_notifications' then
+    raise exception 'checkout quote exposed private payment/app-fee internals';
+  end if;
+
+  if quote->>'live_payment_status' <> 'not_connected' or (quote->>'no_real_payment_collected')::boolean is distinct from true then
+    raise exception 'checkout quote did not preserve no-real-payment status';
   end if;
 end $$;
 

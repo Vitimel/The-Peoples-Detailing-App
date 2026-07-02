@@ -140,6 +140,12 @@ The developer launch readiness migration in `supabase/migrations/20260702203000_
 - explicit no-cost gates before real customer data: migrations, seed, developer bootstrap, SQL smoke checks, API/RLS verifier, and keeping `VITE_USE_SUPABASE=false` until verified.
 - no customer booking reads, payment placeholder reads, SMS queue reads, provider calls, or service-role keys.
 
+The checkout quote migration in `supabase/migrations/20260702204000_checkout_quote_rpc.sql` adds:
+
+- `get_checkout_quote` for customer-safe checkout totals before a booking is created.
+- server-side service price, travel fee, discount, deposit/full/pay-later choice, card-processing fee, due-today total, balance due, and no-real-payment status.
+- no returned hidden BrandNew app-fee amount, payment placeholder internals, app-fee ledger rows, SMS queue rows, or live payment provider calls.
+
 `supabase/seed.sql` seeds the current service packages, launch settings, and integration status rows for a fresh project.
 
 ## Frontend Adapter Contract
@@ -157,6 +163,7 @@ The adapter sends the public anon key for guest/public calls and can send a sign
 - booking rows become app bookings with `serviceId`, `startIso`, guest/profile fields, short-notice status, owner acknowledgment state, tracker fields, and payment/cancellation status fields.
 - availability block rows become owner scheduling blocks with `type`, `date`, `timeLabel`, and reason.
 - public availability reads use `get_public_availability` so the customer UI can see unavailable slots without raw booking or owner-note access.
+- checkout screens can call `get_checkout_quote` so customer totals are calculated by the backend before any future Stripe handoff.
 - booking message reads use `get_customer_booking_messages` so owners, claimed customers, and guests with a claim token do not need raw `messages` table access.
 - message rows become in-app message records with booking, audience, direction, body, and timestamp.
 - booking timeline reads use `get_booking_timeline` so owners, claimed customers, and guests with a claim token can see safe status history without raw `status_events` table access.

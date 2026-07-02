@@ -139,6 +139,29 @@ export const mapSupabaseLaunchReadiness = snapshot => ({
   notes: snapshot?.notes || {},
 });
 
+export const mapSupabaseCheckoutQuote = quote => ({
+  serviceId: quote?.service_id || "",
+  serviceTitle: quote?.service_title || "",
+  servicePriceCents: numberOrNull(quote?.service_price_cents) ?? 0,
+  travelFeeCents: numberOrNull(quote?.travel_fee_cents) ?? 0,
+  discountCents: numberOrNull(quote?.discount_cents) ?? 0,
+  subtotalCents: numberOrNull(quote?.subtotal_cents) ?? 0,
+  jobTotalCents: numberOrNull(quote?.job_total_cents) ?? 0,
+  paymentChoice: quote?.payment_choice || "deposit_cash_balance",
+  amountPaidBeforeCardFeeCents: numberOrNull(quote?.amount_paid_before_card_fee_cents) ?? 0,
+  cardProcessingFeeCents: numberOrNull(quote?.card_processing_fee_cents) ?? 0,
+  totalDueTodayCents: numberOrNull(quote?.total_due_today_cents) ?? 0,
+  balanceDueCents: numberOrNull(quote?.balance_due_cents) ?? 0,
+  paymentStatus: quote?.payment_status || "not_collected",
+  customerPaysCardProcessingFee: Boolean(quote?.customer_pays_card_processing_fee),
+  cardProcessingPercent: numberOrNull(quote?.card_processing_percent) ?? 0,
+  cardProcessingFixedCents: numberOrNull(quote?.card_processing_fixed_cents) ?? 0,
+  appFeeVisibleToCustomer: Boolean(quote?.app_fee_visible_to_customer),
+  appFeeRoutingStatus: quote?.app_fee_routing_status || "ledger_only",
+  livePaymentStatus: quote?.live_payment_status || "not_connected",
+  noRealPaymentCollected: quote?.no_real_payment_collected !== false,
+});
+
 export const mapSupabaseVehicleRow = row => ({
   id: row?.id,
   nickname: row?.nickname || "",
@@ -334,6 +357,15 @@ export const buildSupabaseAvailabilityBlockPayload = block => ({
 export const buildSupabasePublicAvailabilityPayload = input => ({
   from_date_input: input?.from_date || input?.fromDate || null,
   to_date_input: input?.to_date || input?.toDate || null,
+});
+
+export const buildSupabaseCheckoutQuotePayload = input => ({
+  payload: {
+    service_id: input?.service_id || input?.serviceId || "",
+    travel_fee_cents: input?.travel_fee_cents ?? input?.travelFeeCents ?? 0,
+    discount_cents: input?.discount_cents ?? input?.discountCents ?? 0,
+    payment_choice: input?.payment_choice || input?.paymentChoice || "deposit_cash_balance",
+  },
 });
 
 export const buildSupabaseCancelPayload = input => ({
