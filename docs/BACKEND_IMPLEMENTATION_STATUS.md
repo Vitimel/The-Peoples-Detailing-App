@@ -29,6 +29,7 @@
 - `scripts/verify-supabase-api.mjs` and `npm run verify:supabase-api` provide a no-dependency live API/RLS runner for a Supabase test project using anon, developer, owner, and two customer test accounts.
 - `src/data/appDataLayer.js` now includes a disabled-by-default Supabase REST adapter contract for reading services/settings/customer-safe availability/customer-safe booking history/access-checked booking messages/integration status/admin snapshots and calling the safe booking, owner operation, customer lifecycle, developer admin, and app-role RPCs.
 - The Supabase REST adapter can use a signed-in user's access token through `accessToken` or a fresh `getAccessToken()` callback, while public/guest calls still fall back to the anon key. No service-role key is used.
+- `src/data/appDataLayer.js` also includes a no-dependency Supabase Auth REST adapter contract for future email sign-up, password sign-in, current-user lookup, and sign-out using only the public anon key plus user access tokens.
 - `src/data/supabaseMappings.js` translates future Supabase rows into the app's current service, settings, booking, availability, message, and RPC payload shapes so turning on Supabase later does not leak database column names into the UI.
 - Unit tests cover the extracted booking rules, Supabase mapping helpers, adapter contract, and migration readiness.
 
@@ -36,6 +37,7 @@
 
 - No Supabase URL or anon key is configured.
 - No Supabase Auth sign-in is wired to the frontend.
+- No Supabase Auth adapter is active in the UI yet.
 - No live Supabase user session is passed into the adapter yet.
 - No service-role key is stored anywhere in this frontend repo.
 - No real SMS provider is called.

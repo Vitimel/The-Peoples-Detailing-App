@@ -1,7 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
+  createSupabaseAuthAdapter,
   createSupabaseRestAdapter,
   getActiveDataAdapter,
+  getConfiguredAuthAdapter,
   getConfiguredBackendAdapter,
   getIntegrationStatus,
   getSupabaseConfigStatus,
@@ -36,6 +38,7 @@ describe('app data layer readiness', () => {
       status: 'missing_frontend_env',
     });
     expect(getConfiguredBackendAdapter()).toBeNull();
+    expect(getConfiguredAuthAdapter()).toBeNull();
   });
 
   it('defines the future Supabase RPC contract without requiring a paid service', async () => {
@@ -153,6 +156,96 @@ describe('app data layer readiness', () => {
     expect(getAccessToken).toHaveBeenCalledTimes(2);
     expect(fetchImpl.mock.calls[0][1].headers.Authorization).toBe('Bearer first_user_token');
     expect(fetchImpl.mock.calls[1][1].headers.Authorization).toBe('Bearer second_user_token');
+  });
+
+  it('defines a no-dependency Supabase Auth REST contract', async () => {
+    const fetchImpl = vi.fn(async url => {
+      const payload = url.includes('/auth/v1/user')
+        ? { id: 'user-1', email: 'tim@example.com' }
+        : url.includes('/auth/v1/logout')
+          ? null
+          : {
+              access_token: 'session_access_token',
+              refresh_token: 'session_refresh_token',
+              expires_in: 3600,
+              token_type: 'bearer',
+              user: { id: 'user-1', email: 'tim@example.com' },
+            };
+      return {
+        ok: true,
+        status: 200,
+        text: async () => payload ? JSON.stringify(payload) : '',
+      };
+    });
+    const auth = createSupabaseAuthAdapter({
+      url: 'https://example.supabase.co/',
+      anonKey: 'anon_test_key',
+      fetchImpl,
+    });
+
+    await expect(auth.signUpWithEmail({
+      email: 'tim@example.com',
+      password: 'test-password',
+      name: 'Tim',
+      phone: '(615) 555-0123',
+    })).resolves.toMatchObject({
+      accessToken: 'session_access_token',
+      refreshToken: 'session_refresh_token',
+      user: { id: 'user-1', email: 'tim@example.com' },
+    });
+    await expect(auth.signInWithPassword({
+      email: 'tim@example.com',
+      password: 'test-password',
+    })).resolves.toMatchObject({ accessToken: 'session_access_token' });
+    await expect(auth.getUser('session_access_token')).resolves.toMatchObject({
+      user: { id: 'user-1', email: 'tim@example.com' },
+    });
+    await expect(auth.signOut('session_access_token')).resolves.toEqual({ ok: true });
+
+    expect(fetchImpl.mock.calls.map(call => call[0])).toEqual([
+      'https://example.supabase.co/auth/v1/signup',
+      'https://example.supabase.co/auth/v1/token?grant_type=password',
+      'https://example.supabase.co/auth/v1/user',
+      'https://example.supabase.co/auth/v1/logout',
+    ]);
+    expect(JSON.parse(fetchImpl.mock.calls[0][1].body)).toEqual({
+      email: 'tim@example.com',
+      password: 'test-password',
+      data: {
+        name: 'Tim',
+        phone: '(615) 555-0123',
+      },
+    });
+    expect(fetchImpl.mock.calls[2][1]).toMatchObject({
+      method: 'GET',
+      headers: expect.objectContaining({
+        apikey: 'anon_test_key',
+        Authorization: 'Bearer session_access_token',
+      }),
+    });
+    expect(fetchImpl.mock.calls[3][1].headers.Authorization).toBe('Bearer session_access_token');
+  });
+
+  it('surfaces Supabase Auth REST errors without using service-role keys', async () => {
+    const fetchImpl = vi.fn(async () => ({
+      ok: false,
+      status: 400,
+      text: async () => JSON.stringify({ msg: 'Invalid login credentials' }),
+    }));
+    const auth = createSupabaseAuthAdapter({
+      url: 'https://example.supabase.co',
+      anonKey: 'anon_test_key',
+      fetchImpl,
+    });
+
+    await expect(auth.signInWithPassword({
+      email: 'tim@example.com',
+      password: 'bad-password',
+    })).rejects.toThrow('Invalid login credentials');
+    expect(fetchImpl.mock.calls[0][1].headers).toMatchObject({
+      apikey: 'anon_test_key',
+      Authorization: 'Bearer anon_test_key',
+    });
   });
 
   it('defines future owner operation RPC calls without connecting a live backend', async () => {

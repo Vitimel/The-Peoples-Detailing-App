@@ -45,6 +45,8 @@ Keep `VITE_USE_SUPABASE=false` until Auth/RLS is tested. Never add the Supabase 
 
 When Auth is wired later, pass the signed-in user's Supabase access token into the adapter for customer, owner, and developer RPCs. Public/guest reads and guest booking can still use the anon key.
 
+The repo has a lightweight Supabase Auth REST adapter contract for email sign-up, password sign-in, user lookup, and sign-out. Keep it disabled until the API/RLS checklist passes.
+
 ## First Live Verification
 
 Start with the repo smoke check:

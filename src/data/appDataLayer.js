@@ -185,6 +185,68 @@ export const createSupabaseRestAdapter = ({
   };
 };
 
+export const createSupabaseAuthAdapter = ({
+  url,
+  anonKey,
+  fetchImpl = globalThis.fetch,
+} = {}) => {
+  const baseUrl = String(url || "").replace(/\/+$/, "");
+
+  const requestAuth = async (path, { accessToken, method = "POST", body } = {}) => {
+    if (!baseUrl || !anonKey) throw new Error("Supabase URL and anon key are required");
+    if (!fetchImpl) throw new Error("Fetch is unavailable");
+    const response = await fetchImpl(`${baseUrl}${path}`, {
+      method,
+      headers: {
+        apikey: anonKey || "",
+        Authorization: `Bearer ${accessToken || anonKey || ""}`,
+        "Content-Type": "application/json",
+      },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+    const text = await response.text();
+    const data = text ? JSON.parse(text) : null;
+    if (!response.ok) {
+      const message = data?.msg || data?.message || text || `Supabase auth request failed (${response.status})`;
+      throw new Error(message);
+    }
+    return data;
+  };
+
+  const normalizeSession = data => ({
+    accessToken: data?.access_token || null,
+    refreshToken: data?.refresh_token || null,
+    expiresIn: data?.expires_in || null,
+    tokenType: data?.token_type || null,
+    user: data?.user || data || null,
+  });
+
+  return {
+    id: "supabaseAuth",
+    signUpWithEmail: ({ email, password, name, phone } = {}) => requestAuth("/auth/v1/signup", {
+      body: {
+        email,
+        password,
+        data: {
+          name: name || null,
+          phone: phone || null,
+        },
+      },
+    }).then(normalizeSession),
+    signInWithPassword: ({ email, password } = {}) => requestAuth("/auth/v1/token?grant_type=password", {
+      body: { email, password },
+    }).then(normalizeSession),
+    signOut: accessToken => requestAuth("/auth/v1/logout", {
+      accessToken,
+      body: {},
+    }).then(() => ({ ok: true })),
+    getUser: accessToken => requestAuth("/auth/v1/user", {
+      accessToken,
+      method: "GET",
+    }).then(normalizeSession),
+  };
+};
+
 export const DATA_ADAPTERS = {
   [DATA_ADAPTER_IDS.LOCAL_STORAGE]: {
     id: DATA_ADAPTER_IDS.LOCAL_STORAGE,
@@ -233,6 +295,16 @@ export const getConfiguredBackendAdapter = () => {
   });
 };
 
+export const getConfiguredAuthAdapter = () => {
+  const env = typeof import.meta !== "undefined" && import.meta.env ? import.meta.env : {};
+  const supabase = getSupabaseConfigStatus();
+  if (!supabase.configured) return null;
+  return createSupabaseAuthAdapter({
+    url: env.VITE_SUPABASE_URL,
+    anonKey: env.VITE_SUPABASE_ANON_KEY,
+  });
+};
+
 export const getIntegrationStatus = () => {
   const supabaseConfig = getSupabaseConfigStatus();
   return {
@@ -267,6 +339,7 @@ export const getIntegrationStatus = () => {
     },
     auth: {
       supabaseAuth: "required_before_real_customer_data",
+      supabaseAuthAdapter: supabaseConfig.configured ? "configured_not_active" : "repo_ready_not_configured",
       supabaseAccessTokenAdapter: "repo_ready_not_live",
       rowLevelSecurity: "repo_ready_requires_live_verification",
     },
