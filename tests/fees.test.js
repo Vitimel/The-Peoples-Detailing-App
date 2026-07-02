@@ -268,6 +268,24 @@ describe('checkout fee logic', () => {
     expect(migration).not.toContain('sms_notifications');
   });
 
+  it('lets signed-in customers manage their profile and saved vehicles through RPCs', () => {
+    const migration = readFileSync('supabase/migrations/20260702194000_customer_profile_vehicle_rpc.sql', 'utf8');
+    expect(migration).toContain('create or replace function public.customer_ensure_profile()');
+    expect(migration).toContain('sign in required');
+    expect(migration).toContain('create or replace function public.get_my_customer_profile()');
+    expect(migration).toContain('create or replace function public.upsert_my_customer_profile');
+    expect(migration).toContain('notification preference must be email, sms, phone, or none');
+    expect(migration).toContain('create or replace function public.upsert_my_vehicle');
+    expect(migration).toContain('vehicle nickname is required');
+    expect(migration).toContain('create or replace function public.delete_my_vehicle');
+    expect(migration).toContain('grant execute on function public.get_my_customer_profile() to authenticated');
+    expect(migration).toContain('grant execute on function public.upsert_my_vehicle(uuid, text, text, text, text, text, text, text, boolean) to authenticated');
+    expect(migration).not.toContain('app_fee_ledger_entries');
+    expect(migration).not.toContain('payment_placeholders');
+    expect(migration).not.toContain('sms_notifications');
+    expect(migration).not.toMatch(/service.role|service-role/i);
+  });
+
   it('keeps active booking overlaps protected by the database', () => {
     const migration = readFileSync('supabase/migrations/20260702175000_booking_overlap_constraint.sql', 'utf8');
     expect(migration).toContain('add column if not exists end_at timestamptz');

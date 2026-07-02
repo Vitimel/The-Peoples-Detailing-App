@@ -127,6 +127,32 @@ export const mapSupabaseDeveloperAdminSnapshot = snapshot => {
   };
 };
 
+export const mapSupabaseVehicleRow = row => ({
+  id: row?.id,
+  nickname: row?.nickname || "",
+  year: row?.year || "",
+  make: row?.make || "",
+  model: row?.model || "",
+  color: row?.color || "",
+  plate: row?.plate || "",
+  vin: row?.vin || "",
+  isDefault: Boolean(row?.is_default),
+  createdAt: row?.created_at || null,
+  updatedAt: row?.updated_at || null,
+});
+
+export const mapSupabaseCustomerProfile = profile => ({
+  id: profile?.id,
+  userId: profile?.user_id || null,
+  name: profile?.name || "",
+  phone: profile?.phone || "",
+  defaultVehicleId: profile?.default_vehicle_id || null,
+  notificationPreference: profile?.notification_preference || "email",
+  vehicles: (Array.isArray(profile?.vehicles) ? profile.vehicles : []).map(mapSupabaseVehicleRow),
+  createdAt: profile?.created_at || null,
+  updatedAt: profile?.updated_at || null,
+});
+
 export const mapSupabaseBookingRow = row => ({
   id: row?.id,
   serviceId: row?.service_id,
@@ -291,6 +317,24 @@ export const buildSupabaseRoleAssignmentPayload = input => ({
   new_role: input?.new_role || input?.role || "customer",
   name_input: input?.name || null,
   phone_input: input?.phone || null,
+});
+
+export const buildSupabaseCustomerProfilePayload = input => ({
+  name_input: input?.name || null,
+  phone_input: input?.phone || null,
+  notification_preference_input: input?.notification_preference || input?.notificationPreference || "email",
+});
+
+export const buildSupabaseVehiclePayload = input => ({
+  vehicle_id_input: input?.vehicle_id || input?.vehicleId || input?.id || null,
+  nickname_input: input?.nickname || input?.name || "",
+  year_input: input?.year || null,
+  make_input: input?.make || null,
+  model_input: input?.model || null,
+  color_input: input?.color || null,
+  plate_input: input?.plate || null,
+  vin_input: input?.vin || null,
+  is_default_input: Boolean(input?.is_default ?? input?.isDefault),
 });
 
 const timeLabelFromDate = dateLike => {

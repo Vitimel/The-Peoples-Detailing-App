@@ -101,6 +101,13 @@ The owner notification read migration in `supabase/migrations/20260702193000_own
 - SMS-placeholder status, estimated cost, cost status, preview copy, action-required state, and safe booking context.
 - no live SMS sends, app-fee ledger rows, payment placeholder internals, business settings, stored claim hashes, or raw provider secrets.
 
+The customer profile/vehicle migration in `supabase/migrations/20260702194000_customer_profile_vehicle_rpc.sql` adds:
+
+- `get_my_customer_profile` for signed-in customers to load their profile and saved vehicles.
+- `upsert_my_customer_profile` for customer-owned name, phone, and notification preference updates.
+- `upsert_my_vehicle` and `delete_my_vehicle` for customer-owned saved vehicles with a required nickname and a stable default vehicle.
+- no raw profile/vehicle table writes from the frontend and no app-fee, payment, SMS, or provider-secret access.
+
 `supabase/seed.sql` seeds the current service packages, launch settings, and integration status rows for a fresh project.
 
 ## Frontend Adapter Contract
@@ -127,6 +134,7 @@ The adapter sends the public anon key for guest/public calls and can send a sign
 - customer lifecycle actions call cancellation, reschedule, and message RPCs with either auth ownership or a guest claim token.
 - guest and claimed-customer detail screens can call customer-safe read RPCs instead of reading raw tables directly.
 - signed-in customer history can call `get_customer_bookings` instead of reading the raw bookings table.
+- signed-in customer profile screens can call customer profile/vehicle RPCs instead of reading or writing raw profile tables.
 - developer admin actions call service, business-setting, and integration-status RPCs that require the developer role.
 - developer admin read screens can call `developer_get_admin_snapshot` instead of reading raw service/settings/integration tables directly.
 - developer role assignment calls a dedicated RPC after the first developer has been manually bootstrapped in Supabase.

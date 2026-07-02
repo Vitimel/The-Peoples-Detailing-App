@@ -73,6 +73,10 @@ begin
       ('get_customer_booking'),
       ('get_customer_booking_messages'),
       ('get_customer_bookings'),
+      ('get_my_customer_profile'),
+      ('upsert_my_customer_profile'),
+      ('upsert_my_vehicle'),
+      ('delete_my_vehicle'),
       ('current_app_role'),
       ('is_owner_or_developer')
   ) as expected(function_name)

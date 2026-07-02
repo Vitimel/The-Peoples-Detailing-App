@@ -349,6 +349,50 @@ const main = async () => {
   }
   log("pass", "customer A can load safe claimed booking history");
 
+  const customerProfile = await rpc("get_my_customer_profile", {}, customerA.token);
+  if (!customerProfile.data?.id || !Array.isArray(customerProfile.data?.vehicles)) {
+    fail("customer profile read", "Signed-in customer profile did not include safe profile and vehicles");
+  }
+  if (!customerProfile.data.vehicles.some(vehicle => vehicle.nickname === "API smoke vehicle")) {
+    fail("customer profile read", "Claimed booking vehicle was not available in saved vehicles");
+  }
+  log("pass", "customer A can load own profile and saved vehicles");
+
+  const updatedProfile = await rpc("upsert_my_customer_profile", {
+    name_input: "Customer A Updated",
+    phone_input: "(615) 555-0199",
+    notification_preference_input: "email",
+  }, customerA.token);
+  if (updatedProfile.data?.name !== "Customer A Updated" || updatedProfile.data?.phone !== "(615) 555-0199") {
+    fail("customer profile update", "Profile update did not return updated safe profile fields");
+  }
+  log("pass", "customer A can update own profile");
+
+  const updatedVehicles = await rpc("upsert_my_vehicle", {
+    vehicle_id_input: null,
+    nickname_input: `Weekend car ${unique}`,
+    year_input: "2022",
+    make_input: "Toyota",
+    model_input: "Camry",
+    color_input: "Black",
+    plate_input: null,
+    vin_input: null,
+    is_default_input: true,
+  }, customerA.token);
+  const weekendVehicle = (updatedVehicles.data?.vehicles || []).find(vehicle => vehicle.nickname === `Weekend car ${unique}`);
+  if (!weekendVehicle?.id || weekendVehicle.is_default !== true) {
+    fail("customer vehicle upsert", "Vehicle upsert did not save the new default vehicle");
+  }
+  log("pass", "customer A can save a default vehicle");
+
+  const afterVehicleDelete = await rpc("delete_my_vehicle", {
+    vehicle_id_input: weekendVehicle.id,
+  }, customerA.token);
+  if ((afterVehicleDelete.data?.vehicles || []).some(vehicle => vehicle.id === weekendVehicle.id)) {
+    fail("customer vehicle delete", "Deleted vehicle still appeared in profile response");
+  }
+  log("pass", "customer A can delete own vehicle");
+
   const customerBHistory = await rpc("get_customer_bookings", {}, customerB.token);
   if (!Array.isArray(customerBHistory.data) || customerBHistory.data.some(row => row.id === bookingId)) {
     fail("customer B safe booking history", "Customer B history included Customer A booking");

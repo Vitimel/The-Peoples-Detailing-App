@@ -4,6 +4,7 @@ import {
   buildSupabaseBusinessSettingPayload,
   buildSupabaseCancelPayload,
   buildSupabaseCustomerBookingReadPayload,
+  buildSupabaseCustomerProfilePayload,
   buildSupabaseGuestBookingPayload,
   buildSupabaseIntegrationStatusPayload,
   buildSupabaseMessagePayload,
@@ -13,13 +14,16 @@ import {
   buildSupabaseReschedulePayload,
   buildSupabaseRoleAssignmentPayload,
   buildSupabaseServiceUpdatePayload,
+  buildSupabaseVehiclePayload,
   mapSupabaseAvailabilityBlockRow,
   mapSupabaseBookingRow,
   mapSupabaseBusinessSettingsRows,
+  mapSupabaseCustomerProfile,
   mapSupabaseDeveloperAdminSnapshot,
   mapSupabaseMessageRow,
   mapSupabaseOwnerNotificationRow,
   mapSupabaseServiceRow,
+  mapSupabaseVehicleRow,
 } from '../src/data/supabaseMappings.js';
 
 describe('Supabase mapping helpers', () => {
@@ -121,6 +125,47 @@ describe('Supabase mapping helpers', () => {
       ownerSmsStatus: 'would_send',
       ownerSmsCostStatus: 'estimated_not_billed',
       requestedAt: '2026-07-02T15:00:00.000Z',
+    });
+  });
+
+  it('maps customer profile and saved vehicle rows', () => {
+    expect(mapSupabaseVehicleRow({
+      id: 'vehicle-1',
+      nickname: 'Daily driver',
+      year: '2021',
+      make: 'Toyota',
+      model: 'Camry',
+      color: 'Black',
+      plate: 'ABC123',
+      vin: '1HGCM82633A004352',
+      is_default: true,
+      created_at: '2026-07-02T15:00:00.000Z',
+    })).toMatchObject({
+      id: 'vehicle-1',
+      nickname: 'Daily driver',
+      year: '2021',
+      make: 'Toyota',
+      model: 'Camry',
+      isDefault: true,
+      createdAt: '2026-07-02T15:00:00.000Z',
+    });
+
+    expect(mapSupabaseCustomerProfile({
+      id: 'profile-1',
+      user_id: 'user-1',
+      name: 'Tim',
+      phone: '(615) 555-0123',
+      default_vehicle_id: 'vehicle-1',
+      notification_preference: 'email',
+      vehicles: [{ id: 'vehicle-1', nickname: 'Daily driver', is_default: true }],
+    })).toMatchObject({
+      id: 'profile-1',
+      userId: 'user-1',
+      name: 'Tim',
+      phone: '(615) 555-0123',
+      defaultVehicleId: 'vehicle-1',
+      notificationPreference: 'email',
+      vehicles: [{ id: 'vehicle-1', nickname: 'Daily driver', isDefault: true }],
     });
   });
 
@@ -283,6 +328,40 @@ describe('Supabase mapping helpers', () => {
       from_at_input: '2026-07-01T00:00:00.000Z',
       to_at_input: '2026-08-01T00:00:00.000Z',
       status_filter_input: 'needs_ack',
+    });
+  });
+
+  it('builds customer profile and vehicle RPC payloads', () => {
+    expect(buildSupabaseCustomerProfilePayload({
+      name: 'Tim',
+      phone: '(615) 555-0123',
+      notificationPreference: 'sms',
+    })).toEqual({
+      name_input: 'Tim',
+      phone_input: '(615) 555-0123',
+      notification_preference_input: 'sms',
+    });
+
+    expect(buildSupabaseVehiclePayload({
+      id: 'vehicle-1',
+      nickname: 'Daily driver',
+      year: '2021',
+      make: 'Toyota',
+      model: 'Camry',
+      color: 'Black',
+      plate: 'ABC123',
+      vin: '1HGCM82633A004352',
+      isDefault: true,
+    })).toEqual({
+      vehicle_id_input: 'vehicle-1',
+      nickname_input: 'Daily driver',
+      year_input: '2021',
+      make_input: 'Toyota',
+      model_input: 'Camry',
+      color_input: 'Black',
+      plate_input: 'ABC123',
+      vin_input: '1HGCM82633A004352',
+      is_default_input: true,
     });
   });
 

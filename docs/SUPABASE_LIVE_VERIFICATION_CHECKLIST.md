@@ -100,6 +100,9 @@ Before wiring the real login UI, verify the Auth REST adapter can sign up/sign i
 - Customer A can claim a guest booking only with the matching raw claim token.
 - Customer A can read/manage only claimed Customer A bookings.
 - Customer A can list claimed bookings through `get_customer_bookings` without stored claim hashes, raw auth user IDs, app-fee ledger rows, payment placeholder internals, or SMS queue rows.
+- Customer A can load their profile through `get_my_customer_profile`, including saved vehicles from claimed guest bookings.
+- Customer A can update their name, phone, and notification preference through `upsert_my_customer_profile`.
+- Customer A can add/update/delete their own saved vehicles through `upsert_my_vehicle` and `delete_my_vehicle`.
 - Customer A cannot read Customer B bookings.
 - Customer B cannot see Customer A bookings in `get_customer_bookings`.
 - Customer A cannot call owner RPCs.

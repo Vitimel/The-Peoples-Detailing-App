@@ -24,7 +24,8 @@ Run these SQL files in order through Supabase SQL Editor or Supabase CLI:
 12. `supabase/migrations/20260702191000_public_availability_read_rpc.sql`
 13. `supabase/migrations/20260702192000_customer_booking_list_rpc.sql`
 14. `supabase/migrations/20260702193000_owner_notification_read_rpc.sql`
-15. `supabase/seed.sql`
+15. `supabase/migrations/20260702194000_customer_profile_vehicle_rpc.sql`
+16. `supabase/seed.sql`
 
 ## First Developer Bootstrap
 
@@ -92,6 +93,7 @@ Before storing real customer data:
 - Confirm a developer cannot remove their own developer role through the RPC.
 - Confirm a signed-in customer can claim only a booking with the matching claim token.
 - Confirm a signed-in customer can list only their own claimed bookings through `get_customer_bookings`.
+- Confirm a signed-in customer can load/update their customer profile and manage saved vehicles through the customer profile RPCs.
 - Confirm owner/developer roles can manage operational/admin tables.
 - Confirm a normal customer cannot read another customer's booking.
 

@@ -26,6 +26,7 @@ describe('app data layer readiness', () => {
     expect(status.dataAdapter.customerLifecycleRpcs).toBe('repo_ready_not_applied');
     expect(status.dataAdapter.customerReadRpcs).toBe('repo_ready_not_applied');
     expect(status.dataAdapter.customerHistoryReadRpcs).toBe('repo_ready_not_applied');
+    expect(status.dataAdapter.customerProfileVehicleRpcs).toBe('repo_ready_not_applied');
     expect(status.dataAdapter.messageReadRpcs).toBe('repo_ready_not_applied');
     expect(status.dataAdapter.publicAvailabilityReadRpcs).toBe('repo_ready_not_applied');
     expect(status.dataAdapter.developerAdminRpcs).toBe('repo_ready_not_applied');
@@ -437,6 +438,81 @@ describe('app data layer readiness', () => {
       booking_id_input: 'booking-1',
       body_input: 'Can I move this?',
       claim_token_hash_input: 'claim-token',
+    });
+  });
+
+  it('defines future customer profile and vehicle RPC calls without connecting a live backend', async () => {
+    const profilePayload = {
+      id: 'profile-1',
+      user_id: 'user-1',
+      name: 'Tim',
+      phone: '(615) 555-0123',
+      default_vehicle_id: 'vehicle-1',
+      notification_preference: 'email',
+      vehicles: [{
+        id: 'vehicle-1',
+        nickname: 'Daily driver',
+        year: '2021',
+        make: 'Toyota',
+        model: 'Camry',
+        is_default: true,
+      }],
+    };
+    const fetchImpl = vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      json: async () => profilePayload,
+    }));
+    const adapter = createSupabaseRestAdapter({
+      url: 'https://example.supabase.co',
+      anonKey: 'anon_test_key',
+      accessToken: 'customer_access_token',
+      fetchImpl,
+    });
+
+    await expect(adapter.loadMyCustomerProfile()).resolves.toMatchObject({
+      id: 'profile-1',
+      userId: 'user-1',
+      defaultVehicleId: 'vehicle-1',
+      vehicles: [{ id: 'vehicle-1', nickname: 'Daily driver', isDefault: true }],
+    });
+    await expect(adapter.upsertMyCustomerProfile({
+      name: 'Tim',
+      phone: '(615) 555-0123',
+      notificationPreference: 'sms',
+    })).resolves.toMatchObject({ id: 'profile-1' });
+    await expect(adapter.upsertMyVehicle({
+      id: 'vehicle-1',
+      nickname: 'Daily driver',
+      year: '2021',
+      make: 'Toyota',
+      model: 'Camry',
+      isDefault: true,
+    })).resolves.toMatchObject({ vehicles: [{ id: 'vehicle-1' }] });
+    await expect(adapter.deleteMyVehicle('vehicle-1')).resolves.toMatchObject({ id: 'profile-1' });
+
+    expect(fetchImpl.mock.calls.map(call => call[0])).toEqual([
+      'https://example.supabase.co/rest/v1/rpc/get_my_customer_profile',
+      'https://example.supabase.co/rest/v1/rpc/upsert_my_customer_profile',
+      'https://example.supabase.co/rest/v1/rpc/upsert_my_vehicle',
+      'https://example.supabase.co/rest/v1/rpc/delete_my_vehicle',
+    ]);
+    expect(fetchImpl.mock.calls[0][1].headers.Authorization).toBe('Bearer customer_access_token');
+    expect(JSON.parse(fetchImpl.mock.calls[1][1].body)).toEqual({
+      name_input: 'Tim',
+      phone_input: '(615) 555-0123',
+      notification_preference_input: 'sms',
+    });
+    expect(JSON.parse(fetchImpl.mock.calls[2][1].body)).toMatchObject({
+      vehicle_id_input: 'vehicle-1',
+      nickname_input: 'Daily driver',
+      year_input: '2021',
+      make_input: 'Toyota',
+      model_input: 'Camry',
+      is_default_input: true,
+    });
+    expect(JSON.parse(fetchImpl.mock.calls[3][1].body)).toEqual({
+      vehicle_id_input: 'vehicle-1',
     });
   });
 

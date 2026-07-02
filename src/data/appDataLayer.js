@@ -2,6 +2,7 @@ import {
   buildSupabaseAvailabilityBlockPayload,
   buildSupabaseCancelPayload,
   buildSupabaseCustomerBookingReadPayload,
+  buildSupabaseCustomerProfilePayload,
   buildSupabaseBusinessSettingPayload,
   buildSupabaseGuestBookingPayload,
   buildSupabaseIntegrationStatusPayload,
@@ -12,10 +13,12 @@ import {
   buildSupabaseReschedulePayload,
   buildSupabaseRoleAssignmentPayload,
   buildSupabaseServiceUpdatePayload,
+  buildSupabaseVehiclePayload,
   mapSupabaseAvailabilityBlockRow,
   mapSupabaseBookingRow,
   mapSupabaseBusinessSettingsRows,
   mapSupabaseDeveloperAdminSnapshot,
+  mapSupabaseCustomerProfile,
   mapSupabaseMessageRow,
   mapSupabaseOwnerNotificationRow,
   mapSupabaseServiceRow,
@@ -97,6 +100,10 @@ export const createSupabaseRestAdapter = ({
       method: "POST",
       body: JSON.stringify({}),
     }).then(rows => (Array.isArray(rows) ? rows : []).map(mapSupabaseBookingRow)),
+    loadMyCustomerProfile: () => requestJson("/rest/v1/rpc/get_my_customer_profile", {
+      method: "POST",
+      body: JSON.stringify({}),
+    }).then(mapSupabaseCustomerProfile),
     loadAvailabilityBlocks: async input => requestJson("/rest/v1/rpc/get_public_availability", {
       method: "POST",
       body: JSON.stringify(buildSupabasePublicAvailabilityPayload(input)),
@@ -148,6 +155,18 @@ export const createSupabaseRestAdapter = ({
       method: "POST",
       body: JSON.stringify(buildSupabaseMessagePayload(input)),
     }),
+    upsertMyCustomerProfile: input => requestJson("/rest/v1/rpc/upsert_my_customer_profile", {
+      method: "POST",
+      body: JSON.stringify(buildSupabaseCustomerProfilePayload(input)),
+    }).then(mapSupabaseCustomerProfile),
+    upsertMyVehicle: input => requestJson("/rest/v1/rpc/upsert_my_vehicle", {
+      method: "POST",
+      body: JSON.stringify(buildSupabaseVehiclePayload(input)),
+    }).then(mapSupabaseCustomerProfile),
+    deleteMyVehicle: vehicleId => requestJson("/rest/v1/rpc/delete_my_vehicle", {
+      method: "POST",
+      body: JSON.stringify({ vehicle_id_input: vehicleId }),
+    }).then(mapSupabaseCustomerProfile),
     ownerAcknowledgeBooking: bookingId => requestJson("/rest/v1/rpc/owner_acknowledge_booking", {
       method: "POST",
       body: JSON.stringify({ booking_id_input: bookingId }),
@@ -328,6 +347,7 @@ export const getIntegrationStatus = () => {
       customerLifecycleRpcs: "repo_ready_not_applied",
       customerReadRpcs: "repo_ready_not_applied",
       customerHistoryReadRpcs: "repo_ready_not_applied",
+      customerProfileVehicleRpcs: "repo_ready_not_applied",
       messageReadRpcs: "repo_ready_not_applied",
       publicAvailabilityReadRpcs: "repo_ready_not_applied",
       developerAdminRpcs: "repo_ready_not_applied",
