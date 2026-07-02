@@ -225,8 +225,9 @@ const main = async () => {
       addressSuffix: unique,
     }),
   });
-  const bookingId = booking.data;
-  if (!bookingId) fail("anon create guest booking", "No booking id returned");
+  const bookingId = booking.data?.booking_id;
+  const claimToken = booking.data?.claim_token;
+  if (!bookingId || !claimToken) fail("anon create guest booking", "No booking id or claim token returned");
   log("pass", "anon can create guest booking", bookingId);
 
   await expectRejected("overlap rejects second active booking", () => rpc("create_guest_booking", {
@@ -242,8 +243,9 @@ const main = async () => {
   if (ownerBooking.status !== "confirmed" || ownerBooking.owner_ack_status !== "needs_ack") {
     fail("normal booking state", `Expected confirmed/needs_ack, got ${ownerBooking.status}/${ownerBooking.owner_ack_status}`);
   }
-  if (!ownerBooking.claim_token_hash) fail("claim token hash", "Created booking did not have claim_token_hash");
-  log("pass", "owner reads created booking and claim token");
+  if (!ownerBooking.claim_token_hash) fail("claim token hash", "Created booking did not store claim_token_hash");
+  if (ownerBooking.claim_token_hash === claimToken) fail("claim token storage", "Raw claim token was stored instead of a hash");
+  log("pass", "owner reads created booking with hashed claim token");
 
   const customerBBooking = await select("bookings", `select=*&id=eq.${bookingId}`, customerB.token);
   if (Array.isArray(customerBBooking.data) && customerBBooking.data.length === 0) {
@@ -257,9 +259,9 @@ const main = async () => {
 
   await rpc("claim_guest_booking", {
     booking_id_input: bookingId,
-    claim_token_hash_input: ownerBooking.claim_token_hash,
+    claim_token_hash_input: claimToken,
   }, customerA.token);
-  log("pass", "customer A can claim booking with matching token");
+  log("pass", "customer A can claim booking with raw token");
 
   const customerABooking = await select("bookings", `select=*&id=eq.${bookingId}`, customerA.token);
   singleRow(customerABooking.data, "customer A reads claimed booking");
@@ -330,7 +332,10 @@ const main = async () => {
       addressSuffix: unique,
     }),
   });
-  const shortNoticeId = shortNotice.data;
+  const shortNoticeId = shortNotice.data?.booking_id;
+  if (!shortNoticeId || !shortNotice.data?.claim_token) {
+    fail("short-notice claim token", "Short-notice booking did not return booking id and claim token");
+  }
   const shortRows = await select("bookings", `select=*&id=eq.${shortNoticeId}`, owner.token);
   const shortRow = singleRow(shortRows.data, "owner reads short-notice booking");
   if (shortRow.status !== "requested" || shortRow.owner_ack_status !== "approval_needed" || shortRow.short_notice_request !== true) {

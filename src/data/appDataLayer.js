@@ -72,10 +72,21 @@ export const createSupabaseRestAdapter = ({ url, anonKey, fetchImpl = globalThis
     loadCustomerBookings: async () => (await requestJson("/rest/v1/bookings?select=*&order=start_at.asc")).map(mapSupabaseBookingRow),
     loadAvailabilityBlocks: async () => (await requestJson("/rest/v1/availability_blocks?select=*&order=block_date.asc")).map(mapSupabaseAvailabilityBlockRow),
     loadBookingMessages: bookingId => requestJson(`/rest/v1/messages?select=*&booking_id=eq.${encodeURIComponent(bookingId)}&order=created_at.asc`).then(rows => rows.map(mapSupabaseMessageRow)),
-    createGuestBooking: draft => requestJson("/rest/v1/rpc/create_guest_booking", {
-      method: "POST",
-      body: JSON.stringify({ payload: buildSupabaseGuestBookingPayload(draft) }),
-    }),
+    createGuestBooking: async draft => {
+      const result = await requestJson("/rest/v1/rpc/create_guest_booking", {
+        method: "POST",
+        body: JSON.stringify({ payload: buildSupabaseGuestBookingPayload(draft) }),
+      });
+      if (result && typeof result === "object" && result.booking_id) {
+        return {
+          bookingId: result.booking_id,
+          claimToken: result.claim_token || null,
+          status: result.status || null,
+          shortNoticeRequest: Boolean(result.short_notice_request),
+        };
+      }
+      return result;
+    },
     cancelBooking: input => requestJson("/rest/v1/rpc/customer_cancel_booking", {
       method: "POST",
       body: JSON.stringify(buildSupabaseCancelPayload(input)),

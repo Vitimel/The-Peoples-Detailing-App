@@ -195,11 +195,11 @@ describe('Supabase mapping helpers', () => {
 
     expect(buildSupabaseCancelPayload({
       bookingId: 'booking-1',
-      claimTokenHash: 'claim-hash',
+      claimToken: 'claim-token',
       reason: 'Schedule changed',
     })).toEqual({
       booking_id_input: 'booking-1',
-      claim_token_hash_input: 'claim-hash',
+      claim_token_hash_input: 'claim-token',
       reason_input: 'Schedule changed',
     });
 
@@ -207,24 +207,24 @@ describe('Supabase mapping helpers', () => {
       bookingId: 'booking-1',
       newStartAt: '2026-07-07T15:00:00.000Z',
       timeLabel: '10:00 AM',
-      claimTokenHash: 'claim-hash',
+      claimToken: 'claim-token',
       reason: 'Better day',
     })).toEqual({
       booking_id_input: 'booking-1',
       new_start_at_input: '2026-07-07T15:00:00.000Z',
       time_label_input: '10:00 AM',
-      claim_token_hash_input: 'claim-hash',
+      claim_token_hash_input: 'claim-token',
       reason_input: 'Better day',
     });
 
     expect(buildSupabaseMessagePayload({
       bookingId: 'booking-1',
       body: 'Can I move this?',
-      claimTokenHash: 'claim-hash',
+      claimToken: 'claim-token',
     })).toEqual({
       booking_id_input: 'booking-1',
       body_input: 'Can I move this?',
-      claim_token_hash_input: 'claim-hash',
+      claim_token_hash_input: 'claim-token',
     });
   });
 

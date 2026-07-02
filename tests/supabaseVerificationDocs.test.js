@@ -29,6 +29,8 @@ describe('Supabase live verification docs', () => {
       'SUPABASE_DEVELOPER_EMAIL',
       'SUPABASE_CUSTOMER_B_PASSWORD',
       'create_guest_booking',
+      'raw `claim_token`',
+      'claim_token_hash',
       'short-notice',
       'blocked full day',
       'blocked time slot',
@@ -56,6 +58,7 @@ describe('Supabase live verification docs', () => {
     const smoke = read('supabase/verification/live_smoke_checks.sql');
     expect(smoke).toContain('rollback;');
     expect(smoke).toContain('public.create_guest_booking');
+    expect(smoke).toContain("smoke_booking_result->>'claim_token'");
     expect(smoke).toContain("provider = 'not_connected'");
     expect(smoke).toContain("status = 'would_send'");
     expect(smoke).toContain('visible_to_customer');
@@ -74,6 +77,8 @@ describe('Supabase live verification docs', () => {
     expect(runner).toContain('developer_assign_app_role');
     expect(runner).toContain('owner_acknowledge_booking');
     expect(runner).toContain('claim_guest_booking');
+    expect(runner).toContain('claimToken');
+    expect(runner).toContain('Raw claim token was stored instead of a hash');
     expect(runner).toContain('owner_set_availability_block');
     expect(runner).toContain('company_app_fee_cents');
     expect(runner).toContain('stripe_live_mode');

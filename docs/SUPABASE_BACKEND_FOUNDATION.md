@@ -53,6 +53,12 @@ The Auth/RLS hardening migration in `supabase/migrations/20260702160000_auth_rol
 - developer-only app-role assignment for setting customer, owner, or developer roles after the first developer is manually bootstrapped.
 - a guard that prevents a developer from removing their own developer role.
 
+The guest claim-token migration in `supabase/migrations/20260702170000_guest_claim_token_contract.sql` adds:
+
+- a one-time raw `claim_token` returned by `create_guest_booking` for the guest confirmation/save-profile flow.
+- hashed claim-token storage in `bookings.claim_token_hash`, so the raw token is not stored in the database.
+- claim-token matching for future guest cancellation, reschedule, message, and account-claim RPCs.
+
 `supabase/seed.sql` seeds the current service packages, launch settings, and integration status rows for a fresh project.
 
 ## Frontend Adapter Contract

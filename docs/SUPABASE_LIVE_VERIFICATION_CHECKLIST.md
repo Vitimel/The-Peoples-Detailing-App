@@ -70,6 +70,8 @@ Never put the service-role key in GitHub Pages, `.env`, or frontend code.
 - Public safe business settings can be read with the anon key.
 - Hidden settings are not readable by anon/customer: `company_app_fee_cents`, `owner_sms_estimate_cents`, `sms_provider`, card-processing internals unless intentionally exposed later.
 - `create_guest_booking` works with a valid service, future time, address, guest name, phone, and vehicle label.
+- `create_guest_booking` returns both `booking_id` and a one-time raw `claim_token`.
+- The booking row stores `claim_token_hash`, not the raw `claim_token`.
 - A normal future booking becomes `confirmed` and `owner_ack_status = needs_ack`.
 - A short-notice booking inside `minimum_booking_notice_hours` becomes `requested` and `owner_ack_status = approval_needed`.
 - A booking creates exactly one owner SMS placeholder with `provider = not_connected`, `status = would_send`, and `cost_status = estimated_not_billed`.
@@ -83,7 +85,7 @@ Never put the service-role key in GitHub Pages, `.env`, or frontend code.
 ## Customer Account Checks
 
 - A new Supabase Auth customer automatically gets a `profiles` row with role `customer`.
-- Customer A can claim a guest booking only with the matching claim token hash.
+- Customer A can claim a guest booking only with the matching raw claim token.
 - Customer A can read/manage only claimed Customer A bookings.
 - Customer A cannot read Customer B bookings.
 - Customer A cannot call owner RPCs.

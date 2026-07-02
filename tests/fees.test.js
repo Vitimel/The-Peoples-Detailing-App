@@ -206,6 +206,22 @@ describe('checkout fee logic', () => {
     expect(migration).toContain('grant execute on function public.developer_assign_app_role(uuid, public.app_role, text, text) to authenticated');
   });
 
+  it('keeps guest claim tokens usable without storing raw tokens', () => {
+    const migration = readFileSync('supabase/migrations/20260702170000_guest_claim_token_contract.sql', 'utf8');
+    expect(migration).toContain('create or replace function public.hash_claim_token');
+    expect(migration).toContain("encode(digest(token_input, 'sha256'), 'hex')");
+    expect(migration).toContain('create or replace function public.booking_claim_token_matches');
+    expect(migration).toContain('drop function if exists public.create_guest_booking(jsonb)');
+    expect(migration).toContain('returns jsonb');
+    expect(migration).toContain("raw_claim_token text := encode(gen_random_bytes(32), 'hex')");
+    expect(migration).toContain('public.hash_claim_token(raw_claim_token)');
+    expect(migration).not.toContain('stored_hash = token_input');
+    expect(migration).toContain("'claim_token', raw_claim_token");
+    expect(migration).toContain('public.booking_claim_token_matches(claim_token_hash, claim_token_hash_input)');
+    expect(migration).toContain('grant execute on function public.create_guest_booking(jsonb) to anon, authenticated');
+    expect(migration).toContain('grant execute on function public.claim_guest_booking(uuid, text) to authenticated');
+  });
+
   it('keeps a Supabase seed for current services and launch settings', () => {
     const seed = readFileSync('supabase/seed.sql', 'utf8');
     expect(seed).toContain("('basic', 'Basic Detail', 15000");

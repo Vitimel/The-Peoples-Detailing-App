@@ -145,11 +145,12 @@ end $$;
 do $$
 declare
   smoke_booking_id uuid;
+  smoke_booking_result jsonb;
   owner_sms_count integer;
   app_fee_visible boolean;
   payment_live boolean;
 begin
-  smoke_booking_id := public.create_guest_booking(jsonb_build_object(
+  smoke_booking_result := public.create_guest_booking(jsonb_build_object(
     'service_id', 'basic',
     'start_at', ('2035-06-02 10:00 America/Chicago')::timestamptz::text,
     'time_label', '10:00 AM',
@@ -159,9 +160,14 @@ begin
     'guest_vehicle_label', 'Smoke test vehicle',
     'travel_fee_cents', 0
   ));
+  smoke_booking_id := (smoke_booking_result->>'booking_id')::uuid;
 
   if smoke_booking_id is null then
     raise exception 'create_guest_booking returned null';
+  end if;
+
+  if nullif(smoke_booking_result->>'claim_token', '') is null then
+    raise exception 'create_guest_booking did not return a guest claim token';
   end if;
 
   if not exists (
@@ -206,12 +212,13 @@ end $$;
 do $$
 declare
   short_notice_id uuid;
+  short_notice_result jsonb;
 begin
   update public.business_settings
   set value = '999999'::jsonb
   where key = 'minimum_booking_notice_hours';
 
-  short_notice_id := public.create_guest_booking(jsonb_build_object(
+  short_notice_result := public.create_guest_booking(jsonb_build_object(
     'service_id', 'basic',
     'start_at', ('2035-06-03 10:00 America/Chicago')::timestamptz::text,
     'time_label', '10:00 AM',
@@ -221,6 +228,11 @@ begin
     'guest_vehicle_label', 'Smoke test vehicle',
     'travel_fee_cents', 0
   ));
+  short_notice_id := (short_notice_result->>'booking_id')::uuid;
+
+  if nullif(short_notice_result->>'claim_token', '') is null then
+    raise exception 'short-notice booking did not return a guest claim token';
+  end if;
 
   if not exists (
     select 1 from public.bookings

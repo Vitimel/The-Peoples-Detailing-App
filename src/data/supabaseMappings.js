@@ -188,7 +188,7 @@ export const buildSupabaseAvailabilityBlockPayload = block => ({
 
 export const buildSupabaseCancelPayload = input => ({
   booking_id_input: input?.booking_id || input?.bookingId || input,
-  claim_token_hash_input: input?.claim_token_hash || input?.claimTokenHash || null,
+  claim_token_hash_input: input?.claim_token || input?.claimToken || input?.claim_token_hash || input?.claimTokenHash || null,
   reason_input: input?.reason || null,
 });
 
@@ -196,14 +196,14 @@ export const buildSupabaseReschedulePayload = input => ({
   booking_id_input: input?.booking_id || input?.bookingId || "",
   new_start_at_input: input?.new_start_at || input?.newStartAt || input?.startIso || input?.date || "",
   time_label_input: input?.time_label || input?.timeLabel || timeLabelFromDate(input?.new_start_at || input?.newStartAt || input?.startIso || input?.date),
-  claim_token_hash_input: input?.claim_token_hash || input?.claimTokenHash || null,
+  claim_token_hash_input: input?.claim_token || input?.claimToken || input?.claim_token_hash || input?.claimTokenHash || null,
   reason_input: input?.reason || null,
 });
 
 export const buildSupabaseMessagePayload = input => ({
   booking_id_input: input?.booking_id || input?.bookingId || "",
   body_input: input?.body || "",
-  claim_token_hash_input: input?.claim_token_hash || input?.claimTokenHash || null,
+  claim_token_hash_input: input?.claim_token || input?.claimToken || input?.claim_token_hash || input?.claimTokenHash || null,
 });
 
 export const buildSupabaseServiceUpdatePayload = service => {

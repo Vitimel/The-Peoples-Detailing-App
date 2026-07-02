@@ -34,7 +34,12 @@ describe('app data layer readiness', () => {
     const fetchImpl = vi.fn(async () => ({
       ok: true,
       status: 200,
-      json: async () => 'booking-id-123',
+      json: async () => ({
+        booking_id: 'booking-id-123',
+        claim_token: 'claim-token-123',
+        status: 'confirmed',
+        short_notice_request: false,
+      }),
     }));
     const adapter = createSupabaseRestAdapter({
       url: 'https://example.supabase.co/',
@@ -49,7 +54,12 @@ describe('app data layer readiness', () => {
       guestName: 'Tim',
       guestPhone: '(615) 555-0123',
       vehicleLabel: 'Daily driver',
-    })).resolves.toBe('booking-id-123');
+    })).resolves.toEqual({
+      bookingId: 'booking-id-123',
+      claimToken: 'claim-token-123',
+      status: 'confirmed',
+      shortNoticeRequest: false,
+    });
     expect(fetchImpl).toHaveBeenCalledWith('https://example.supabase.co/rest/v1/rpc/create_guest_booking', expect.objectContaining({
       method: 'POST',
     }));
@@ -148,9 +158,9 @@ describe('app data layer readiness', () => {
     });
 
     await expect(adapter.loadBookingMessages('booking 1')).resolves.toMatchObject([{ id: 'msg-1', bookingId: 'booking-1', body: 'Hello' }]);
-    await adapter.cancelBooking({ bookingId: 'booking-1', claimTokenHash: 'claim-hash', reason: 'Schedule changed' });
-    await adapter.rescheduleBooking({ bookingId: 'booking-1', newStartAt: '2026-07-07T15:00:00.000Z', timeLabel: '10:00 AM', claimTokenHash: 'claim-hash' });
-    await adapter.createBookingMessage({ bookingId: 'booking-1', body: 'Can I move this?', claimTokenHash: 'claim-hash' });
+    await adapter.cancelBooking({ bookingId: 'booking-1', claimToken: 'claim-token', reason: 'Schedule changed' });
+    await adapter.rescheduleBooking({ bookingId: 'booking-1', newStartAt: '2026-07-07T15:00:00.000Z', timeLabel: '10:00 AM', claimToken: 'claim-token' });
+    await adapter.createBookingMessage({ bookingId: 'booking-1', body: 'Can I move this?', claimToken: 'claim-token' });
 
     expect(fetchImpl.mock.calls.map(call => call[0])).toEqual([
       'https://example.supabase.co/rest/v1/messages?select=*&booking_id=eq.booking%201&order=created_at.asc',
@@ -160,19 +170,19 @@ describe('app data layer readiness', () => {
     ]);
     expect(JSON.parse(fetchImpl.mock.calls[1][1].body)).toEqual({
       booking_id_input: 'booking-1',
-      claim_token_hash_input: 'claim-hash',
+      claim_token_hash_input: 'claim-token',
       reason_input: 'Schedule changed',
     });
     expect(JSON.parse(fetchImpl.mock.calls[2][1].body)).toMatchObject({
       booking_id_input: 'booking-1',
       new_start_at_input: '2026-07-07T15:00:00.000Z',
       time_label_input: '10:00 AM',
-      claim_token_hash_input: 'claim-hash',
+      claim_token_hash_input: 'claim-token',
     });
     expect(JSON.parse(fetchImpl.mock.calls[3][1].body)).toEqual({
       booking_id_input: 'booking-1',
       body_input: 'Can I move this?',
-      claim_token_hash_input: 'claim-hash',
+      claim_token_hash_input: 'claim-token',
     });
   });
 

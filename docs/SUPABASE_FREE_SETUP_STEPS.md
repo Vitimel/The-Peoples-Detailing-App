@@ -16,7 +16,8 @@ Run these SQL files in order through Supabase SQL Editor or Supabase CLI:
 4. `supabase/migrations/20260702150000_customer_lifecycle_rpc.sql`
 5. `supabase/migrations/20260702153000_developer_admin_rpc.sql`
 6. `supabase/migrations/20260702160000_auth_role_hardening.sql`
-7. `supabase/seed.sql`
+7. `supabase/migrations/20260702170000_guest_claim_token_contract.sql`
+8. `supabase/seed.sql`
 
 ## First Developer Bootstrap
 
