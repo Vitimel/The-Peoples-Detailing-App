@@ -1,9 +1,12 @@
 import {
   buildSupabaseAvailabilityBlockPayload,
   buildSupabaseCancelPayload,
+  buildSupabaseBusinessSettingPayload,
   buildSupabaseGuestBookingPayload,
+  buildSupabaseIntegrationStatusPayload,
   buildSupabaseMessagePayload,
   buildSupabaseReschedulePayload,
+  buildSupabaseServiceUpdatePayload,
   mapSupabaseAvailabilityBlockRow,
   mapSupabaseBookingRow,
   mapSupabaseBusinessSettingsRows,
@@ -64,6 +67,7 @@ export const createSupabaseRestAdapter = ({ url, anonKey, fetchImpl = globalThis
     status: "configured_enabled",
     loadServices: async () => (await requestJson("/rest/v1/services?select=*&visible=eq.true&order=title.asc")).map(mapSupabaseServiceRow),
     loadBusinessSettings: async () => mapSupabaseBusinessSettingsRows(await requestJson("/rest/v1/business_settings?select=key,value")),
+    loadIntegrationStatus: () => requestJson("/rest/v1/integration_status?select=*&order=id.asc"),
     loadCustomerBookings: async () => (await requestJson("/rest/v1/bookings?select=*&order=start_at.asc")).map(mapSupabaseBookingRow),
     loadAvailabilityBlocks: async () => (await requestJson("/rest/v1/availability_blocks?select=*&order=block_date.asc")).map(mapSupabaseAvailabilityBlockRow),
     loadBookingMessages: bookingId => requestJson(`/rest/v1/messages?select=*&booking_id=eq.${encodeURIComponent(bookingId)}&order=created_at.asc`).then(rows => rows.map(mapSupabaseMessageRow)),
@@ -106,6 +110,18 @@ export const createSupabaseRestAdapter = ({ url, anonKey, fetchImpl = globalThis
     ownerRemoveAvailabilityBlock: blockId => requestJson("/rest/v1/rpc/owner_remove_availability_block", {
       method: "POST",
       body: JSON.stringify({ block_id_input: blockId }),
+    }),
+    developerUpdateService: service => requestJson("/rest/v1/rpc/developer_update_service", {
+      method: "POST",
+      body: JSON.stringify(buildSupabaseServiceUpdatePayload(service)),
+    }),
+    developerUpdateBusinessSetting: setting => requestJson("/rest/v1/rpc/developer_update_business_setting", {
+      method: "POST",
+      body: JSON.stringify(buildSupabaseBusinessSettingPayload(setting)),
+    }),
+    developerUpdateIntegrationStatus: integration => requestJson("/rest/v1/rpc/developer_update_integration_status", {
+      method: "POST",
+      body: JSON.stringify(buildSupabaseIntegrationStatusPayload(integration)),
     }),
   };
 };
@@ -170,6 +186,7 @@ export const getIntegrationStatus = () => {
       bookingRpc: "repo_ready_not_applied",
       ownerOperationRpcs: "repo_ready_not_applied",
       customerLifecycleRpcs: "repo_ready_not_applied",
+      developerAdminRpcs: "repo_ready_not_applied",
     },
     payments: {
       stripeTestMode: "planned_not_connected",

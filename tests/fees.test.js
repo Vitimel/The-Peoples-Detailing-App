@@ -175,6 +175,21 @@ describe('checkout fee logic', () => {
     expect(migration).toContain('grant execute on function public.create_booking_message(uuid, text, text) to anon, authenticated');
   });
 
+  it('keeps developer admin operations role-gated and live providers locked', () => {
+    const migration = readFileSync('supabase/migrations/20260702153000_developer_admin_rpc.sql', 'utf8');
+    expect(migration).toContain('create or replace function public.assert_developer');
+    expect(migration).toContain('developer role required');
+    expect(migration).toContain('create or replace function public.developer_update_service');
+    expect(migration).toContain('price_cents must be zero or greater');
+    expect(migration).toContain('create or replace function public.developer_update_business_setting');
+    expect(migration).toContain('setting cannot be managed by developer admin');
+    expect(migration).toContain('Stripe live mode remains locked until separate go-live approval');
+    expect(migration).toContain('SMS provider remains not_connected until separate go-live approval');
+    expect(migration).toContain('create or replace function public.developer_update_integration_status');
+    expect(migration).toContain('owner SMS provider remains disabled until separate approval');
+    expect(migration).toContain('grant execute on function public.developer_update_service(text, text, integer, integer, integer, boolean) to authenticated');
+  });
+
   it('keeps a Supabase seed for current services and launch settings', () => {
     const seed = readFileSync('supabase/seed.sql', 'utf8');
     expect(seed).toContain("('basic', 'Basic Detail', 15000");
@@ -183,7 +198,12 @@ describe('checkout fee logic', () => {
     expect(seed).toContain("('monthly', 'Monthly Maintenance', 10000");
     expect(seed).toContain("('business_name', '\"The Peoples Detailing\"'::jsonb)");
     expect(seed).toContain("('booking_submit_mode', '\"instant_book_no_payment\"'::jsonb)");
+    expect(seed).toContain("('customer_pays_card_processing_fee', 'true'::jsonb)");
+    expect(seed).toContain("('card_processing_percent', '2.9'::jsonb)");
+    expect(seed).toContain("('card_processing_fixed_cents', '30'::jsonb)");
     expect(seed).toContain("('stripe_live_mode', '\"locked\"'::jsonb)");
     expect(seed).toContain("('owner_sms', 'queued_locally_only'");
+    expect(seed).toContain("('maps_address_tools', 'planned_not_connected'");
+    expect(seed).toContain("('google_calendar', 'planned_not_connected'");
   });
 });

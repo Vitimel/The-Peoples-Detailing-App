@@ -1,10 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildSupabaseAvailabilityBlockPayload,
+  buildSupabaseBusinessSettingPayload,
   buildSupabaseCancelPayload,
   buildSupabaseGuestBookingPayload,
+  buildSupabaseIntegrationStatusPayload,
   buildSupabaseMessagePayload,
   buildSupabaseReschedulePayload,
+  buildSupabaseServiceUpdatePayload,
   mapSupabaseAvailabilityBlockRow,
   mapSupabaseBookingRow,
   mapSupabaseBusinessSettingsRows,
@@ -38,12 +41,16 @@ describe('Supabase mapping helpers', () => {
       { key: 'working_hours_end', value: 19.5 },
       { key: 'minimum_booking_notice_hours', value: 48 },
       { key: 'booking_submit_mode', value: 'instant_book_no_payment' },
+      { key: 'customer_pays_card_processing_fee', value: true },
+      { key: 'card_processing_percent', value: 2.9 },
       { key: 'unknown_future_key', value: 'ignored' },
     ])).toEqual({
       businessPhone: '(931) 334-0730',
       workingHoursEnd: 19.5,
       minimumBookingNoticeHours: 48,
       bookingSubmissionMode: 'instant_book_no_payment',
+      customerPaysCardProcessingFee: true,
+      cardProcessingPercent: 2.9,
     });
   });
 
@@ -217,6 +224,42 @@ describe('Supabase mapping helpers', () => {
       booking_id_input: 'booking-1',
       body_input: 'Can I move this?',
       claim_token_hash_input: 'claim-hash',
+    });
+  });
+
+  it('builds developer admin RPC payloads', () => {
+    expect(buildSupabaseServiceUpdatePayload({
+      id: 'basic',
+      title: 'Basic Detail',
+      priceCents: 15500,
+      durationHours: 3,
+      bufferMinutes: 30,
+      visible: true,
+    })).toEqual({
+      service_id_input: 'basic',
+      title_input: 'Basic Detail',
+      price_cents_input: 15500,
+      duration_minutes_input: 180,
+      buffer_minutes_input: 30,
+      visible_input: true,
+    });
+
+    expect(buildSupabaseBusinessSettingPayload({
+      key: 'deposit_cents',
+      value: 2500,
+    })).toEqual({
+      setting_key_input: 'deposit_cents',
+      setting_value_input: 2500,
+    });
+
+    expect(buildSupabaseIntegrationStatusPayload({
+      integrationId: 'stripe_live_mode',
+      status: 'locked',
+      details: 'Live payments require approval.',
+    })).toEqual({
+      integration_id_input: 'stripe_live_mode',
+      status_input: 'locked',
+      details_input: 'Live payments require approval.',
     });
   });
 });

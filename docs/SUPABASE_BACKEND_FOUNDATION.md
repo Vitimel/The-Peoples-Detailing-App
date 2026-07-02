@@ -40,6 +40,12 @@ The customer lifecycle migration in `supabase/migrations/20260702150000_customer
 - customer/owner rescheduling with slot validation, blocked time enforcement, overlap checks, short-notice restrictions, and customer cutoff enforcement.
 - in-app booking messages that can queue a local owner SMS placeholder without sending a live SMS.
 
+The developer admin migration in `supabase/migrations/20260702153000_developer_admin_rpc.sql` adds developer-only RPCs for:
+
+- updating service title, price, duration, buffer, and visibility.
+- updating developer money settings such as booking mode, deposit, hidden app fee, card-processing settings, and SMS estimate.
+- updating integration readiness rows while refusing to unlock Stripe live mode or real SMS provider activation without separate approval.
+
 `supabase/seed.sql` seeds the current service packages, launch settings, and integration status rows for a fresh project.
 
 ## Frontend Adapter Contract
@@ -56,6 +62,7 @@ The customer lifecycle migration in `supabase/migrations/20260702150000_customer
 - app booking drafts become the safe `create_guest_booking(payload jsonb)` RPC payload.
 - owner actions call the future `owner_*` RPCs rather than writing raw table rows directly.
 - customer lifecycle actions call cancellation, reschedule, and message RPCs with either auth ownership or a guest claim token.
+- developer admin actions call service, business-setting, and integration-status RPCs that require the developer role.
 
 This keeps the React screens from depending on raw Supabase column names and makes the future cutover easier to test.
 

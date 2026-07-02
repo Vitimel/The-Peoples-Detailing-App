@@ -14,7 +14,8 @@ Run these SQL files in order through Supabase SQL Editor or Supabase CLI:
 2. `supabase/migrations/20260702130000_booking_rpc_validation.sql`
 3. `supabase/migrations/20260702143000_owner_operations_rpc.sql`
 4. `supabase/migrations/20260702150000_customer_lifecycle_rpc.sql`
-5. `supabase/seed.sql`
+5. `supabase/migrations/20260702153000_developer_admin_rpc.sql`
+6. `supabase/seed.sql`
 
 ## Frontend Environment Variables
 
@@ -46,6 +47,9 @@ Before storing real customer data:
 - Confirm customer reschedules enforce cutoff, blocked times, and overlap rules.
 - Confirm short-notice requests cannot be self-rescheduled online by the customer.
 - Confirm booking messages create in-app records and owner SMS placeholders without sending live SMS.
+- Confirm developer role can update service prices/durations and developer money settings.
+- Confirm non-developer users cannot call developer admin RPCs.
+- Confirm developer admin RPCs reject Stripe live mode unlock and real SMS provider activation.
 - Confirm a signed-in customer can claim only a booking with the matching claim token.
 - Confirm owner/developer roles can manage operational/admin tables.
 - Confirm a normal customer cannot read another customer's booking.

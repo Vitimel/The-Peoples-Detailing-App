@@ -14,8 +14,9 @@
   - adds a future `claim_guest_booking` function for signed-in customers to claim a guest booking.
 - `supabase/migrations/20260702143000_owner_operations_rpc.sql` adds repo-ready owner operation RPCs for acknowledging bookings, confirming/declining short-notice requests, requesting reschedules, updating MVP tracker statuses, and managing availability blocks.
 - `supabase/migrations/20260702150000_customer_lifecycle_rpc.sql` adds repo-ready booking lifecycle RPCs for customer/guest cancellation, rescheduling, and in-app messages with access checks for owner/developer, signed-in claimed customers, or matching guest claim tokens.
+- `supabase/migrations/20260702153000_developer_admin_rpc.sql` adds developer-only RPCs for service pricing/duration, money settings, and integration readiness while keeping Stripe live mode and SMS provider activation locked.
 - `supabase/seed.sql` seeds the current service menu, business settings, and integration statuses for a fresh Supabase project.
-- `src/data/appDataLayer.js` now includes a disabled-by-default Supabase REST adapter contract for reading services/settings/bookings/availability/messages and calling the safe booking, owner operation, and customer lifecycle RPCs.
+- `src/data/appDataLayer.js` now includes a disabled-by-default Supabase REST adapter contract for reading services/settings/bookings/availability/messages/integration status and calling the safe booking, owner operation, customer lifecycle, and developer admin RPCs.
 - `src/data/supabaseMappings.js` translates future Supabase rows into the app's current service, settings, booking, availability, message, and RPC payload shapes so turning on Supabase later does not leak database column names into the UI.
 - Unit tests cover the extracted booking rules, Supabase mapping helpers, adapter contract, and migration readiness.
 
@@ -30,7 +31,7 @@
 
 ## Next Technical Step
 
-Apply the migrations to a new Supabase Free project, run `supabase/seed.sql`, verify RLS, then set frontend env vars while keeping `VITE_USE_SUPABASE=false` until the live verification checklist passes. After that, test the disabled REST adapter against the live project's public services/settings, booking RPC, owner operation RPCs, and customer lifecycle RPCs before making it the active data source.
+Apply the migrations to a new Supabase Free project, run `supabase/seed.sql`, verify RLS, then set frontend env vars while keeping `VITE_USE_SUPABASE=false` until the live verification checklist passes. After that, test the disabled REST adapter against the live project's public services/settings, booking RPC, owner operation RPCs, customer lifecycle RPCs, and developer admin RPCs before making it the active data source.
 
 See `docs/SUPABASE_FREE_SETUP_STEPS.md`.
 

@@ -19,6 +19,7 @@ describe('app data layer readiness', () => {
     expect(status.dataAdapter.bookingRpc).toBe('repo_ready_not_applied');
     expect(status.dataAdapter.ownerOperationRpcs).toBe('repo_ready_not_applied');
     expect(status.dataAdapter.customerLifecycleRpcs).toBe('repo_ready_not_applied');
+    expect(status.dataAdapter.developerAdminRpcs).toBe('repo_ready_not_applied');
     expect(status.auth.rowLevelSecurity).toBe('repo_ready_requires_live_verification');
     expect(getSupabaseConfigStatus()).toMatchObject({
       configured: false,
@@ -171,6 +172,66 @@ describe('app data layer readiness', () => {
       booking_id_input: 'booking-1',
       body_input: 'Can I move this?',
       claim_token_hash_input: 'claim-hash',
+    });
+  });
+
+  it('defines future developer admin RPC calls without connecting a live backend', async () => {
+    const fetchImpl = vi.fn(async url => {
+      const payload = url.includes('/integration_status?select=')
+        ? [{ id: 'stripe_live_mode', status: 'locked', details: 'Live payments require approval.' }]
+        : 'ok-id';
+      return {
+        ok: true,
+        status: 200,
+        json: async () => payload,
+      };
+    });
+    const adapter = createSupabaseRestAdapter({
+      url: 'https://example.supabase.co',
+      anonKey: 'anon_test_key',
+      fetchImpl,
+    });
+
+    await expect(adapter.loadIntegrationStatus()).resolves.toEqual([
+      { id: 'stripe_live_mode', status: 'locked', details: 'Live payments require approval.' },
+    ]);
+    await adapter.developerUpdateService({
+      id: 'basic',
+      title: 'Basic Detail',
+      priceCents: 15500,
+      durationHours: 3,
+      bufferMinutes: 30,
+      visible: true,
+    });
+    await adapter.developerUpdateBusinessSetting({ key: 'deposit_cents', value: 2500 });
+    await adapter.developerUpdateIntegrationStatus({
+      integrationId: 'stripe_live_mode',
+      status: 'locked',
+      details: 'Live payments require approval.',
+    });
+
+    expect(fetchImpl.mock.calls.map(call => call[0])).toEqual([
+      'https://example.supabase.co/rest/v1/integration_status?select=*&order=id.asc',
+      'https://example.supabase.co/rest/v1/rpc/developer_update_service',
+      'https://example.supabase.co/rest/v1/rpc/developer_update_business_setting',
+      'https://example.supabase.co/rest/v1/rpc/developer_update_integration_status',
+    ]);
+    expect(JSON.parse(fetchImpl.mock.calls[1][1].body)).toEqual({
+      service_id_input: 'basic',
+      title_input: 'Basic Detail',
+      price_cents_input: 15500,
+      duration_minutes_input: 180,
+      buffer_minutes_input: 30,
+      visible_input: true,
+    });
+    expect(JSON.parse(fetchImpl.mock.calls[2][1].body)).toEqual({
+      setting_key_input: 'deposit_cents',
+      setting_value_input: 2500,
+    });
+    expect(JSON.parse(fetchImpl.mock.calls[3][1].body)).toEqual({
+      integration_id_input: 'stripe_live_mode',
+      status_input: 'locked',
+      details_input: 'Live payments require approval.',
     });
   });
 });

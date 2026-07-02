@@ -66,6 +66,10 @@ const SETTINGS_KEY_MAP = {
   per_mile_fee_cents: "perMileFeeCents",
   company_app_fee_cents: "companyAppFeeCents",
   deposit_cents: "depositCents",
+  customer_pays_card_processing_fee: "customerPaysCardProcessingFee",
+  card_processing_percent: "cardProcessingPercent",
+  card_processing_fixed_cents: "cardProcessingFixedCents",
+  card_processing_info_text: "cardProcessingInfoText",
   owner_sms_estimate_cents: "ownerSmsEstimateCents",
   booking_submit_mode: "bookingSubmissionMode",
   stripe_live_mode: "stripeLiveMode",
@@ -200,6 +204,31 @@ export const buildSupabaseMessagePayload = input => ({
   booking_id_input: input?.booking_id || input?.bookingId || "",
   body_input: input?.body || "",
   claim_token_hash_input: input?.claim_token_hash || input?.claimTokenHash || null,
+});
+
+export const buildSupabaseServiceUpdatePayload = service => {
+  const durationMinutes = service?.duration_minutes
+    ?? service?.durationMinutes
+    ?? Math.round(Number(service?.durationHours || service?.duration_hours || 2) * 60);
+  return {
+    service_id_input: service?.id || service?.serviceId || "",
+    title_input: service?.title || "",
+    price_cents_input: service?.price_cents ?? service?.priceCents ?? 0,
+    duration_minutes_input: durationMinutes,
+    buffer_minutes_input: service?.buffer_minutes ?? service?.bufferMinutes ?? 30,
+    visible_input: service?.visible ?? true,
+  };
+};
+
+export const buildSupabaseBusinessSettingPayload = ({ key, value }) => ({
+  setting_key_input: key,
+  setting_value_input: value,
+});
+
+export const buildSupabaseIntegrationStatusPayload = input => ({
+  integration_id_input: input?.id || input?.integrationId || "",
+  status_input: input?.status || "",
+  details_input: input?.details || null,
 });
 
 const timeLabelFromDate = dateLike => {
