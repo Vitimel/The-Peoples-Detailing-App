@@ -8,6 +8,7 @@ import {
   buildSupabaseIntegrationStatusPayload,
   buildSupabaseMessagePayload,
   buildSupabaseOwnerJobsPayload,
+  buildSupabaseOwnerNotificationsPayload,
   buildSupabasePublicAvailabilityPayload,
   buildSupabaseReschedulePayload,
   buildSupabaseRoleAssignmentPayload,
@@ -17,6 +18,7 @@ import {
   mapSupabaseBusinessSettingsRows,
   mapSupabaseDeveloperAdminSnapshot,
   mapSupabaseMessageRow,
+  mapSupabaseOwnerNotificationRow,
   mapSupabaseServiceRow,
 } from '../src/data/supabaseMappings.js';
 
@@ -281,6 +283,62 @@ describe('Supabase mapping helpers', () => {
       from_at_input: '2026-07-01T00:00:00.000Z',
       to_at_input: '2026-08-01T00:00:00.000Z',
       status_filter_input: 'needs_ack',
+    });
+  });
+
+  it('maps owner notification rows without exposing backend internals', () => {
+    expect(mapSupabaseOwnerNotificationRow({
+      id: 'sms-1',
+      booking_id: 'booking-1',
+      notification_type: 'owner_sms_placeholder',
+      audience: 'owner',
+      provider: 'not_connected',
+      status: 'would_send',
+      cost_estimate_cents: 1,
+      cost_status: 'estimated_not_billed',
+      body_preview: 'New short-notice request from Tim.',
+      action_required: true,
+      created_at: '2026-07-02T15:00:00.000Z',
+      booking: {
+        id: 'booking-1',
+        service_id: 'basic',
+        service_title: 'Basic Detail',
+        price_cents: 15000,
+        start_at: '2026-07-05T14:00:00.000Z',
+        status: 'requested',
+        short_notice_request: true,
+        owner_ack_status: 'approval_needed',
+        guest_name: 'Tim',
+        guest_phone: '(615) 555-0123',
+        guest_vehicle_label: 'Daily driver',
+      },
+    })).toMatchObject({
+      id: 'sms-1',
+      bookingId: 'booking-1',
+      notificationType: 'owner_sms_placeholder',
+      provider: 'not_connected',
+      status: 'would_send',
+      costEstimateCents: 1,
+      costStatus: 'estimated_not_billed',
+      bodyPreview: 'New short-notice request from Tim.',
+      actionRequired: true,
+      booking: {
+        id: 'booking-1',
+        serviceId: 'basic',
+        status: 'requested',
+        shortNoticeRequest: true,
+        ownerAckStatus: 'approval_needed',
+      },
+    });
+
+    expect(buildSupabaseOwnerNotificationsPayload({
+      fromAt: '2026-07-01T00:00:00.000Z',
+      toAt: '2026-08-01T00:00:00.000Z',
+      statusFilter: 'would_send',
+    })).toEqual({
+      from_at_input: '2026-07-01T00:00:00.000Z',
+      to_at_input: '2026-08-01T00:00:00.000Z',
+      status_filter_input: 'would_send',
     });
   });
 

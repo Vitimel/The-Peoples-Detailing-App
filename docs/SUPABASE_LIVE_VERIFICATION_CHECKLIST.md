@@ -85,6 +85,7 @@ Before wiring the real login UI, verify the Auth REST adapter can sign up/sign i
 - A normal future booking becomes `confirmed` and `owner_ack_status = needs_ack`.
 - A short-notice booking inside `minimum_booking_notice_hours` becomes `requested` and `owner_ack_status = approval_needed`.
 - A booking creates exactly one owner SMS placeholder with `provider = not_connected`, `status = would_send`, and `cost_status = estimated_not_billed`.
+- The owner notification feed `owner_list_notifications` returns that placeholder to owner/developer roles without app-fee ledger rows, payment placeholders, stored claim hashes, or raw provider sends.
 - A booking creates a payment placeholder with `live_mode = false` and `routing_status = ledger_only`.
 - A booking creates a hidden app-fee ledger entry with `visible_to_customer = false`.
 - A blocked full day rejects booking.
@@ -114,6 +115,8 @@ Before wiring the real login UI, verify the Auth REST adapter can sign up/sign i
 - Dane owner can see jobs, availability blocks, owner acknowledgments, messages, and operational status events.
 - Dane owner can load the operational job queue through `owner_list_jobs`.
 - `owner_list_jobs` includes job status, customer contact, message count, and owner SMS placeholder status without returning app-fee ledger rows or payment placeholder internals.
+- Dane owner can load the notification inbox through `owner_list_notifications`.
+- `owner_list_notifications` includes SMS placeholder status, cost estimate, cost status, body preview, action-required flag, and safe booking context without returning app-fee ledger rows or payment placeholder internals.
 - Dane owner can acknowledge a normal confirmed booking.
 - Dane owner can confirm a short-notice request.
 - Dane owner can decline a short-notice request.

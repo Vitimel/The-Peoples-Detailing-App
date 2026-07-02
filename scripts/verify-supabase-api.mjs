@@ -205,6 +205,12 @@ const main = async () => {
     status_filter_input: null,
   }, customerA.token, { ok: false }));
 
+  await expectRejected("customer cannot call owner notification RPC", () => rpc("owner_list_notifications", {
+    from_at_input: null,
+    to_at_input: null,
+    status_filter_input: null,
+  }, customerA.token, { ok: false }));
+
   await expectRejected("customer cannot call developer admin snapshot RPC", () => rpc("developer_get_admin_snapshot", {}, customerA.token, { ok: false }));
 
   await expectRejected("owner cannot call developer admin snapshot RPC", () => rpc("developer_get_admin_snapshot", {}, owner.token, { ok: false }));
@@ -372,6 +378,20 @@ const main = async () => {
     fail("owner SMS placeholder", "Expected a not_connected/would_send SMS placeholder");
   }
   log("pass", "owner SMS remains placeholder-only");
+
+  const ownerNotifications = await rpc("owner_list_notifications", {
+    from_at_input: null,
+    to_at_input: null,
+    status_filter_input: null,
+  }, owner.token);
+  if (!Array.isArray(ownerNotifications.data) || !ownerNotifications.data.some(row => row.booking_id === bookingId && row.provider === "not_connected")) {
+    fail("owner notification inbox", "Owner notification feed did not include the SMS placeholder");
+  }
+  const ownerNotificationText = JSON.stringify(ownerNotifications.data);
+  for (const forbidden of ["claim_token_hash", "payment_placeholders", "app_fee_ledger_entries"]) {
+    if (ownerNotificationText.includes(forbidden)) fail("owner notification inbox", `Notification feed exposed ${forbidden}`);
+  }
+  log("pass", "owner can load SMS-placeholder notification inbox");
 
   const customerLedger = await select("app_fee_ledger_entries", `select=*&booking_id=eq.${bookingId}`, customerA.token);
   if (Array.isArray(customerLedger.data) && customerLedger.data.length === 0) {

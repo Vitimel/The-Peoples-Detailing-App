@@ -296,6 +296,22 @@ describe('checkout fee logic', () => {
     expect(migration).not.toContain('business_settings');
   });
 
+  it('keeps owner notification reads role-gated and SMS-placeholder only', () => {
+    const migration = readFileSync('supabase/migrations/20260702193000_owner_notification_read_rpc.sql', 'utf8');
+    expect(migration).toContain('create or replace function public.owner_list_notifications');
+    expect(migration).toContain('perform public.assert_owner_or_developer()');
+    expect(migration).toContain("'owner_sms_placeholder'");
+    expect(migration).toContain("'provider', s.provider");
+    expect(migration).toContain("'cost_status', s.cost_status");
+    expect(migration).toContain("'action_required'");
+    expect(migration).toContain("'booking', jsonb_build_object");
+    expect(migration).toContain('grant execute on function public.owner_list_notifications(timestamptz, timestamptz, text) to authenticated');
+    expect(migration).not.toContain("'claim_token_hash'");
+    expect(migration).not.toContain('app_fee_ledger_entries');
+    expect(migration).not.toContain('payment_placeholders');
+    expect(migration).not.toContain('business_settings');
+  });
+
   it('keeps public availability reads customer-safe without exposing owner notes', () => {
     const migration = readFileSync('supabase/migrations/20260702191000_public_availability_read_rpc.sql', 'utf8');
     expect(migration).toContain('create or replace function public.get_public_availability');

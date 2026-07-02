@@ -61,6 +61,7 @@ begin
       ('owner_remove_availability_block'),
       ('get_public_availability'),
       ('owner_list_jobs'),
+      ('owner_list_notifications'),
       ('customer_cancel_booking'),
       ('reschedule_booking'),
       ('create_booking_message'),

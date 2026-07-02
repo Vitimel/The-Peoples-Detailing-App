@@ -22,6 +22,7 @@ describe('app data layer readiness', () => {
     expect(status.dataAdapter.bookingOverlapConstraint).toBe('repo_ready_not_applied');
     expect(status.dataAdapter.ownerOperationRpcs).toBe('repo_ready_not_applied');
     expect(status.dataAdapter.ownerReadRpcs).toBe('repo_ready_not_applied');
+    expect(status.dataAdapter.ownerNotificationReadRpcs).toBe('repo_ready_not_applied');
     expect(status.dataAdapter.customerLifecycleRpcs).toBe('repo_ready_not_applied');
     expect(status.dataAdapter.customerReadRpcs).toBe('repo_ready_not_applied');
     expect(status.dataAdapter.customerHistoryReadRpcs).toBe('repo_ready_not_applied');
@@ -249,13 +250,42 @@ describe('app data layer readiness', () => {
   });
 
   it('defines future owner operation RPC calls without connecting a live backend', async () => {
-    const fetchImpl = vi.fn(async url => ({
-      ok: true,
-      status: 200,
-      json: async () => url.includes('/rpc/get_public_availability')
+    const fetchImpl = vi.fn(async url => {
+      const payload = url.includes('/rpc/get_public_availability')
         ? [{ id: 'booking-1', block_type: 'time_slot', block_date: '2026-07-06', time_label: '10:00 AM', source: 'booking', status: 'confirmed' }]
-        : 'ok-id',
-    }));
+        : url.includes('/rpc/owner_list_notifications')
+          ? [{
+              id: 'sms-1',
+              booking_id: 'booking-1',
+              notification_type: 'owner_sms_placeholder',
+              audience: 'owner',
+              provider: 'not_connected',
+              status: 'would_send',
+              cost_estimate_cents: 1,
+              cost_status: 'estimated_not_billed',
+              body_preview: 'New booking needs attention',
+              action_required: true,
+              booking: {
+                id: 'booking-1',
+                service_id: 'basic',
+                service_title: 'Basic Detail',
+                price_cents: 15000,
+                start_at: '2026-07-06T15:00:00.000Z',
+                status: 'requested',
+                short_notice_request: true,
+                owner_ack_status: 'approval_needed',
+                guest_name: 'Tim',
+                guest_phone: '(615) 555-0123',
+                guest_vehicle_label: 'Daily driver',
+              },
+            }]
+          : 'ok-id';
+      return {
+        ok: true,
+        status: 200,
+        json: async () => payload,
+      };
+    });
     const adapter = createSupabaseRestAdapter({
       url: 'https://example.supabase.co',
       anonKey: 'anon_test_key',
@@ -273,6 +303,26 @@ describe('app data layer readiness', () => {
       toAt: '2026-08-01T00:00:00.000Z',
       statusFilter: 'needs_ack',
     })).resolves.toEqual([]);
+    await expect(adapter.loadOwnerNotifications({
+      fromAt: '2026-07-01T00:00:00.000Z',
+      toAt: '2026-08-01T00:00:00.000Z',
+      statusFilter: 'would_send',
+    })).resolves.toMatchObject([{
+      id: 'sms-1',
+      bookingId: 'booking-1',
+      provider: 'not_connected',
+      status: 'would_send',
+      costEstimateCents: 1,
+      costStatus: 'estimated_not_billed',
+      bodyPreview: 'New booking needs attention',
+      actionRequired: true,
+      booking: {
+        id: 'booking-1',
+        status: 'requested',
+        ownerAckStatus: 'approval_needed',
+        guestName: 'Tim',
+      },
+    }]);
     await expect(adapter.loadAvailabilityBlocks({
       fromDate: '2026-07-01',
       toDate: '2026-07-31',
@@ -293,6 +343,7 @@ describe('app data layer readiness', () => {
       'https://example.supabase.co/rest/v1/rpc/owner_set_availability_block',
       'https://example.supabase.co/rest/v1/rpc/owner_remove_availability_block',
       'https://example.supabase.co/rest/v1/rpc/owner_list_jobs',
+      'https://example.supabase.co/rest/v1/rpc/owner_list_notifications',
       'https://example.supabase.co/rest/v1/rpc/get_public_availability',
     ]);
     expect(JSON.parse(fetchImpl.mock.calls[1][1].body)).toEqual({
@@ -315,6 +366,11 @@ describe('app data layer readiness', () => {
       status_filter_input: 'needs_ack',
     });
     expect(JSON.parse(fetchImpl.mock.calls[7][1].body)).toEqual({
+      from_at_input: '2026-07-01T00:00:00.000Z',
+      to_at_input: '2026-08-01T00:00:00.000Z',
+      status_filter_input: 'would_send',
+    });
+    expect(JSON.parse(fetchImpl.mock.calls[8][1].body)).toEqual({
       from_date_input: '2026-07-01',
       to_date_input: '2026-07-31',
     });

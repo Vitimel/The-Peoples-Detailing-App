@@ -196,6 +196,22 @@ export const mapSupabaseMessageRow = row => ({
   createdAt: row?.created_at || null,
 });
 
+export const mapSupabaseOwnerNotificationRow = row => ({
+  id: row?.id,
+  bookingId: row?.booking_id || row?.booking?.id || null,
+  notificationType: row?.notification_type || "owner_sms_placeholder",
+  audience: row?.audience || "owner",
+  provider: row?.provider || "not_connected",
+  status: row?.status || "would_send",
+  costEstimateCents: numberOrNull(row?.cost_estimate_cents) ?? 0,
+  costStatus: row?.cost_status || "estimated_not_billed",
+  bodyPreview: row?.body_preview || "",
+  actionRequired: Boolean(row?.action_required),
+  sentAt: row?.sent_at || null,
+  createdAt: row?.created_at || null,
+  booking: row?.booking ? mapSupabaseBookingRow(row.booking) : null,
+});
+
 export const buildSupabaseAvailabilityBlockPayload = block => ({
   block_type_input: block?.block_type || block?.type || "full_day",
   block_date_input: block?.block_date || block?.date || "",
@@ -234,6 +250,12 @@ export const buildSupabaseMessagePayload = input => ({
 });
 
 export const buildSupabaseOwnerJobsPayload = input => ({
+  from_at_input: input?.from_at || input?.fromAt || null,
+  to_at_input: input?.to_at || input?.toAt || null,
+  status_filter_input: input?.status_filter || input?.statusFilter || null,
+});
+
+export const buildSupabaseOwnerNotificationsPayload = input => ({
   from_at_input: input?.from_at || input?.fromAt || null,
   to_at_input: input?.to_at || input?.toAt || null,
   status_filter_input: input?.status_filter || input?.statusFilter || null,

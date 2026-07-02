@@ -23,7 +23,8 @@ Run these SQL files in order through Supabase SQL Editor or Supabase CLI:
 11. `supabase/migrations/20260702190000_developer_admin_read_rpc.sql`
 12. `supabase/migrations/20260702191000_public_availability_read_rpc.sql`
 13. `supabase/migrations/20260702192000_customer_booking_list_rpc.sql`
-14. `supabase/seed.sql`
+14. `supabase/migrations/20260702193000_owner_notification_read_rpc.sql`
+15. `supabase/seed.sql`
 
 ## First Developer Bootstrap
 
@@ -80,6 +81,7 @@ Before storing real customer data:
 - Confirm customer reschedules enforce cutoff, blocked times, and overlap rules.
 - Confirm short-notice requests cannot be self-rescheduled online by the customer.
 - Confirm booking messages create in-app records and owner SMS placeholders without sending live SMS.
+- Confirm owner/developer roles can load owner notification placeholders through `owner_list_notifications`.
 - Confirm developer role can update service prices/durations and developer money settings.
 - Confirm developer role can load the developer admin snapshot.
 - Confirm non-developer users cannot load the developer admin snapshot.

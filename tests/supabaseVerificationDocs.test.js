@@ -34,6 +34,7 @@ describe('Supabase live verification docs', () => {
       'get_customer_bookings',
       'get_public_availability',
       'owner_list_jobs',
+      'owner_list_notifications',
       'developer admin snapshot',
       'raw `claim_token`',
       'claim_token_hash',
@@ -70,6 +71,7 @@ describe('Supabase live verification docs', () => {
     expect(smoke).toContain('get_customer_bookings');
     expect(smoke).toContain('public.get_public_availability');
     expect(smoke).toContain('owner_list_jobs');
+    expect(smoke).toContain('owner_list_notifications');
     expect(smoke).toContain('developer_get_admin_snapshot');
     expect(smoke).toContain('bookings_no_active_overlap');
     expect(smoke).toContain("smoke_booking_result->>'claim_token'");
@@ -96,6 +98,7 @@ describe('Supabase live verification docs', () => {
     expect(runner).toContain('get_customer_bookings');
     expect(runner).toContain('get_public_availability');
     expect(runner).toContain('owner_list_jobs');
+    expect(runner).toContain('owner_list_notifications');
     expect(runner).toContain('developer_get_admin_snapshot');
     expect(runner).toContain('claimToken');
     expect(runner).toContain('Raw claim token was stored instead of a hash');
