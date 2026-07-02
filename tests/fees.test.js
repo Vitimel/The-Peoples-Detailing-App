@@ -190,6 +190,22 @@ describe('checkout fee logic', () => {
     expect(migration).toContain('grant execute on function public.developer_update_service(text, text, integer, integer, integer, boolean) to authenticated');
   });
 
+  it('hardens Supabase Auth profile creation and app-role checks', () => {
+    const migration = readFileSync('supabase/migrations/20260702160000_auth_role_hardening.sql', 'utf8');
+    expect(migration).toContain('create or replace function public.current_app_role()');
+    expect(migration).toContain('security definer');
+    expect(migration).toContain('create or replace function public.is_owner_or_developer()');
+    expect(migration).toContain('create or replace function public.handle_new_auth_user()');
+    expect(migration).toContain('after insert on auth.users');
+    expect(migration).toContain("new.id,\n    'customer'");
+    expect(migration).toContain('drop policy if exists "profiles update own basic fields or developer role"');
+    expect(migration).toContain('create or replace function public.developer_assign_app_role');
+    expect(migration).toContain('perform public.assert_developer()');
+    expect(migration).toContain('developer cannot remove their own developer role');
+    expect(migration).toContain('grant execute on function public.current_app_role() to anon, authenticated');
+    expect(migration).toContain('grant execute on function public.developer_assign_app_role(uuid, public.app_role, text, text) to authenticated');
+  });
+
   it('keeps a Supabase seed for current services and launch settings', () => {
     const seed = readFileSync('supabase/seed.sql', 'utf8');
     expect(seed).toContain("('basic', 'Basic Detail', 15000");

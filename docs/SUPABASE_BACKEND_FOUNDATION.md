@@ -46,6 +46,13 @@ The developer admin migration in `supabase/migrations/20260702153000_developer_a
 - updating developer money settings such as booking mode, deposit, hidden app fee, card-processing settings, and SMS estimate.
 - updating integration readiness rows while refusing to unlock Stripe live mode or real SMS provider activation without separate approval.
 
+The Auth/RLS hardening migration in `supabase/migrations/20260702160000_auth_role_hardening.sql` adds:
+
+- security-definer role helpers for RLS checks.
+- automatic `profiles` row creation when Supabase Auth creates a user.
+- developer-only app-role assignment for setting customer, owner, or developer roles after the first developer is manually bootstrapped.
+- a guard that prevents a developer from removing their own developer role.
+
 `supabase/seed.sql` seeds the current service packages, launch settings, and integration status rows for a fresh project.
 
 ## Frontend Adapter Contract
@@ -63,6 +70,7 @@ The developer admin migration in `supabase/migrations/20260702153000_developer_a
 - owner actions call the future `owner_*` RPCs rather than writing raw table rows directly.
 - customer lifecycle actions call cancellation, reschedule, and message RPCs with either auth ownership or a guest claim token.
 - developer admin actions call service, business-setting, and integration-status RPCs that require the developer role.
+- developer role assignment calls a dedicated RPC after the first developer has been manually bootstrapped in Supabase.
 
 This keeps the React screens from depending on raw Supabase column names and makes the future cutover easier to test.
 
@@ -73,6 +81,7 @@ This keeps the React screens from depending on raw Supabase column names and mak
 - Signed-in customers can read/manage claimed bookings later.
 - Owner can manage jobs, availability, messaging, and reports.
 - Developer can manage pricing, app/card/deposit settings, and integrations.
+- First developer bootstrap is a manual Supabase setup step; after that, developer RPCs assign owner/developer/customer roles.
 - No service-role key belongs in the frontend repo.
 
 ## Current Boundary

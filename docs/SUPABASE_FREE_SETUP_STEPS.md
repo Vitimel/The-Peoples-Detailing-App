@@ -15,7 +15,14 @@ Run these SQL files in order through Supabase SQL Editor or Supabase CLI:
 3. `supabase/migrations/20260702143000_owner_operations_rpc.sql`
 4. `supabase/migrations/20260702150000_customer_lifecycle_rpc.sql`
 5. `supabase/migrations/20260702153000_developer_admin_rpc.sql`
-6. `supabase/seed.sql`
+6. `supabase/migrations/20260702160000_auth_role_hardening.sql`
+7. `supabase/seed.sql`
+
+## First Developer Bootstrap
+
+After Tim creates/signs into the first Supabase Auth account, manually set that user's `public.profiles.role` to `developer` in Supabase SQL Editor. After that first bootstrap, use the app-role RPC to assign Dane as `owner` and any future admins as `developer`.
+
+Do not put a service-role key in the frontend app.
 
 ## Frontend Environment Variables
 
@@ -50,6 +57,9 @@ Before storing real customer data:
 - Confirm developer role can update service prices/durations and developer money settings.
 - Confirm non-developer users cannot call developer admin RPCs.
 - Confirm developer admin RPCs reject Stripe live mode unlock and real SMS provider activation.
+- Confirm new Supabase Auth users automatically get a `profiles` row with role `customer`.
+- Confirm developer role assignment can set Dane to `owner`.
+- Confirm a developer cannot remove their own developer role through the RPC.
 - Confirm a signed-in customer can claim only a booking with the matching claim token.
 - Confirm owner/developer roles can manage operational/admin tables.
 - Confirm a normal customer cannot read another customer's booking.

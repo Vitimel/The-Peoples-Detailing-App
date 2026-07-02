@@ -6,6 +6,7 @@ import {
   buildSupabaseIntegrationStatusPayload,
   buildSupabaseMessagePayload,
   buildSupabaseReschedulePayload,
+  buildSupabaseRoleAssignmentPayload,
   buildSupabaseServiceUpdatePayload,
   mapSupabaseAvailabilityBlockRow,
   mapSupabaseBookingRow,
@@ -123,6 +124,10 @@ export const createSupabaseRestAdapter = ({ url, anonKey, fetchImpl = globalThis
       method: "POST",
       body: JSON.stringify(buildSupabaseIntegrationStatusPayload(integration)),
     }),
+    developerAssignAppRole: assignment => requestJson("/rest/v1/rpc/developer_assign_app_role", {
+      method: "POST",
+      body: JSON.stringify(buildSupabaseRoleAssignmentPayload(assignment)),
+    }),
   };
 };
 
@@ -187,6 +192,7 @@ export const getIntegrationStatus = () => {
       ownerOperationRpcs: "repo_ready_not_applied",
       customerLifecycleRpcs: "repo_ready_not_applied",
       developerAdminRpcs: "repo_ready_not_applied",
+      authRoleRpcs: "repo_ready_not_applied",
     },
     payments: {
       stripeTestMode: "planned_not_connected",

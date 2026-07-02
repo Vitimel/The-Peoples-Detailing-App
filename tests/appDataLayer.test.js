@@ -20,6 +20,7 @@ describe('app data layer readiness', () => {
     expect(status.dataAdapter.ownerOperationRpcs).toBe('repo_ready_not_applied');
     expect(status.dataAdapter.customerLifecycleRpcs).toBe('repo_ready_not_applied');
     expect(status.dataAdapter.developerAdminRpcs).toBe('repo_ready_not_applied');
+    expect(status.dataAdapter.authRoleRpcs).toBe('repo_ready_not_applied');
     expect(status.auth.rowLevelSecurity).toBe('repo_ready_requires_live_verification');
     expect(getSupabaseConfigStatus()).toMatchObject({
       configured: false,
@@ -209,12 +210,19 @@ describe('app data layer readiness', () => {
       status: 'locked',
       details: 'Live payments require approval.',
     });
+    await adapter.developerAssignAppRole({
+      targetUserId: 'user-1',
+      role: 'owner',
+      name: 'Dane',
+      phone: '(931) 334-0730',
+    });
 
     expect(fetchImpl.mock.calls.map(call => call[0])).toEqual([
       'https://example.supabase.co/rest/v1/integration_status?select=*&order=id.asc',
       'https://example.supabase.co/rest/v1/rpc/developer_update_service',
       'https://example.supabase.co/rest/v1/rpc/developer_update_business_setting',
       'https://example.supabase.co/rest/v1/rpc/developer_update_integration_status',
+      'https://example.supabase.co/rest/v1/rpc/developer_assign_app_role',
     ]);
     expect(JSON.parse(fetchImpl.mock.calls[1][1].body)).toEqual({
       service_id_input: 'basic',
@@ -232,6 +240,12 @@ describe('app data layer readiness', () => {
       integration_id_input: 'stripe_live_mode',
       status_input: 'locked',
       details_input: 'Live payments require approval.',
+    });
+    expect(JSON.parse(fetchImpl.mock.calls[4][1].body)).toEqual({
+      target_user_id: 'user-1',
+      new_role: 'owner',
+      name_input: 'Dane',
+      phone_input: '(931) 334-0730',
     });
   });
 });

@@ -231,6 +231,13 @@ export const buildSupabaseIntegrationStatusPayload = input => ({
   details_input: input?.details || null,
 });
 
+export const buildSupabaseRoleAssignmentPayload = input => ({
+  target_user_id: input?.target_user_id || input?.targetUserId || "",
+  new_role: input?.new_role || input?.role || "customer",
+  name_input: input?.name || null,
+  phone_input: input?.phone || null,
+});
+
 const timeLabelFromDate = dateLike => {
   const date = new Date(dateLike);
   if (Number.isNaN(date.getTime())) return "";

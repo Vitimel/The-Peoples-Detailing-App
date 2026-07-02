@@ -7,6 +7,7 @@ import {
   buildSupabaseIntegrationStatusPayload,
   buildSupabaseMessagePayload,
   buildSupabaseReschedulePayload,
+  buildSupabaseRoleAssignmentPayload,
   buildSupabaseServiceUpdatePayload,
   mapSupabaseAvailabilityBlockRow,
   mapSupabaseBookingRow,
@@ -260,6 +261,18 @@ describe('Supabase mapping helpers', () => {
       integration_id_input: 'stripe_live_mode',
       status_input: 'locked',
       details_input: 'Live payments require approval.',
+    });
+
+    expect(buildSupabaseRoleAssignmentPayload({
+      targetUserId: 'user-1',
+      role: 'owner',
+      name: 'Dane',
+      phone: '(931) 334-0730',
+    })).toEqual({
+      target_user_id: 'user-1',
+      new_role: 'owner',
+      name_input: 'Dane',
+      phone_input: '(931) 334-0730',
     });
   });
 });
