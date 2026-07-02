@@ -21,7 +21,8 @@ Run these SQL files in order through Supabase SQL Editor or Supabase CLI:
 9. `supabase/migrations/20260702180000_customer_booking_read_rpc.sql`
 10. `supabase/migrations/20260702185000_owner_job_read_rpc.sql`
 11. `supabase/migrations/20260702190000_developer_admin_read_rpc.sql`
-12. `supabase/seed.sql`
+12. `supabase/migrations/20260702191000_public_availability_read_rpc.sql`
+13. `supabase/seed.sql`
 
 ## First Developer Bootstrap
 
@@ -63,6 +64,7 @@ Before storing real customer data:
 - Confirm anonymous guest booking can call `create_guest_booking`.
 - Confirm the frontend Supabase adapter maps service/settings/booking rows into the same shapes used by the localStorage app.
 - Confirm blocked days/times are enforced by the RPC.
+- Confirm public availability can be read through `get_public_availability` without exposing owner reasons or customer data.
 - Confirm overlapping active bookings are rejected by the RPC.
 - Confirm short-notice bookings become `requested`.
 - Confirm owner/developer roles can acknowledge confirmed bookings.

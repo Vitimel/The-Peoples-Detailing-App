@@ -273,6 +273,19 @@ const main = async () => {
   if (!Array.isArray(guestMessageRead.data)) fail("guest token message read", "Expected message array for guest token");
   log("pass", "guest token can read safe message list");
 
+  const publicAvailability = await rpc("get_public_availability", {
+    from_date_input: centralDate(55),
+    to_date_input: centralDate(65),
+  });
+  if (!Array.isArray(publicAvailability.data) || !publicAvailability.data.some(item => item.id === bookingId && item.source === "booking")) {
+    fail("public availability", "Safe public availability did not include the booked slot");
+  }
+  const availabilityText = JSON.stringify(publicAvailability.data);
+  for (const forbidden of ["guest_name", "guest_phone", "claim_token_hash", "reason"]) {
+    if (availabilityText.includes(forbidden)) fail("public availability", `Availability exposed ${forbidden}`);
+  }
+  log("pass", "anon can load safe public availability");
+
   await expectRejected("overlap rejects second active booking", () => rpc("create_guest_booking", {
     payload: bookingPayload({
       daysAhead: 60,

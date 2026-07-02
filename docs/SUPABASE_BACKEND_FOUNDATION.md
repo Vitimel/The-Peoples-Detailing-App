@@ -83,6 +83,12 @@ The developer admin read migration in `supabase/migrations/20260702190000_develo
 - developer-only service pricing/duration data, developer money settings, integration readiness, and live-mode lock status.
 - no booking/customer PII, payment placeholder internals, SMS queue rows, or stored claim tokens.
 
+The public availability read migration in `supabase/migrations/20260702191000_public_availability_read_rpc.sql` adds:
+
+- `get_public_availability` for the customer calendar.
+- customer-safe unavailable slots from manual owner blocks plus active `requested`/`confirmed` bookings.
+- no owner block reasons, customer contact details, claim tokens, payment records, or SMS records.
+
 `supabase/seed.sql` seeds the current service packages, launch settings, and integration status rows for a fresh project.
 
 ## Frontend Adapter Contract
@@ -95,6 +101,7 @@ The developer admin read migration in `supabase/migrations/20260702190000_develo
 - `business_settings` rows become app settings such as `minimumBookingNoticeHours`, `workingHoursEnd`, and `bookingSubmissionMode`.
 - booking rows become app bookings with `serviceId`, `startIso`, guest/profile fields, short-notice status, owner acknowledgment state, tracker fields, and payment/cancellation status fields.
 - availability block rows become owner scheduling blocks with `type`, `date`, `timeLabel`, and reason.
+- public availability reads use `get_public_availability` so the customer UI can see unavailable slots without raw booking or owner-note access.
 - message rows become in-app message records with booking, audience, direction, body, and timestamp.
 - app booking drafts become the safe `create_guest_booking(payload jsonb)` RPC payload.
 - owner actions call the future `owner_*` RPCs rather than writing raw table rows directly.

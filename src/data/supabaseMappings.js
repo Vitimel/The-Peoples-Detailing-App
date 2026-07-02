@@ -179,6 +179,8 @@ export const mapSupabaseAvailabilityBlockRow = row => ({
   date: row?.block_date,
   timeLabel: row?.time_label || null,
   reason: row?.reason || "",
+  source: row?.source || "owner_block",
+  status: row?.status || null,
   createdBy: row?.created_by || null,
   createdAt: row?.created_at || null,
 });
@@ -199,6 +201,11 @@ export const buildSupabaseAvailabilityBlockPayload = block => ({
   block_date_input: block?.block_date || block?.date || "",
   time_label_input: block?.time_label || block?.timeLabel || null,
   reason_input: block?.reason || null,
+});
+
+export const buildSupabasePublicAvailabilityPayload = input => ({
+  from_date_input: input?.from_date || input?.fromDate || null,
+  to_date_input: input?.to_date || input?.toDate || null,
 });
 
 export const buildSupabaseCancelPayload = input => ({

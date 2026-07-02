@@ -8,6 +8,7 @@ import {
   buildSupabaseIntegrationStatusPayload,
   buildSupabaseMessagePayload,
   buildSupabaseOwnerJobsPayload,
+  buildSupabasePublicAvailabilityPayload,
   buildSupabaseReschedulePayload,
   buildSupabaseRoleAssignmentPayload,
   buildSupabaseServiceUpdatePayload,
@@ -166,6 +167,8 @@ describe('Supabase mapping helpers', () => {
       date: '2026-07-06',
       timeLabel: '10:00 AM',
       reason: 'Family appointment',
+      source: 'owner_block',
+      status: null,
       createdBy: 'owner-user-id',
       createdAt: '2026-07-02T15:00:00.000Z',
     });
@@ -180,6 +183,30 @@ describe('Supabase mapping helpers', () => {
       block_date_input: '2026-07-06',
       time_label_input: '10:00 AM',
       reason_input: 'Family appointment',
+    });
+
+    expect(mapSupabaseAvailabilityBlockRow({
+      id: 'booking-1',
+      block_type: 'time_slot',
+      block_date: '2026-07-06',
+      time_label: '10:00 AM',
+      source: 'booking',
+      status: 'confirmed',
+    })).toMatchObject({
+      id: 'booking-1',
+      type: 'time_slot',
+      date: '2026-07-06',
+      timeLabel: '10:00 AM',
+      source: 'booking',
+      status: 'confirmed',
+    });
+
+    expect(buildSupabasePublicAvailabilityPayload({
+      fromDate: '2026-07-01',
+      toDate: '2026-07-31',
+    })).toEqual({
+      from_date_input: '2026-07-01',
+      to_date_input: '2026-07-31',
     });
   });
 

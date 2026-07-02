@@ -282,6 +282,20 @@ describe('checkout fee logic', () => {
     expect(migration).not.toContain('business_settings');
   });
 
+  it('keeps public availability reads customer-safe without exposing owner notes', () => {
+    const migration = readFileSync('supabase/migrations/20260702191000_public_availability_read_rpc.sql', 'utf8');
+    expect(migration).toContain('create or replace function public.get_public_availability');
+    expect(migration).toContain("where b.status in ('requested', 'confirmed')");
+    expect(migration).toContain("'owner_block'::text as source");
+    expect(migration).toContain("'booking'::text as source");
+    expect(migration).toContain('availability range cannot exceed 370 days');
+    expect(migration).toContain('grant execute on function public.get_public_availability(date, date) to anon, authenticated');
+    expect(migration).not.toContain("'reason'");
+    expect(migration).not.toContain('guest_name');
+    expect(migration).not.toContain('guest_phone');
+    expect(migration).not.toContain('claim_token_hash');
+  });
+
   it('keeps a Supabase seed for current services and launch settings', () => {
     const seed = readFileSync('supabase/seed.sql', 'utf8');
     expect(seed).toContain("('basic', 'Basic Detail', 15000");

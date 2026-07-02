@@ -22,6 +22,7 @@ describe('app data layer readiness', () => {
     expect(status.dataAdapter.ownerReadRpcs).toBe('repo_ready_not_applied');
     expect(status.dataAdapter.customerLifecycleRpcs).toBe('repo_ready_not_applied');
     expect(status.dataAdapter.customerReadRpcs).toBe('repo_ready_not_applied');
+    expect(status.dataAdapter.publicAvailabilityReadRpcs).toBe('repo_ready_not_applied');
     expect(status.dataAdapter.developerAdminRpcs).toBe('repo_ready_not_applied');
     expect(status.dataAdapter.developerAdminReadRpcs).toBe('repo_ready_not_applied');
     expect(status.dataAdapter.authRoleRpcs).toBe('repo_ready_not_applied');
@@ -102,10 +103,12 @@ describe('app data layer readiness', () => {
   });
 
   it('defines future owner operation RPC calls without connecting a live backend', async () => {
-    const fetchImpl = vi.fn(async () => ({
+    const fetchImpl = vi.fn(async url => ({
       ok: true,
       status: 200,
-      json: async () => 'ok-id',
+      json: async () => url.includes('/rpc/get_public_availability')
+        ? [{ id: 'booking-1', block_type: 'time_slot', block_date: '2026-07-06', time_label: '10:00 AM', source: 'booking', status: 'confirmed' }]
+        : 'ok-id',
     }));
     const adapter = createSupabaseRestAdapter({
       url: 'https://example.supabase.co',
@@ -124,6 +127,17 @@ describe('app data layer readiness', () => {
       toAt: '2026-08-01T00:00:00.000Z',
       statusFilter: 'needs_ack',
     })).resolves.toEqual([]);
+    await expect(adapter.loadAvailabilityBlocks({
+      fromDate: '2026-07-01',
+      toDate: '2026-07-31',
+    })).resolves.toMatchObject([{
+      id: 'booking-1',
+      type: 'time_slot',
+      date: '2026-07-06',
+      timeLabel: '10:00 AM',
+      source: 'booking',
+      status: 'confirmed',
+    }]);
 
     expect(fetchImpl.mock.calls.map(call => call[0])).toEqual([
       'https://example.supabase.co/rest/v1/rpc/owner_acknowledge_booking',
@@ -133,6 +147,7 @@ describe('app data layer readiness', () => {
       'https://example.supabase.co/rest/v1/rpc/owner_set_availability_block',
       'https://example.supabase.co/rest/v1/rpc/owner_remove_availability_block',
       'https://example.supabase.co/rest/v1/rpc/owner_list_jobs',
+      'https://example.supabase.co/rest/v1/rpc/get_public_availability',
     ]);
     expect(JSON.parse(fetchImpl.mock.calls[1][1].body)).toEqual({
       booking_id_input: 'booking-1',
@@ -152,6 +167,10 @@ describe('app data layer readiness', () => {
       from_at_input: '2026-07-01T00:00:00.000Z',
       to_at_input: '2026-08-01T00:00:00.000Z',
       status_filter_input: 'needs_ack',
+    });
+    expect(JSON.parse(fetchImpl.mock.calls[7][1].body)).toEqual({
+      from_date_input: '2026-07-01',
+      to_date_input: '2026-07-31',
     });
   });
 

@@ -59,6 +59,7 @@ begin
       ('owner_update_booking_tracker'),
       ('owner_set_availability_block'),
       ('owner_remove_availability_block'),
+      ('get_public_availability'),
       ('owner_list_jobs'),
       ('customer_cancel_booking'),
       ('reschedule_booking'),
@@ -212,6 +213,21 @@ begin
 
   if jsonb_typeof(public.get_customer_booking_messages(smoke_booking_id, smoke_booking_result->>'claim_token')) <> 'array' then
     raise exception 'guest claim token could not read safe customer messages array';
+  end if;
+
+  if not exists (
+    select 1
+    from jsonb_array_elements(public.get_public_availability('2035-06-01'::date, '2035-06-30'::date)) availability(item)
+    where (item->>'id')::uuid = smoke_booking_id
+      and item->>'source' = 'booking'
+      and item->>'block_type' = 'time_slot'
+      and item->>'status' = 'confirmed'
+  ) then
+    raise exception 'public availability did not include safe booked slot';
+  end if;
+
+  if public.get_public_availability('2035-06-01'::date, '2035-06-30'::date)::text ~ 'guest_name|guest_phone|claim_token_hash|reason' then
+    raise exception 'public availability exposed private booking or owner-note fields';
   end if;
 
   if not exists (

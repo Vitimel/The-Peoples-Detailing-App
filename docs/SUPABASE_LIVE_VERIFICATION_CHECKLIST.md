@@ -68,6 +68,8 @@ Never put the service-role key in GitHub Pages, `.env`, or frontend code.
 
 - Public services can be read with the anon key.
 - Public safe business settings can be read with the anon key.
+- Public availability can be read through `get_public_availability`.
+- Public availability includes manual owner blocks and active booked/requested slots without exposing owner reasons, customer contact, claim tokens, payment records, or SMS records.
 - Hidden settings are not readable by anon/customer: `company_app_fee_cents`, `owner_sms_estimate_cents`, `sms_provider`, card-processing internals unless intentionally exposed later.
 - `create_guest_booking` works with a valid service, future time, address, guest name, phone, and vehicle label.
 - `create_guest_booking` returns both `booking_id` and a one-time raw `claim_token`.
