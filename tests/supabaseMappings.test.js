@@ -8,6 +8,7 @@ import {
   buildSupabaseGuestBookingPayload,
   buildSupabaseIntegrationStatusPayload,
   buildSupabaseMessagePayload,
+  buildSupabaseOwnerCloseoutPayload,
   buildSupabaseOwnerJobsPayload,
   buildSupabaseOwnerNotificationsPayload,
   buildSupabaseOwnerReportPayload,
@@ -433,8 +434,11 @@ describe('Supabase mapping helpers', () => {
         requested_count: 1,
         cancelled_count: 0,
         gross_job_total_cents: 30000,
+        adjusted_job_total_cents: 29000,
         online_paid_cents: 2500,
+        cash_collected_cents: 12000,
         cash_balance_due_cents: 27500,
+        owner_adjustment_cents: 1000,
         card_processing_fee_cents: 103,
         app_fee_cents: 600,
         sms_estimate_cents: 2,
@@ -454,9 +458,15 @@ describe('Supabase mapping helpers', () => {
         travel_fee_cents: 0,
         discount_cents: 0,
         total_cents: 15000,
+        adjusted_job_total_cents: 14000,
+        owner_adjustment_cents: 1000,
+        owner_adjustment_label: 'Owner adjustment',
         online_paid_cents: 2500,
         deposit_cents: 2500,
+        cash_collected_cents: 11500,
         cash_balance_due_cents: 12500,
+        refund_needed_cents: 0,
+        closeout_status: 'closed',
         card_processing_fee_cents: 103,
         app_fee_cents: 300,
         sms_estimate_cents: 1,
@@ -474,7 +484,9 @@ describe('Supabase mapping helpers', () => {
       summary: {
         bookingCount: 2,
         grossJobTotalCents: 30000,
+        adjustedJobTotalCents: 29000,
         onlinePaidCents: 2500,
+        cashCollectedCents: 12000,
         appFeeCents: 600,
         smsEstimateCents: 2,
         brandnewNetEstimateCents: 598,
@@ -484,7 +496,11 @@ describe('Supabase mapping helpers', () => {
         bookingId: 'booking-1',
         serviceTitle: 'Basic Detail',
         totalCents: 15000,
+        adjustedJobTotalCents: 14000,
+        ownerAdjustmentCents: 1000,
+        cashCollectedCents: 11500,
         cashBalanceDueCents: 12500,
+        closeoutStatus: 'closed',
         appFeeRoutingStatus: 'ledger_only',
       }],
       notes: {
@@ -498,6 +514,20 @@ describe('Supabase mapping helpers', () => {
     })).toEqual({
       from_at_input: '2026-07-01T00:00:00.000Z',
       to_at_input: '2026-08-01T00:00:00.000Z',
+    });
+
+    expect(buildSupabaseOwnerCloseoutPayload({
+      bookingId: 'booking-1',
+      adjustmentCents: 1000,
+      adjustmentLabel: 'Owner adjustment',
+      cashCollectedCents: 11500,
+      closeoutNote: 'Customer paid cash.',
+    })).toEqual({
+      booking_id_input: 'booking-1',
+      owner_adjustment_cents_input: 1000,
+      owner_adjustment_label_input: 'Owner adjustment',
+      cash_collected_cents_input: 11500,
+      closeout_note_input: 'Customer paid cash.',
     });
   });
 

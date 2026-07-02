@@ -338,6 +338,18 @@ const main = async () => {
   await rpc("owner_acknowledge_booking", { booking_id_input: bookingId }, owner.token);
   log("pass", "owner can acknowledge booking");
 
+  const closeout = await rpc("owner_closeout_booking", {
+    booking_id_input: bookingId,
+    owner_adjustment_cents_input: 500,
+    owner_adjustment_label_input: "API smoke adjustment",
+    cash_collected_cents_input: 14500,
+    closeout_note_input: "API smoke closeout",
+  }, owner.token);
+  if (closeout.data?.closeout_status !== "closed" || closeout.data?.cash_collected_cents !== 14500) {
+    fail("owner closeout", "Owner closeout did not close the job with expected cash collection");
+  }
+  log("pass", "owner can close out booking without live payment provider");
+
   await rpc("claim_guest_booking", {
     booking_id_input: bookingId,
     claim_token_hash_input: claimToken,
@@ -451,6 +463,10 @@ const main = async () => {
   }
   if (!ownerReport.data.rows.some(row => row.booking_id === bookingId && row.app_fee_routing_status === "ledger_only")) {
     fail("owner report snapshot", "Owner report did not include the created booking with ledger-only app fee");
+  }
+  const reportBookingRow = ownerReport.data.rows.find(row => row.booking_id === bookingId);
+  if (reportBookingRow.closeout_status !== "closed" || reportBookingRow.cash_collected_cents !== 14500 || reportBookingRow.owner_adjustment_cents !== 500) {
+    fail("owner report snapshot", "Owner report did not include closeout adjustment and cash collection");
   }
   const ownerReportText = JSON.stringify(ownerReport.data);
   for (const forbidden of ["claim_token_hash", "checkout_session_id", "payment_intent_id", "connected_account_id"]) {

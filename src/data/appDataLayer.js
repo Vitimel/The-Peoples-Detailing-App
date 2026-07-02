@@ -7,6 +7,7 @@ import {
   buildSupabaseGuestBookingPayload,
   buildSupabaseIntegrationStatusPayload,
   buildSupabaseMessagePayload,
+  buildSupabaseOwnerCloseoutPayload,
   buildSupabaseOwnerJobsPayload,
   buildSupabaseOwnerNotificationsPayload,
   buildSupabaseOwnerReportPayload,
@@ -189,6 +190,10 @@ export const createSupabaseRestAdapter = ({
       method: "POST",
       body: JSON.stringify({ booking_id_input: bookingId, tracker_status_input: trackerStatus }),
     }),
+    ownerCloseoutBooking: input => requestJson("/rest/v1/rpc/owner_closeout_booking", {
+      method: "POST",
+      body: JSON.stringify(buildSupabaseOwnerCloseoutPayload(input)),
+    }),
     ownerSetAvailabilityBlock: block => requestJson("/rest/v1/rpc/owner_set_availability_block", {
       method: "POST",
       body: JSON.stringify(buildSupabaseAvailabilityBlockPayload(block)),
@@ -348,6 +353,7 @@ export const getIntegrationStatus = () => {
       bookingRpc: "repo_ready_not_applied",
       bookingOverlapConstraint: "repo_ready_not_applied",
       ownerOperationRpcs: "repo_ready_not_applied",
+      ownerCloseoutRpcs: "repo_ready_not_applied",
       ownerReadRpcs: "repo_ready_not_applied",
       ownerNotificationReadRpcs: "repo_ready_not_applied",
       ownerReportReadRpcs: "repo_ready_not_applied",

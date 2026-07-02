@@ -155,6 +155,25 @@ describe('checkout fee logic', () => {
     expect(migration).toContain('grant execute on function public.owner_set_availability_block(text, date, text, text) to authenticated');
   });
 
+  it('keeps owner closeout server-side without live payment provider calls', () => {
+    const migration = readFileSync('supabase/migrations/20260702200000_owner_closeout_rpc.sql', 'utf8');
+    expect(migration).toContain('add column if not exists closeout_status text');
+    expect(migration).toContain('add column if not exists owner_adjustment_cents integer');
+    expect(migration).toContain('add column if not exists cash_collected_cents integer');
+    expect(migration).toContain('add column if not exists refund_needed_cents integer');
+    expect(migration).toContain('create or replace function public.owner_closeout_booking');
+    expect(migration).toContain('perform public.assert_owner_or_developer()');
+    expect(migration).toContain('only confirmed or complete bookings can be closed out');
+    expect(migration).toContain("'manual_review_required_no_stripe_refund_sent'");
+    expect(migration).toContain('owner_closed_out_booking');
+    expect(migration).toContain('grant execute on function public.owner_closeout_booking(uuid, integer, text, integer, text) to authenticated');
+    expect(migration).toContain('create or replace function public.owner_get_report_snapshot');
+    expect(migration).toContain("'cash_collected_cents'");
+    expect(migration).toContain("'owner_adjustment_cents'");
+    expect(migration).toContain("'refund_needed_cents'");
+    expect(migration).not.toMatch(/stripe\.com|checkout_session_id|payment_intent_id|connected_account_id|twilio|telnyx|service-role/i);
+  });
+
   it('keeps customer lifecycle operations server-side without live providers', () => {
     const migration = readFileSync('supabase/migrations/20260702150000_customer_lifecycle_rpc.sql', 'utf8');
     expect(migration).toContain('create or replace function public.can_access_booking');

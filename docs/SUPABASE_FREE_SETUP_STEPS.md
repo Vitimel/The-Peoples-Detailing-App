@@ -26,7 +26,8 @@ Run these SQL files in order through Supabase SQL Editor or Supabase CLI:
 14. `supabase/migrations/20260702193000_owner_notification_read_rpc.sql`
 15. `supabase/migrations/20260702194000_customer_profile_vehicle_rpc.sql`
 16. `supabase/migrations/20260702195000_owner_reports_read_rpc.sql`
-17. `supabase/seed.sql`
+17. `supabase/migrations/20260702200000_owner_closeout_rpc.sql`
+18. `supabase/seed.sql`
 
 ## First Developer Bootstrap
 
@@ -77,6 +78,7 @@ Before storing real customer data:
 - Confirm short-notice bookings become `requested`.
 - Confirm owner/developer roles can acknowledge confirmed bookings.
 - Confirm owner/developer roles can confirm or decline `requested` bookings.
+- Confirm owner/developer roles can close out jobs with adjustments, cash collected, balance due, and refund-needed status without live Stripe calls.
 - Confirm owner/developer roles can add/remove availability blocks.
 - Confirm non-owner customers cannot call owner operation RPCs.
 - Confirm claimed customers or guest claim-token users can cancel eligible active bookings.

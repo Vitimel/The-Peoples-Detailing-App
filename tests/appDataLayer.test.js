@@ -21,6 +21,7 @@ describe('app data layer readiness', () => {
     expect(status.dataAdapter.bookingRpc).toBe('repo_ready_not_applied');
     expect(status.dataAdapter.bookingOverlapConstraint).toBe('repo_ready_not_applied');
     expect(status.dataAdapter.ownerOperationRpcs).toBe('repo_ready_not_applied');
+    expect(status.dataAdapter.ownerCloseoutRpcs).toBe('repo_ready_not_applied');
     expect(status.dataAdapter.ownerReadRpcs).toBe('repo_ready_not_applied');
     expect(status.dataAdapter.ownerNotificationReadRpcs).toBe('repo_ready_not_applied');
     expect(status.dataAdapter.ownerReportReadRpcs).toBe('repo_ready_not_applied');
@@ -313,6 +314,13 @@ describe('app data layer readiness', () => {
     await adapter.ownerDecideBookingRequest({ bookingId: 'booking-1', decision: 'confirm' });
     await adapter.ownerRequestBookingReschedule('booking-1');
     await adapter.ownerUpdateBookingTracker({ bookingId: 'booking-1', trackerStatus: 'arrived' });
+    await adapter.ownerCloseoutBooking({
+      bookingId: 'booking-1',
+      adjustmentCents: 1000,
+      adjustmentLabel: 'Owner adjustment',
+      cashCollectedCents: 11500,
+      closeoutNote: 'Customer paid cash.',
+    });
     await adapter.ownerSetAvailabilityBlock({ type: 'time_slot', date: '2026-07-06', timeLabel: '10:00 AM', reason: 'Family appointment' });
     await adapter.ownerRemoveAvailabilityBlock('block-1');
     await expect(adapter.loadOwnerJobs({
@@ -372,6 +380,7 @@ describe('app data layer readiness', () => {
       'https://example.supabase.co/rest/v1/rpc/owner_decide_booking_request',
       'https://example.supabase.co/rest/v1/rpc/owner_request_booking_reschedule',
       'https://example.supabase.co/rest/v1/rpc/owner_update_booking_tracker',
+      'https://example.supabase.co/rest/v1/rpc/owner_closeout_booking',
       'https://example.supabase.co/rest/v1/rpc/owner_set_availability_block',
       'https://example.supabase.co/rest/v1/rpc/owner_remove_availability_block',
       'https://example.supabase.co/rest/v1/rpc/owner_list_jobs',
@@ -388,26 +397,33 @@ describe('app data layer readiness', () => {
       tracker_status_input: 'arrived',
     });
     expect(JSON.parse(fetchImpl.mock.calls[4][1].body)).toEqual({
+      booking_id_input: 'booking-1',
+      owner_adjustment_cents_input: 1000,
+      owner_adjustment_label_input: 'Owner adjustment',
+      cash_collected_cents_input: 11500,
+      closeout_note_input: 'Customer paid cash.',
+    });
+    expect(JSON.parse(fetchImpl.mock.calls[5][1].body)).toEqual({
       block_type_input: 'time_slot',
       block_date_input: '2026-07-06',
       time_label_input: '10:00 AM',
       reason_input: 'Family appointment',
     });
-    expect(JSON.parse(fetchImpl.mock.calls[6][1].body)).toEqual({
+    expect(JSON.parse(fetchImpl.mock.calls[7][1].body)).toEqual({
       from_at_input: '2026-07-01T00:00:00.000Z',
       to_at_input: '2026-08-01T00:00:00.000Z',
       status_filter_input: 'needs_ack',
     });
-    expect(JSON.parse(fetchImpl.mock.calls[7][1].body)).toEqual({
+    expect(JSON.parse(fetchImpl.mock.calls[8][1].body)).toEqual({
       from_at_input: '2026-07-01T00:00:00.000Z',
       to_at_input: '2026-08-01T00:00:00.000Z',
       status_filter_input: 'would_send',
     });
-    expect(JSON.parse(fetchImpl.mock.calls[8][1].body)).toEqual({
+    expect(JSON.parse(fetchImpl.mock.calls[9][1].body)).toEqual({
       from_at_input: '2026-07-01T00:00:00.000Z',
       to_at_input: '2026-08-01T00:00:00.000Z',
     });
-    expect(JSON.parse(fetchImpl.mock.calls[9][1].body)).toEqual({
+    expect(JSON.parse(fetchImpl.mock.calls[10][1].body)).toEqual({
       from_date_input: '2026-07-01',
       to_date_input: '2026-07-31',
     });

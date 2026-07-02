@@ -57,6 +57,7 @@ begin
       ('owner_decide_booking_request'),
       ('owner_request_booking_reschedule'),
       ('owner_update_booking_tracker'),
+      ('owner_closeout_booking'),
       ('owner_set_availability_block'),
       ('owner_remove_availability_block'),
       ('get_public_availability'),
