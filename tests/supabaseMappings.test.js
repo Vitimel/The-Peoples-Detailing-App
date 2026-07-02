@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
+  buildSupabaseAvailabilityBlockPayload,
   buildSupabaseGuestBookingPayload,
+  mapSupabaseAvailabilityBlockRow,
   mapSupabaseBookingRow,
   mapSupabaseBusinessSettingsRows,
   mapSupabaseServiceRow,
@@ -54,6 +56,8 @@ describe('Supabase mapping helpers', () => {
       discount_cents: 0,
       total_cents: 15400,
       status: 'requested',
+      tracker_status: 'on_my_way',
+      last_tracker_at: '2026-07-05T14:30:00.000Z',
       short_notice_request: true,
       owner_ack_status: 'approval_needed',
       guest_name: 'Tim',
@@ -61,6 +65,13 @@ describe('Supabase mapping helpers', () => {
       guest_vehicle_label: 'Daily driver',
       claim_token_hash: 'hash',
       claimed_by_user_id: null,
+      confirmed_at: null,
+      declined_at: null,
+      reschedule_requested_at: null,
+      cancelled_at: null,
+      completed_at: null,
+      payment_status: 'balance_due',
+      cancellation_outcome: null,
       created_at: '2026-07-02T15:00:00.000Z',
     })).toMatchObject({
       id: 'booking-1',
@@ -71,6 +82,8 @@ describe('Supabase mapping helpers', () => {
       travelMiles: 12.4,
       totalCents: 15400,
       status: 'requested',
+      trackerStatus: 'on_my_way',
+      lastTrackerAt: '2026-07-05T14:30:00.000Z',
       shortNoticeRequest: true,
       ownerAckStatus: 'approval_needed',
       customerAccessMode: 'guest',
@@ -80,6 +93,7 @@ describe('Supabase mapping helpers', () => {
         phone: '(615) 555-0123',
         vehicle: 'Daily driver',
       },
+      paymentStatus: 'balance_due',
       requestedAt: '2026-07-02T15:00:00.000Z',
     });
   });
@@ -111,6 +125,38 @@ describe('Supabase mapping helpers', () => {
       guest_name: 'Tim',
       guest_phone: '(615) 555-0123',
       guest_vehicle_label: 'Daily driver',
+    });
+  });
+
+  it('maps availability blocks for owner scheduling controls', () => {
+    expect(mapSupabaseAvailabilityBlockRow({
+      id: 'block-1',
+      block_type: 'time_slot',
+      block_date: '2026-07-06',
+      time_label: '10:00 AM',
+      reason: 'Family appointment',
+      created_by: 'owner-user-id',
+      created_at: '2026-07-02T15:00:00.000Z',
+    })).toEqual({
+      id: 'block-1',
+      type: 'time_slot',
+      date: '2026-07-06',
+      timeLabel: '10:00 AM',
+      reason: 'Family appointment',
+      createdBy: 'owner-user-id',
+      createdAt: '2026-07-02T15:00:00.000Z',
+    });
+
+    expect(buildSupabaseAvailabilityBlockPayload({
+      type: 'time_slot',
+      date: '2026-07-06',
+      timeLabel: '10:00 AM',
+      reason: 'Family appointment',
+    })).toEqual({
+      block_type_input: 'time_slot',
+      block_date_input: '2026-07-06',
+      time_label_input: '10:00 AM',
+      reason_input: 'Family appointment',
     });
   });
 });

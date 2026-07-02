@@ -26,6 +26,14 @@ The follow-up migration in `supabase/migrations/20260702130000_booking_rpc_valid
 - transactional creation of owner acknowledgment, status event, payment placeholder, app-fee ledger, and SMS queue records.
 - `claim_guest_booking` for the future signed-in customer claim flow.
 
+The owner operation migration in `supabase/migrations/20260702143000_owner_operations_rpc.sql` adds role-gated RPCs for:
+
+- acknowledging confirmed bookings.
+- confirming or declining short-notice booking requests.
+- marking owner-requested reschedules.
+- updating MVP tracker status: `on_my_way`, `arrived`, and `complete`.
+- creating/removing full-day and time-slot availability blocks.
+
 `supabase/seed.sql` seeds the current service packages, launch settings, and integration status rows for a fresh project.
 
 ## Frontend Adapter Contract
@@ -36,8 +44,10 @@ The follow-up migration in `supabase/migrations/20260702130000_booking_rpc_valid
 
 - service rows become app services with `priceCents`, `durationHours`, service copy, and buffer metadata.
 - `business_settings` rows become app settings such as `minimumBookingNoticeHours`, `workingHoursEnd`, and `bookingSubmissionMode`.
-- booking rows become app bookings with `serviceId`, `startIso`, guest/profile fields, short-notice status, and owner acknowledgment state.
+- booking rows become app bookings with `serviceId`, `startIso`, guest/profile fields, short-notice status, owner acknowledgment state, tracker fields, and payment/cancellation status fields.
+- availability block rows become owner scheduling blocks with `type`, `date`, `timeLabel`, and reason.
 - app booking drafts become the safe `create_guest_booking(payload jsonb)` RPC payload.
+- owner actions call the future `owner_*` RPCs rather than writing raw table rows directly.
 
 This keeps the React screens from depending on raw Supabase column names and makes the future cutover easier to test.
 

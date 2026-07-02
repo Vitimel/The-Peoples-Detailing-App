@@ -17,6 +17,7 @@ describe('app data layer readiness', () => {
     const status = getIntegrationStatus();
     expect(status.dataAdapter.supabase).toBe('repo_ready_disabled');
     expect(status.dataAdapter.bookingRpc).toBe('repo_ready_not_applied');
+    expect(status.dataAdapter.ownerOperationRpcs).toBe('repo_ready_not_applied');
     expect(status.auth.rowLevelSecurity).toBe('repo_ready_requires_live_verification');
     expect(getSupabaseConfigStatus()).toMatchObject({
       configured: false,
@@ -81,5 +82,48 @@ describe('app data layer readiness', () => {
     await expect(adapter.loadServices()).resolves.toMatchObject([{ id: 'basic', priceCents: 15000, durationHours: '3' }]);
     await expect(adapter.loadBusinessSettings()).resolves.toEqual({ minimumBookingNoticeHours: 48 });
     await expect(adapter.loadCustomerBookings()).resolves.toMatchObject([{ id: 'booking-1', serviceId: 'basic', priceCents: 15000, startIso: '2026-07-05T14:00:00.000Z' }]);
+  });
+
+  it('defines future owner operation RPC calls without connecting a live backend', async () => {
+    const fetchImpl = vi.fn(async () => ({
+      ok: true,
+      status: 200,
+      json: async () => 'ok-id',
+    }));
+    const adapter = createSupabaseRestAdapter({
+      url: 'https://example.supabase.co',
+      anonKey: 'anon_test_key',
+      fetchImpl,
+    });
+
+    await adapter.ownerAcknowledgeBooking('booking-1');
+    await adapter.ownerDecideBookingRequest({ bookingId: 'booking-1', decision: 'confirm' });
+    await adapter.ownerRequestBookingReschedule('booking-1');
+    await adapter.ownerUpdateBookingTracker({ bookingId: 'booking-1', trackerStatus: 'arrived' });
+    await adapter.ownerSetAvailabilityBlock({ type: 'time_slot', date: '2026-07-06', timeLabel: '10:00 AM', reason: 'Family appointment' });
+    await adapter.ownerRemoveAvailabilityBlock('block-1');
+
+    expect(fetchImpl.mock.calls.map(call => call[0])).toEqual([
+      'https://example.supabase.co/rest/v1/rpc/owner_acknowledge_booking',
+      'https://example.supabase.co/rest/v1/rpc/owner_decide_booking_request',
+      'https://example.supabase.co/rest/v1/rpc/owner_request_booking_reschedule',
+      'https://example.supabase.co/rest/v1/rpc/owner_update_booking_tracker',
+      'https://example.supabase.co/rest/v1/rpc/owner_set_availability_block',
+      'https://example.supabase.co/rest/v1/rpc/owner_remove_availability_block',
+    ]);
+    expect(JSON.parse(fetchImpl.mock.calls[1][1].body)).toEqual({
+      booking_id_input: 'booking-1',
+      decision: 'confirm',
+    });
+    expect(JSON.parse(fetchImpl.mock.calls[3][1].body)).toEqual({
+      booking_id_input: 'booking-1',
+      tracker_status_input: 'arrived',
+    });
+    expect(JSON.parse(fetchImpl.mock.calls[4][1].body)).toEqual({
+      block_type_input: 'time_slot',
+      block_date_input: '2026-07-06',
+      time_label_input: '10:00 AM',
+      reason_input: 'Family appointment',
+    });
   });
 });

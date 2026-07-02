@@ -139,6 +139,22 @@ describe('checkout fee logic', () => {
     expect(migration).not.toContain("'company_app_fee_cents',\n    'deposit_cents'");
   });
 
+  it('keeps owner operations server-side and role-gated for the future backend', () => {
+    const migration = readFileSync('supabase/migrations/20260702143000_owner_operations_rpc.sql', 'utf8');
+    expect(migration).toContain('create or replace function public.assert_owner_or_developer');
+    expect(migration).toContain('owner or developer role required');
+    expect(migration).toContain('create or replace function public.owner_acknowledge_booking');
+    expect(migration).toContain('create or replace function public.owner_decide_booking_request');
+    expect(migration).toContain('only requested bookings can be confirmed or declined here');
+    expect(migration).toContain('create or replace function public.owner_request_booking_reschedule');
+    expect(migration).toContain('create or replace function public.owner_update_booking_tracker');
+    expect(migration).toContain("tracker status must be on_my_way, arrived, or complete");
+    expect(migration).toContain('create or replace function public.owner_set_availability_block');
+    expect(migration).toContain('create or replace function public.owner_remove_availability_block');
+    expect(migration).toContain('grant execute on function public.owner_acknowledge_booking(uuid) to authenticated');
+    expect(migration).toContain('grant execute on function public.owner_set_availability_block(text, date, text, text) to authenticated');
+  });
+
   it('keeps a Supabase seed for current services and launch settings', () => {
     const seed = readFileSync('supabase/seed.sql', 'utf8');
     expect(seed).toContain("('basic', 'Basic Detail', 15000");

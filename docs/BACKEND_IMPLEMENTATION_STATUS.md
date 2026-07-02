@@ -12,8 +12,9 @@
   - creates owner acknowledgment, status event, payment placeholder, app-fee ledger, and SMS queue records in the same transaction;
   - keeps Stripe/SMS provider calls disabled and placeholder-only;
   - adds a future `claim_guest_booking` function for signed-in customers to claim a guest booking.
+- `supabase/migrations/20260702143000_owner_operations_rpc.sql` adds repo-ready owner operation RPCs for acknowledging bookings, confirming/declining short-notice requests, requesting reschedules, updating MVP tracker statuses, and managing availability blocks.
 - `supabase/seed.sql` seeds the current service menu, business settings, and integration statuses for a fresh Supabase project.
-- `src/data/appDataLayer.js` now includes a disabled-by-default Supabase REST adapter contract for reading services/settings/bookings and calling the safe booking RPC.
+- `src/data/appDataLayer.js` now includes a disabled-by-default Supabase REST adapter contract for reading services/settings/bookings/availability and calling the safe booking and owner operation RPCs.
 - `src/data/supabaseMappings.js` translates future Supabase rows into the app's current service, settings, booking, and guest-booking payload shapes so turning on Supabase later does not leak database column names into the UI.
 - Unit tests cover the extracted booking rules, Supabase mapping helpers, adapter contract, and migration readiness.
 
@@ -28,7 +29,7 @@
 
 ## Next Technical Step
 
-Apply the migrations to a new Supabase Free project, run `supabase/seed.sql`, verify RLS, then set frontend env vars while keeping `VITE_USE_SUPABASE=false` until the live verification checklist passes. After that, test the disabled REST adapter against the live project's public services/settings and booking RPC before making it the active data source.
+Apply the migrations to a new Supabase Free project, run `supabase/seed.sql`, verify RLS, then set frontend env vars while keeping `VITE_USE_SUPABASE=false` until the live verification checklist passes. After that, test the disabled REST adapter against the live project's public services/settings, booking RPC, and owner operation RPCs before making it the active data source.
 
 See `docs/SUPABASE_FREE_SETUP_STEPS.md`.
 

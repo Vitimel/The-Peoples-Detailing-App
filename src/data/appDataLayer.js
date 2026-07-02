@@ -1,5 +1,7 @@
 import {
+  buildSupabaseAvailabilityBlockPayload,
   buildSupabaseGuestBookingPayload,
+  mapSupabaseAvailabilityBlockRow,
   mapSupabaseBookingRow,
   mapSupabaseBusinessSettingsRows,
   mapSupabaseServiceRow,
@@ -59,9 +61,34 @@ export const createSupabaseRestAdapter = ({ url, anonKey, fetchImpl = globalThis
     loadServices: async () => (await requestJson("/rest/v1/services?select=*&visible=eq.true&order=title.asc")).map(mapSupabaseServiceRow),
     loadBusinessSettings: async () => mapSupabaseBusinessSettingsRows(await requestJson("/rest/v1/business_settings?select=key,value")),
     loadCustomerBookings: async () => (await requestJson("/rest/v1/bookings?select=*&order=start_at.asc")).map(mapSupabaseBookingRow),
+    loadAvailabilityBlocks: async () => (await requestJson("/rest/v1/availability_blocks?select=*&order=block_date.asc")).map(mapSupabaseAvailabilityBlockRow),
     createGuestBooking: draft => requestJson("/rest/v1/rpc/create_guest_booking", {
       method: "POST",
       body: JSON.stringify({ payload: buildSupabaseGuestBookingPayload(draft) }),
+    }),
+    ownerAcknowledgeBooking: bookingId => requestJson("/rest/v1/rpc/owner_acknowledge_booking", {
+      method: "POST",
+      body: JSON.stringify({ booking_id_input: bookingId }),
+    }),
+    ownerDecideBookingRequest: ({ bookingId, decision }) => requestJson("/rest/v1/rpc/owner_decide_booking_request", {
+      method: "POST",
+      body: JSON.stringify({ booking_id_input: bookingId, decision }),
+    }),
+    ownerRequestBookingReschedule: bookingId => requestJson("/rest/v1/rpc/owner_request_booking_reschedule", {
+      method: "POST",
+      body: JSON.stringify({ booking_id_input: bookingId }),
+    }),
+    ownerUpdateBookingTracker: ({ bookingId, trackerStatus }) => requestJson("/rest/v1/rpc/owner_update_booking_tracker", {
+      method: "POST",
+      body: JSON.stringify({ booking_id_input: bookingId, tracker_status_input: trackerStatus }),
+    }),
+    ownerSetAvailabilityBlock: block => requestJson("/rest/v1/rpc/owner_set_availability_block", {
+      method: "POST",
+      body: JSON.stringify(buildSupabaseAvailabilityBlockPayload(block)),
+    }),
+    ownerRemoveAvailabilityBlock: blockId => requestJson("/rest/v1/rpc/owner_remove_availability_block", {
+      method: "POST",
+      body: JSON.stringify({ block_id_input: blockId }),
     }),
   };
 };
@@ -124,6 +151,7 @@ export const getIntegrationStatus = () => {
       supabaseConfig,
       supabaseReason: DATA_ADAPTERS[DATA_ADAPTER_IDS.SUPABASE].reason,
       bookingRpc: "repo_ready_not_applied",
+      ownerOperationRpcs: "repo_ready_not_applied",
     },
     payments: {
       stripeTestMode: "planned_not_connected",

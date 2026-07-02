@@ -12,7 +12,8 @@ Run these SQL files in order through Supabase SQL Editor or Supabase CLI:
 
 1. `supabase/migrations/20260525161000_backend_foundation.sql`
 2. `supabase/migrations/20260702130000_booking_rpc_validation.sql`
-3. `supabase/seed.sql`
+3. `supabase/migrations/20260702143000_owner_operations_rpc.sql`
+4. `supabase/seed.sql`
 
 ## Frontend Environment Variables
 
@@ -36,6 +37,10 @@ Before storing real customer data:
 - Confirm blocked days/times are enforced by the RPC.
 - Confirm overlapping active bookings are rejected by the RPC.
 - Confirm short-notice bookings become `requested`.
+- Confirm owner/developer roles can acknowledge confirmed bookings.
+- Confirm owner/developer roles can confirm or decline `requested` bookings.
+- Confirm owner/developer roles can add/remove availability blocks.
+- Confirm non-owner customers cannot call owner operation RPCs.
 - Confirm a signed-in customer can claim only a booking with the matching claim token.
 - Confirm owner/developer roles can manage operational/admin tables.
 - Confirm a normal customer cannot read another customer's booking.

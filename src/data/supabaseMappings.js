@@ -126,6 +126,8 @@ export const mapSupabaseBookingRow = row => ({
   discountCents: numberOrNull(row?.discount_cents) ?? 0,
   totalCents: numberOrNull(row?.total_cents) ?? 0,
   status: row?.status || "confirmed",
+  trackerStatus: row?.tracker_status || null,
+  lastTrackerAt: row?.last_tracker_at || null,
   shortNoticeRequest: Boolean(row?.short_notice_request),
   ownerAckStatus: row?.owner_ack_status || null,
   customerAccessMode: row?.claimed_by_user_id ? "profile" : "guest",
@@ -140,9 +142,33 @@ export const mapSupabaseBookingRow = row => ({
   claimTokenHash: row?.claim_token_hash || null,
   claimedByUserId: row?.claimed_by_user_id || null,
   claimedAt: row?.claimed_at || null,
+  confirmedAt: row?.confirmed_at || null,
+  declinedAt: row?.declined_at || null,
+  rescheduleRequestedAt: row?.reschedule_requested_at || null,
+  cancelledAt: row?.cancelled_at || null,
+  completedAt: row?.completed_at || null,
+  paymentStatus: row?.payment_status || null,
+  cancellationOutcome: row?.cancellation_outcome || null,
   requestedAt: row?.status === "requested" ? row?.created_at || null : null,
   createdAt: row?.created_at || null,
   updatedAt: row?.updated_at || null,
+});
+
+export const mapSupabaseAvailabilityBlockRow = row => ({
+  id: row?.id,
+  type: row?.block_type,
+  date: row?.block_date,
+  timeLabel: row?.time_label || null,
+  reason: row?.reason || "",
+  createdBy: row?.created_by || null,
+  createdAt: row?.created_at || null,
+});
+
+export const buildSupabaseAvailabilityBlockPayload = block => ({
+  block_type_input: block?.block_type || block?.type || "full_day",
+  block_date_input: block?.block_date || block?.date || "",
+  time_label_input: block?.time_label || block?.timeLabel || null,
+  reason_input: block?.reason || null,
 });
 
 const timeLabelFromDate = dateLike => {
