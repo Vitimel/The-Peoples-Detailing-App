@@ -120,4 +120,19 @@ describe('checkout fee logic', () => {
     expect(migration).toContain('create or replace function public.create_guest_booking');
     expect(migration).toContain('create policy "bookings read claimed own or staff"');
   });
+
+  it('keeps the Supabase booking RPC responsible for server-side slot validation', () => {
+    const migration = readFileSync('supabase/migrations/20260702130000_booking_rpc_validation.sql', 'utf8');
+    expect(migration).toContain('create or replace function public.create_guest_booking');
+    expect(migration).toContain('requested time is already booked');
+    expect(migration).toContain('requested time is blocked');
+    expect(migration).toContain('requested time is outside working hours');
+    expect(migration).toContain('tstzrange(b.start_at, public.booking_end_at');
+    expect(migration).toContain("status_to_insert := 'requested'");
+    expect(migration).toContain('insert into public.owner_acknowledgments');
+    expect(migration).toContain('insert into public.payment_placeholders');
+    expect(migration).toContain('insert into public.sms_notifications');
+    expect(migration).toContain('grant execute on function public.create_guest_booking(jsonb) to anon, authenticated');
+    expect(migration).toContain('create or replace function public.claim_guest_booking');
+  });
 });

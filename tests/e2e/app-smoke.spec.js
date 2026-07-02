@@ -47,7 +47,9 @@ test('developer route opens developer admin without public demo controls', async
   await expect(page.getByText(/temporary developer route/i)).toBeVisible();
   await expect(page.getByText('Launch Readiness')).toBeVisible();
   await expect(page.getByText('Supabase backend')).toBeVisible();
-  await expect(page.getByText(/Planned - disabled until credentials and RLS are approved/i)).toBeVisible();
+  await expect(page.getByText(/Repo-ready - disabled until credentials and RLS are approved/i)).toBeVisible();
+  await expect(page.getByText('Booking RPC')).toBeVisible();
+  await expect(page.getByText(/Repo-ready validation migration/i)).toBeVisible();
   await expect(page.getByText('Stripe Test Mode Ready')).toBeVisible();
   await expect(page.getByText('Stripe live mode')).toBeVisible();
   await expect(page.getByText('Locked')).toBeVisible();

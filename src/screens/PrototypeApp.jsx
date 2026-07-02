@@ -5,6 +5,17 @@ import { calculateCustomerCheckoutTotals } from '../utils/fees.js';
 import { createNearLiveRecordsForBooking, ensureProductionState, upsertById } from '../utils/nearLiveRecords.js';
 import { calculateTravelFeeCents, estimateMilesFromAddress, milesBetween, MURFREESBORO_BASE } from '../utils/travel.js';
 import { decodeVinSample, lookupVinDetails, normalizeVin } from '../utils/vin.js';
+import {
+  SLOT_LABELS,
+  availableSlotInfo,
+  canCustomerReschedule,
+  customerCancelOutcome,
+  dateKey,
+  normalizedSettings,
+  parseSlotLabel,
+  setDateTimeFromSlot,
+  slotKey,
+} from '../utils/bookingRules.js';
 
 import {
   PROMO_CODES,
@@ -107,35 +118,11 @@ const BOOKING_STATUS_LABEL = {
   declined: "declined",
 };
 const AUTO_CLOSE_AFTER_DAYS = 7;
-const SLOT_LABELS = ["8:00 AM","10:00 AM","12:00 PM","2:00 PM","4:00 PM"];
 const TIME_OPTIONS = [
   7, 7.5, 8, 8.5, 9, 9.5, 10, 10.5, 11, 11.5,
   12, 12.5, 13, 13.5, 14, 14.5, 15, 15.5,
   16, 16.5, 17, 17.5, 18, 18.5, 19, 19.5, 20,
 ];
-const dateKey = d => {
-  const date = new Date(d);
-  return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,"0")}-${String(date.getDate()).padStart(2,"0")}`;
-};
-const slotKey = (d, label) => `${dateKey(d)}|${label}`;
-const parseSlotLabel = label => {
-  const [hStr,m] = label.split(/[: ]/);
-  let h = parseInt(hStr,10);
-  if (label.includes("PM") && h !== 12) h += 12;
-  if (label.includes("AM") && h === 12) h = 0;
-  return { h, m: parseInt(m,10) };
-};
-const setDateTimeFromSlot = (date, label) => {
-  const { h, m } = parseSlotLabel(label);
-  const d = new Date(date);
-  d.setHours(h, m, 0, 0);
-  return d;
-};
-const serviceDurationMinutes = service => {
-  const nums = String(service?.durationHours || "2").match(/\d+(\.\d+)?/g)?.map(Number) || [2];
-  return Math.max(...nums) * 60;
-};
-const rangesOverlap = (aStart, aEnd, bStart, bEnd) => aStart < bEnd && bStart < aEnd;
 const hourOptionLabel = value => {
   const hour = Math.floor(value);
   const minutes = value % 1 ? "30" : "00";
@@ -143,22 +130,6 @@ const hourOptionLabel = value => {
   const displayHour = ((hour + 11) % 12) + 1;
   return `${displayHour}:${minutes} ${period}`;
 };
-const normalizedSettings = settings => ({
-  ...SETTINGS,
-  ...(settings || {}),
-  availabilityDefaultsVersion: SETTINGS.availabilityDefaultsVersion,
-  depositCents: settings?.depositCents ?? SETTINGS.depositCents,
-  companyAppFeeCents: settings?.companyAppFeeCents ?? SETTINGS.companyAppFeeCents,
-  customerPaysCardProcessingFee: settings?.customerPaysCardProcessingFee ?? SETTINGS.customerPaysCardProcessingFee,
-  cancelDepositForfeitDays: settings?.cancelDepositForfeitDays ?? SETTINGS.cancelDepositForfeitDays,
-  rescheduleCutoffHours: settings?.rescheduleCutoffHours ?? settings?.rescheduleTimeoutHours ?? SETTINGS.rescheduleCutoffHours,
-  minimumBookingNoticeHours: settings?.minimumBookingNoticeHours ?? SETTINGS.minimumBookingNoticeHours,
-  workingHoursStart: settings?.workingHoursStart ?? SETTINGS.workingHoursStart,
-  bufferMinutes: (settings?.availabilityDefaultsVersion ?? 0) >= SETTINGS.availabilityDefaultsVersion ? settings?.bufferMinutes ?? SETTINGS.bufferMinutes : SETTINGS.bufferMinutes,
-  workingHoursEnd: (settings?.availabilityDefaultsVersion ?? 0) >= SETTINGS.availabilityDefaultsVersion ? settings?.workingHoursEnd ?? SETTINGS.workingHoursEnd : SETTINGS.workingHoursEnd,
-  blockedDates: settings?.blockedDates || [],
-  blockedSlots: settings?.blockedSlots || [],
-});
 const routePathFromLocation = () => {
   if (typeof window === "undefined") return "/";
   const params = new URLSearchParams(window.location.search);
@@ -215,9 +186,6 @@ const normalizeBooking = (booking, settings = SETTINGS) => {
     totalCents: booking.totalCents ?? totalBeforeCard,
   };
 };
-const hoursUntilBooking = booking => (new Date(booking.startIso).getTime() - Date.now()) / 36e5;
-const daysUntilBooking = booking => hoursUntilBooking(booking) / 24;
-const canCustomerReschedule = (booking, settings) => hoursUntilBooking(booking) >= (normalizedSettings(settings).rescheduleCutoffHours || 48);
 const directionsUrl = target => {
   const lat = Number(target?.lat);
   const lng = Number(target?.lng);
@@ -254,22 +222,6 @@ const ownerRescheduleMessage = booking => [
 ].join(" ");
 const statusClass = status => BOOKING_STATUS_CLASS[status] || "pill-pending";
 const statusLabel = status => BOOKING_STATUS_LABEL[status] || status || "requested";
-const customerCancelOutcome = (booking, settings) => {
-  const paidOnline = booking.amountPaidTodayCents || 0;
-  if (booking.status === "requested" || paidOnline <= 0 || booking.paymentStatus === "request_pending") {
-    return {
-      forfeit: false,
-      paymentStatus: "not_collected",
-      cancellationOutcome: "No payment collected",
-    };
-  }
-  const forfeit = daysUntilBooking(booking) < (normalizedSettings(settings).cancelDepositForfeitDays || 7);
-  return {
-    forfeit,
-    paymentStatus: forfeit ? "cancelled_deposit_forfeited" : "refunded",
-    cancellationOutcome: forfeit ? "Deposit forfeited" : "Deposit refundable",
-  };
-};
 const calculateOverdueAutoClose = booking => {
   if (booking.status !== "confirmed" || booking.autoClosedAt) return false;
   const dueAt = new Date(booking.startIso).getTime() + AUTO_CLOSE_AFTER_DAYS * 24 * 60 * 60 * 1000;
@@ -304,28 +256,6 @@ const applyOwnerCloseout = (booking, closeout = {}) => {
     paymentStatus,
   };
 };
-const availableSlotInfo = ({ date, label, bookings, services, service, settings, activeBookingId, enforceMinimumNotice = true }) => {
-  const s = normalizedSettings(settings);
-  const slotStart = setDateTimeFromSlot(date, label);
-  const startHour = slotStart.getHours() + slotStart.getMinutes() / 60;
-  const durationMinutes = serviceDurationMinutes(service) + (s.bufferMinutes || 0);
-  const slotEnd = new Date(slotStart.getTime() + durationMinutes * 60_000);
-  const shortNotice = enforceMinimumNotice && slotStart.getTime() < Date.now() + (s.minimumBookingNoticeHours || 0) * 60 * 60_000;
-  if (s.blockedDates.includes(dateKey(slotStart))) return { available: false, reason: "Blocked day" };
-  if (s.blockedSlots.includes(slotKey(slotStart, label))) return { available: false, reason: "Blocked time" };
-  if (startHour < s.workingHoursStart || startHour >= s.workingHoursEnd) return { available: false, reason: "Outside hours" };
-  if (slotEnd.getHours() + slotEnd.getMinutes() / 60 > s.workingHoursEnd) return { available: false, reason: "Needs more time" };
-  const overlaps = bookings.some(b => {
-    if (b.id === activeBookingId || b.status === "cancelled") return false;
-    const existingService = services.find(svc => svc.id === b.serviceId);
-    const existingStart = new Date(b.startIso);
-    const existingEnd = new Date(existingStart.getTime() + (serviceDurationMinutes(existingService) + (s.bufferMinutes || 0)) * 60_000);
-    return rangesOverlap(slotStart, slotEnd, existingStart, existingEnd);
-  });
-  if (overlaps) return { available: false, reason: "Booked" };
-  return { available: true, reason: shortNotice ? "Needs approval" : "", shortNotice };
-};
-
 const BottomNavShell = ({ role, screen, setScreen }) => {
   if (role === "customer" && CUSTOMER_NAV_SCREENS.includes(screen)) {
     return (
@@ -3251,8 +3181,9 @@ const OwnerSettings = (p) => {
             <div className="label-up mb-2">Launch Readiness</div>
             <ConnRow label="Frontend host" status="GitHub Pages active" />
             <ConnRow label="Active data adapter" status="localStorage demo" />
-            <ConnRow label="Supabase backend" status="Planned - disabled until credentials and RLS are approved" />
-            <ConnRow label="Auth / RLS" status="Required before real customer data" />
+            <ConnRow label="Supabase backend" status="Repo-ready - disabled until credentials and RLS are approved" />
+            <ConnRow label="Booking RPC" status="Repo-ready validation migration - not applied to live project" />
+            <ConnRow label="Auth / RLS" status="Schema ready - live verification required before customer data" />
             <ConnRow label="Stripe Test Mode Ready" status="Planned - no checkout session or PaymentIntent is created yet" />
             <ConnRow label="Stripe live mode" status="Locked" />
             <ConnRow label="Owner SMS queue" status="Local records only - no provider send call" />
