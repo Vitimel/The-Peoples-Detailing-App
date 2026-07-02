@@ -3,6 +3,62 @@ export const DATA_ADAPTER_IDS = {
   SUPABASE: "supabase",
 };
 
+const SUPABASE_ENABLE_FLAG = "VITE_USE_SUPABASE";
+
+export const getSupabaseConfigStatus = () => {
+  const env = typeof import.meta !== "undefined" && import.meta.env ? import.meta.env : {};
+  const hasUrl = Boolean(env.VITE_SUPABASE_URL);
+  const hasAnonKey = Boolean(env.VITE_SUPABASE_ANON_KEY);
+  const enabled = env[SUPABASE_ENABLE_FLAG] === "1" || env[SUPABASE_ENABLE_FLAG] === "true";
+  return {
+    hasUrl,
+    hasAnonKey,
+    enabled,
+    configured: hasUrl && hasAnonKey,
+    active: enabled && hasUrl && hasAnonKey,
+    status: hasUrl && hasAnonKey
+      ? enabled ? "configured_enabled" : "configured_not_active"
+      : "missing_frontend_env",
+  };
+};
+
+export const createSupabaseRestAdapter = ({ url, anonKey, fetchImpl = globalThis.fetch } = {}) => {
+  const baseUrl = String(url || "").replace(/\/+$/, "");
+  const headers = {
+    apikey: anonKey || "",
+    Authorization: `Bearer ${anonKey || ""}`,
+    "Content-Type": "application/json",
+  };
+
+  const requestJson = async (path, options = {}) => {
+    if (!baseUrl || !anonKey) throw new Error("Supabase URL and anon key are required");
+    if (!fetchImpl) throw new Error("Fetch is unavailable");
+    const response = await fetchImpl(`${baseUrl}${path}`, {
+      ...options,
+      headers: { ...headers, ...(options.headers || {}) },
+    });
+    if (!response.ok) {
+      const message = await response.text().catch(() => "");
+      throw new Error(message || `Supabase request failed (${response.status})`);
+    }
+    if (response.status === 204) return null;
+    return response.json();
+  };
+
+  return {
+    id: DATA_ADAPTER_IDS.SUPABASE,
+    label: "Supabase REST",
+    status: "configured_enabled",
+    loadServices: () => requestJson("/rest/v1/services?select=*&visible=eq.true&order=title.asc"),
+    loadBusinessSettings: () => requestJson("/rest/v1/business_settings?select=key,value"),
+    loadCustomerBookings: () => requestJson("/rest/v1/bookings?select=*&order=start_at.asc"),
+    createGuestBooking: payload => requestJson("/rest/v1/rpc/create_guest_booking", {
+      method: "POST",
+      body: JSON.stringify({ payload }),
+    }),
+  };
+};
+
 export const DATA_ADAPTERS = {
   [DATA_ADAPTER_IDS.LOCAL_STORAGE]: {
     id: DATA_ADAPTER_IDS.LOCAL_STORAGE,
@@ -37,19 +93,19 @@ export const DATA_ADAPTERS = {
   },
 };
 
-export const getSupabaseConfigStatus = () => {
-  const env = typeof import.meta !== "undefined" && import.meta.env ? import.meta.env : {};
-  const hasUrl = Boolean(env.VITE_SUPABASE_URL);
-  const hasAnonKey = Boolean(env.VITE_SUPABASE_ANON_KEY);
-  return {
-    hasUrl,
-    hasAnonKey,
-    configured: hasUrl && hasAnonKey,
-    status: hasUrl && hasAnonKey ? "configured_not_active" : "missing_frontend_env",
-  };
+export const getActiveDataAdapter = () => {
+  return DATA_ADAPTERS[DATA_ADAPTER_IDS.LOCAL_STORAGE];
 };
 
-export const getActiveDataAdapter = () => DATA_ADAPTERS[DATA_ADAPTER_IDS.LOCAL_STORAGE];
+export const getConfiguredBackendAdapter = () => {
+  const env = typeof import.meta !== "undefined" && import.meta.env ? import.meta.env : {};
+  const supabase = getSupabaseConfigStatus();
+  if (!supabase.active) return null;
+  return createSupabaseRestAdapter({
+    url: env.VITE_SUPABASE_URL,
+    anonKey: env.VITE_SUPABASE_ANON_KEY,
+  });
+};
 
 export const getIntegrationStatus = () => {
   const supabaseConfig = getSupabaseConfigStatus();
@@ -57,7 +113,7 @@ export const getIntegrationStatus = () => {
     dataAdapter: {
       active: DATA_ADAPTER_IDS.LOCAL_STORAGE,
       localStorage: "active_demo",
-      supabase: "repo_ready_disabled",
+      supabase: supabaseConfig.active ? "configured_enabled" : "repo_ready_disabled",
       supabaseConfig,
       supabaseReason: DATA_ADAPTERS[DATA_ADAPTER_IDS.SUPABASE].reason,
       bookingRpc: "repo_ready_not_applied",

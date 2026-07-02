@@ -12,6 +12,8 @@
   - creates owner acknowledgment, status event, payment placeholder, app-fee ledger, and SMS queue records in the same transaction;
   - keeps Stripe/SMS provider calls disabled and placeholder-only;
   - adds a future `claim_guest_booking` function for signed-in customers to claim a guest booking.
+- `supabase/seed.sql` seeds the current service menu, business settings, and integration statuses for a fresh Supabase project.
+- `src/data/appDataLayer.js` now includes a disabled-by-default Supabase REST adapter contract for reading services/settings/bookings and calling the safe booking RPC.
 - Unit tests cover the extracted booking rules and migration readiness.
 
 ## Still Not Live
@@ -25,7 +27,9 @@
 
 ## Next Technical Step
 
-Apply the migrations to a new Supabase Free project, seed the `services` and `business_settings` tables, and wire a disabled-by-default Supabase adapter that can read public services/availability and call `create_guest_booking` only when environment variables are present.
+Apply the migrations to a new Supabase Free project, run `supabase/seed.sql`, verify RLS, then set frontend env vars while keeping `VITE_USE_SUPABASE=false` until the live verification checklist passes.
+
+See `docs/SUPABASE_FREE_SETUP_STEPS.md`.
 
 ## Required Tim/Dane Decisions Before Live Data
 

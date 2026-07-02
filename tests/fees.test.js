@@ -134,5 +134,20 @@ describe('checkout fee logic', () => {
     expect(migration).toContain('insert into public.sms_notifications');
     expect(migration).toContain('grant execute on function public.create_guest_booking(jsonb) to anon, authenticated');
     expect(migration).toContain('create or replace function public.claim_guest_booking');
+    expect(migration).toContain('insert into public.customer_profiles');
+    expect(migration).toContain('insert into public.vehicles');
+    expect(migration).not.toContain("'company_app_fee_cents',\n    'deposit_cents'");
+  });
+
+  it('keeps a Supabase seed for current services and launch settings', () => {
+    const seed = readFileSync('supabase/seed.sql', 'utf8');
+    expect(seed).toContain("('basic', 'Basic Detail', 15000");
+    expect(seed).toContain("('deluxe', 'Deluxe Detail', 22000");
+    expect(seed).toContain("('premium', 'Premium Detail', 32000");
+    expect(seed).toContain("('monthly', 'Monthly Maintenance', 10000");
+    expect(seed).toContain("('business_name', '\"The Peoples Detailing\"'::jsonb)");
+    expect(seed).toContain("('booking_submit_mode', '\"instant_book_no_payment\"'::jsonb)");
+    expect(seed).toContain("('stripe_live_mode', '\"locked\"'::jsonb)");
+    expect(seed).toContain("('owner_sms', 'queued_locally_only'");
   });
 });

@@ -20,6 +20,9 @@ alter table public.business_settings enable row level security;
 
 create policy "public reads safe business settings" on public.business_settings
   for select using (key in (
+    'business_name',
+    'business_phone',
+    'base_address',
     'working_hours_start',
     'working_hours_end',
     'minimum_booking_notice_hours',
@@ -27,9 +30,9 @@ create policy "public reads safe business settings" on public.business_settings
     'cancel_deposit_forfeit_days',
     'free_travel_radius_miles',
     'per_mile_fee_cents',
-    'company_app_fee_cents',
     'deposit_cents',
-    'owner_sms_estimate_cents'
+    'booking_submit_mode',
+    'stripe_live_mode'
   ));
 
 create policy "developer manages business settings" on public.business_settings
@@ -37,6 +40,9 @@ create policy "developer manages business settings" on public.business_settings
   with check (public.current_app_role() = 'developer');
 
 insert into public.business_settings (key, value) values
+  ('business_name', '"The Peoples Detailing"'::jsonb),
+  ('business_phone', '"(931) 334-0730"'::jsonb),
+  ('base_address', '"Murfreesboro, TN"'::jsonb),
   ('working_hours_start', '8'::jsonb),
   ('working_hours_end', '19.5'::jsonb),
   ('minimum_booking_notice_hours', '48'::jsonb),
@@ -46,7 +52,10 @@ insert into public.business_settings (key, value) values
   ('per_mile_fee_cents', '150'::jsonb),
   ('company_app_fee_cents', '300'::jsonb),
   ('deposit_cents', '2500'::jsonb),
-  ('owner_sms_estimate_cents', '1'::jsonb)
+  ('owner_sms_estimate_cents', '1'::jsonb),
+  ('booking_submit_mode', '"instant_book_no_payment"'::jsonb),
+  ('stripe_live_mode', '"locked"'::jsonb),
+  ('sms_provider', '"not_connected"'::jsonb)
 on conflict (key) do nothing;
 
 create index if not exists bookings_active_start_idx
@@ -254,22 +263,69 @@ set search_path = public, pg_temp
 as $$
 declare
   profile_id uuid;
+  booking_row public.bookings%rowtype;
 begin
   if auth.uid() is null then
     raise exception 'sign in required';
   end if;
 
-  update public.bookings
-  set claimed_by_user_id = auth.uid(),
-      claimed_at = now(),
-      updated_at = now()
+  select * into booking_row
+  from public.bookings
   where id = booking_id_input
     and claimed_by_user_id is null
     and claim_token_hash = claim_token_hash_input
-  returning customer_profile_id into profile_id;
+  for update;
 
   if not found then
     raise exception 'booking cannot be claimed';
+  end if;
+
+  select id into profile_id
+  from public.customer_profiles
+  where user_id = auth.uid()
+  order by created_at asc
+  limit 1;
+
+  if profile_id is null then
+    insert into public.customer_profiles (
+      user_id,
+      name,
+      phone,
+      notification_preference
+    )
+    values (
+      auth.uid(),
+      booking_row.guest_name,
+      booking_row.guest_phone,
+      'email'
+    )
+    returning id into profile_id;
+  end if;
+
+  update public.bookings
+  set customer_profile_id = profile_id,
+      claimed_by_user_id = auth.uid(),
+      claimed_at = now(),
+      updated_at = now()
+  where id = booking_id_input;
+
+  if booking_row.guest_vehicle_label is not null
+    and not exists (
+      select 1 from public.vehicles
+      where customer_profile_id = profile_id
+        and nickname = booking_row.guest_vehicle_label
+    )
+  then
+    insert into public.vehicles (
+      customer_profile_id,
+      nickname,
+      is_default
+    )
+    values (
+      profile_id,
+      booking_row.guest_vehicle_label,
+      not exists (select 1 from public.vehicles where customer_profile_id = profile_id)
+    );
   end if;
 
   return booking_id_input;

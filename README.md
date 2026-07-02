@@ -75,6 +75,7 @@ The original prototype saved promo and vehicle data into the booking object, but
 - `docs/MANUAL_VISUAL_QA_CHECKLIST.md` - manual click-test and visual approval checklist.
 - `docs/PRODUCTION_FOUNDATION_PLAN.md` - Supabase Free and Stripe test-mode starting point for later production work.
 - `docs/BACKEND_IMPLEMENTATION_STATUS.md` - current repo-ready backend/RLS/RPC status and remaining live setup gates.
+- `docs/SUPABASE_FREE_SETUP_STEPS.md` - exact free Supabase setup order, env var boundary, and first live verification checklist.
 
 ## Still Needs Human Review
 

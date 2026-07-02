@@ -26,6 +26,8 @@ The follow-up migration in `supabase/migrations/20260702130000_booking_rpc_valid
 - transactional creation of owner acknowledgment, status event, payment placeholder, app-fee ledger, and SMS queue records.
 - `claim_guest_booking` for the future signed-in customer claim flow.
 
+`supabase/seed.sql` seeds the current service packages, launch settings, and integration status rows for a fresh project.
+
 ## Security Direction
 
 - RLS is enabled on every table.
@@ -43,4 +45,4 @@ The follow-up migration in `supabase/migrations/20260702130000_booking_rpc_valid
 - Stripe live mode is locked.
 - SMS is queued locally only; no provider is called.
 
-See `docs/BACKEND_IMPLEMENTATION_STATUS.md` for the current implementation checkpoint and next live setup steps.
+See `docs/BACKEND_IMPLEMENTATION_STATUS.md` and `docs/SUPABASE_FREE_SETUP_STEPS.md` for the current implementation checkpoint and next live setup steps.
