@@ -238,6 +238,52 @@ export const mapSupabaseOwnerNotificationRow = row => ({
   booking: row?.booking ? mapSupabaseBookingRow(row.booking) : null,
 });
 
+export const mapSupabaseOwnerReportSnapshot = snapshot => ({
+  fromAt: snapshot?.from_at || null,
+  toAt: snapshot?.to_at || null,
+  summary: {
+    bookingCount: numberOrNull(snapshot?.summary?.booking_count) ?? 0,
+    completedCount: numberOrNull(snapshot?.summary?.completed_count) ?? 0,
+    requestedCount: numberOrNull(snapshot?.summary?.requested_count) ?? 0,
+    cancelledCount: numberOrNull(snapshot?.summary?.cancelled_count) ?? 0,
+    grossJobTotalCents: numberOrNull(snapshot?.summary?.gross_job_total_cents) ?? 0,
+    onlinePaidCents: numberOrNull(snapshot?.summary?.online_paid_cents) ?? 0,
+    cashBalanceDueCents: numberOrNull(snapshot?.summary?.cash_balance_due_cents) ?? 0,
+    cardProcessingFeeCents: numberOrNull(snapshot?.summary?.card_processing_fee_cents) ?? 0,
+    appFeeCents: numberOrNull(snapshot?.summary?.app_fee_cents) ?? 0,
+    smsEstimateCents: numberOrNull(snapshot?.summary?.sms_estimate_cents) ?? 0,
+    brandnewNetEstimateCents: numberOrNull(snapshot?.summary?.brandnew_net_estimate_cents) ?? 0,
+    forfeitedDepositCents: numberOrNull(snapshot?.summary?.forfeited_deposit_cents) ?? 0,
+    refundNeededCents: numberOrNull(snapshot?.summary?.refund_needed_cents) ?? 0,
+    routingStatus: snapshot?.summary?.routing_status || "ledger_only",
+    smsCostStatus: snapshot?.summary?.sms_cost_status || "estimated_not_billed",
+  },
+  rows: (Array.isArray(snapshot?.rows) ? snapshot.rows : []).map(row => ({
+    bookingId: row?.booking_id,
+    serviceTitle: row?.service_title || "",
+    startAt: row?.start_at || null,
+    completedAt: row?.completed_at || null,
+    status: row?.status || "",
+    paymentStatus: row?.payment_status || "",
+    cancellationOutcome: row?.cancellation_outcome || null,
+    priceCents: numberOrNull(row?.price_cents) ?? 0,
+    travelFeeCents: numberOrNull(row?.travel_fee_cents) ?? 0,
+    discountCents: numberOrNull(row?.discount_cents) ?? 0,
+    totalCents: numberOrNull(row?.total_cents) ?? 0,
+    onlinePaidCents: numberOrNull(row?.online_paid_cents) ?? 0,
+    depositCents: numberOrNull(row?.deposit_cents) ?? 0,
+    cashBalanceDueCents: numberOrNull(row?.cash_balance_due_cents) ?? 0,
+    cardProcessingFeeCents: numberOrNull(row?.card_processing_fee_cents) ?? 0,
+    appFeeCents: numberOrNull(row?.app_fee_cents) ?? 0,
+    smsEstimateCents: numberOrNull(row?.sms_estimate_cents) ?? 0,
+    brandnewNetEstimateCents: numberOrNull(row?.brandnew_net_estimate_cents) ?? 0,
+    appFeeRoutingStatus: row?.app_fee_routing_status || "ledger_only",
+    smsCostStatus: row?.sms_cost_status || "estimated_not_billed",
+    forfeitedDepositCents: numberOrNull(row?.forfeited_deposit_cents) ?? 0,
+  })),
+  notes: snapshot?.notes || {},
+});
+
 export const buildSupabaseAvailabilityBlockPayload = block => ({
   block_type_input: block?.block_type || block?.type || "full_day",
   block_date_input: block?.block_date || block?.date || "",
@@ -285,6 +331,11 @@ export const buildSupabaseOwnerNotificationsPayload = input => ({
   from_at_input: input?.from_at || input?.fromAt || null,
   to_at_input: input?.to_at || input?.toAt || null,
   status_filter_input: input?.status_filter || input?.statusFilter || null,
+});
+
+export const buildSupabaseOwnerReportPayload = input => ({
+  from_at_input: input?.from_at || input?.fromAt || null,
+  to_at_input: input?.to_at || input?.toAt || null,
 });
 
 export const buildSupabaseServiceUpdatePayload = service => {

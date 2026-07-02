@@ -9,6 +9,7 @@ import {
   buildSupabaseMessagePayload,
   buildSupabaseOwnerJobsPayload,
   buildSupabaseOwnerNotificationsPayload,
+  buildSupabaseOwnerReportPayload,
   buildSupabasePublicAvailabilityPayload,
   buildSupabaseReschedulePayload,
   buildSupabaseRoleAssignmentPayload,
@@ -21,6 +22,7 @@ import {
   mapSupabaseCustomerProfile,
   mapSupabaseMessageRow,
   mapSupabaseOwnerNotificationRow,
+  mapSupabaseOwnerReportSnapshot,
   mapSupabaseServiceRow,
 } from "./supabaseMappings.js";
 
@@ -128,6 +130,10 @@ export const createSupabaseRestAdapter = ({
       method: "POST",
       body: JSON.stringify(buildSupabaseOwnerNotificationsPayload(input)),
     }).then(rows => (Array.isArray(rows) ? rows : []).map(mapSupabaseOwnerNotificationRow)),
+    loadOwnerReportSnapshot: input => requestJson("/rest/v1/rpc/owner_get_report_snapshot", {
+      method: "POST",
+      body: JSON.stringify(buildSupabaseOwnerReportPayload(input)),
+    }).then(mapSupabaseOwnerReportSnapshot),
     createGuestBooking: async draft => {
       const result = await requestJson("/rest/v1/rpc/create_guest_booking", {
         method: "POST",
@@ -344,6 +350,7 @@ export const getIntegrationStatus = () => {
       ownerOperationRpcs: "repo_ready_not_applied",
       ownerReadRpcs: "repo_ready_not_applied",
       ownerNotificationReadRpcs: "repo_ready_not_applied",
+      ownerReportReadRpcs: "repo_ready_not_applied",
       customerLifecycleRpcs: "repo_ready_not_applied",
       customerReadRpcs: "repo_ready_not_applied",
       customerHistoryReadRpcs: "repo_ready_not_applied",

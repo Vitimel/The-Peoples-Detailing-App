@@ -23,6 +23,7 @@ describe('app data layer readiness', () => {
     expect(status.dataAdapter.ownerOperationRpcs).toBe('repo_ready_not_applied');
     expect(status.dataAdapter.ownerReadRpcs).toBe('repo_ready_not_applied');
     expect(status.dataAdapter.ownerNotificationReadRpcs).toBe('repo_ready_not_applied');
+    expect(status.dataAdapter.ownerReportReadRpcs).toBe('repo_ready_not_applied');
     expect(status.dataAdapter.customerLifecycleRpcs).toBe('repo_ready_not_applied');
     expect(status.dataAdapter.customerReadRpcs).toBe('repo_ready_not_applied');
     expect(status.dataAdapter.customerHistoryReadRpcs).toBe('repo_ready_not_applied');
@@ -280,6 +281,21 @@ describe('app data layer readiness', () => {
                 guest_vehicle_label: 'Daily driver',
               },
             }]
+          : url.includes('/rpc/owner_get_report_snapshot')
+            ? {
+                from_at: '2026-07-01T00:00:00.000Z',
+                to_at: '2026-08-01T00:00:00.000Z',
+                summary: {
+                  booking_count: 1,
+                  gross_job_total_cents: 15000,
+                  online_paid_cents: 2500,
+                  app_fee_cents: 300,
+                  sms_estimate_cents: 1,
+                  brandnew_net_estimate_cents: 299,
+                  routing_status: 'ledger_only',
+                },
+                rows: [{ booking_id: 'booking-1', service_title: 'Basic Detail', total_cents: 15000, app_fee_cents: 300 }],
+              }
           : 'ok-id';
       return {
         ok: true,
@@ -324,6 +340,21 @@ describe('app data layer readiness', () => {
         guestName: 'Tim',
       },
     }]);
+    await expect(adapter.loadOwnerReportSnapshot({
+      fromAt: '2026-07-01T00:00:00.000Z',
+      toAt: '2026-08-01T00:00:00.000Z',
+    })).resolves.toMatchObject({
+      fromAt: '2026-07-01T00:00:00.000Z',
+      summary: {
+        bookingCount: 1,
+        grossJobTotalCents: 15000,
+        appFeeCents: 300,
+        smsEstimateCents: 1,
+        brandnewNetEstimateCents: 299,
+        routingStatus: 'ledger_only',
+      },
+      rows: [{ bookingId: 'booking-1', serviceTitle: 'Basic Detail', totalCents: 15000 }],
+    });
     await expect(adapter.loadAvailabilityBlocks({
       fromDate: '2026-07-01',
       toDate: '2026-07-31',
@@ -345,6 +376,7 @@ describe('app data layer readiness', () => {
       'https://example.supabase.co/rest/v1/rpc/owner_remove_availability_block',
       'https://example.supabase.co/rest/v1/rpc/owner_list_jobs',
       'https://example.supabase.co/rest/v1/rpc/owner_list_notifications',
+      'https://example.supabase.co/rest/v1/rpc/owner_get_report_snapshot',
       'https://example.supabase.co/rest/v1/rpc/get_public_availability',
     ]);
     expect(JSON.parse(fetchImpl.mock.calls[1][1].body)).toEqual({
@@ -372,6 +404,10 @@ describe('app data layer readiness', () => {
       status_filter_input: 'would_send',
     });
     expect(JSON.parse(fetchImpl.mock.calls[8][1].body)).toEqual({
+      from_at_input: '2026-07-01T00:00:00.000Z',
+      to_at_input: '2026-08-01T00:00:00.000Z',
+    });
+    expect(JSON.parse(fetchImpl.mock.calls[9][1].body)).toEqual({
       from_date_input: '2026-07-01',
       to_date_input: '2026-07-31',
     });

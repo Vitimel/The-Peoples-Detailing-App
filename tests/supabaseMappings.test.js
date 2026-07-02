@@ -10,6 +10,7 @@ import {
   buildSupabaseMessagePayload,
   buildSupabaseOwnerJobsPayload,
   buildSupabaseOwnerNotificationsPayload,
+  buildSupabaseOwnerReportPayload,
   buildSupabasePublicAvailabilityPayload,
   buildSupabaseReschedulePayload,
   buildSupabaseRoleAssignmentPayload,
@@ -22,6 +23,7 @@ import {
   mapSupabaseDeveloperAdminSnapshot,
   mapSupabaseMessageRow,
   mapSupabaseOwnerNotificationRow,
+  mapSupabaseOwnerReportSnapshot,
   mapSupabaseServiceRow,
   mapSupabaseVehicleRow,
 } from '../src/data/supabaseMappings.js';
@@ -418,6 +420,84 @@ describe('Supabase mapping helpers', () => {
       from_at_input: '2026-07-01T00:00:00.000Z',
       to_at_input: '2026-08-01T00:00:00.000Z',
       status_filter_input: 'would_send',
+    });
+  });
+
+  it('maps owner report snapshots into owner reporting totals and rows', () => {
+    expect(mapSupabaseOwnerReportSnapshot({
+      from_at: '2026-07-01T00:00:00.000Z',
+      to_at: '2026-08-01T00:00:00.000Z',
+      summary: {
+        booking_count: 2,
+        completed_count: 1,
+        requested_count: 1,
+        cancelled_count: 0,
+        gross_job_total_cents: 30000,
+        online_paid_cents: 2500,
+        cash_balance_due_cents: 27500,
+        card_processing_fee_cents: 103,
+        app_fee_cents: 600,
+        sms_estimate_cents: 2,
+        brandnew_net_estimate_cents: 598,
+        forfeited_deposit_cents: 0,
+        refund_needed_cents: 0,
+        routing_status: 'ledger_only',
+        sms_cost_status: 'estimated_not_billed',
+      },
+      rows: [{
+        booking_id: 'booking-1',
+        service_title: 'Basic Detail',
+        start_at: '2026-07-05T14:00:00.000Z',
+        status: 'complete',
+        payment_status: 'balance_due',
+        price_cents: 15000,
+        travel_fee_cents: 0,
+        discount_cents: 0,
+        total_cents: 15000,
+        online_paid_cents: 2500,
+        deposit_cents: 2500,
+        cash_balance_due_cents: 12500,
+        card_processing_fee_cents: 103,
+        app_fee_cents: 300,
+        sms_estimate_cents: 1,
+        brandnew_net_estimate_cents: 299,
+        app_fee_routing_status: 'ledger_only',
+        sms_cost_status: 'estimated_not_billed',
+        forfeited_deposit_cents: 0,
+      }],
+      notes: {
+        app_fee_visibility: 'hidden_from_customer',
+        live_payments: 'not_connected',
+      },
+    })).toMatchObject({
+      fromAt: '2026-07-01T00:00:00.000Z',
+      summary: {
+        bookingCount: 2,
+        grossJobTotalCents: 30000,
+        onlinePaidCents: 2500,
+        appFeeCents: 600,
+        smsEstimateCents: 2,
+        brandnewNetEstimateCents: 598,
+        routingStatus: 'ledger_only',
+      },
+      rows: [{
+        bookingId: 'booking-1',
+        serviceTitle: 'Basic Detail',
+        totalCents: 15000,
+        cashBalanceDueCents: 12500,
+        appFeeRoutingStatus: 'ledger_only',
+      }],
+      notes: {
+        app_fee_visibility: 'hidden_from_customer',
+      },
+    });
+
+    expect(buildSupabaseOwnerReportPayload({
+      fromAt: '2026-07-01T00:00:00.000Z',
+      toAt: '2026-08-01T00:00:00.000Z',
+    })).toEqual({
+      from_at_input: '2026-07-01T00:00:00.000Z',
+      to_at_input: '2026-08-01T00:00:00.000Z',
     });
   });
 

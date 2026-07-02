@@ -108,6 +108,12 @@ The customer profile/vehicle migration in `supabase/migrations/20260702194000_cu
 - `upsert_my_vehicle` and `delete_my_vehicle` for customer-owned saved vehicles with a required nickname and a stable default vehicle.
 - no raw profile/vehicle table writes from the frontend and no app-fee, payment, SMS, or provider-secret access.
 
+The owner reports migration in `supabase/migrations/20260702195000_owner_reports_read_rpc.sql` adds:
+
+- `owner_get_report_snapshot` for Dane/Tim report screens.
+- booking totals, online paid amount, cash balance due, card-processing fees, hidden app fee, SMS estimate, BrandNew net estimate, forfeited deposits, and ledger-only routing status.
+- no Stripe Checkout Session IDs, PaymentIntent IDs, connected account IDs, claim tokens, live SMS sends, or money movement.
+
 `supabase/seed.sql` seeds the current service packages, launch settings, and integration status rows for a fresh project.
 
 ## Frontend Adapter Contract
@@ -131,6 +137,7 @@ The adapter sends the public anon key for guest/public calls and can send a sign
 - owner actions call the future `owner_*` RPCs rather than writing raw table rows directly.
 - owner job dashboards can call `owner_list_jobs` instead of stitching raw tables together in the frontend.
 - owner notification screens can call `owner_list_notifications` to show SMS-placeholder alerts without touching raw notification tables.
+- owner report screens can call `owner_get_report_snapshot` instead of reading raw payment, ledger, and SMS tables.
 - customer lifecycle actions call cancellation, reschedule, and message RPCs with either auth ownership or a guest claim token.
 - guest and claimed-customer detail screens can call customer-safe read RPCs instead of reading raw tables directly.
 - signed-in customer history can call `get_customer_bookings` instead of reading the raw bookings table.

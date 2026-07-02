@@ -211,6 +211,11 @@ const main = async () => {
     status_filter_input: null,
   }, customerA.token, { ok: false }));
 
+  await expectRejected("customer cannot call owner report RPC", () => rpc("owner_get_report_snapshot", {
+    from_at_input: null,
+    to_at_input: null,
+  }, customerA.token, { ok: false }));
+
   await expectRejected("customer cannot call developer admin snapshot RPC", () => rpc("developer_get_admin_snapshot", {}, customerA.token, { ok: false }));
 
   await expectRejected("owner cannot call developer admin snapshot RPC", () => rpc("developer_get_admin_snapshot", {}, owner.token, { ok: false }));
@@ -436,6 +441,22 @@ const main = async () => {
     if (ownerNotificationText.includes(forbidden)) fail("owner notification inbox", `Notification feed exposed ${forbidden}`);
   }
   log("pass", "owner can load SMS-placeholder notification inbox");
+
+  const ownerReport = await rpc("owner_get_report_snapshot", {
+    from_at_input: `${centralDate(55)} 00:00 America/Chicago`,
+    to_at_input: `${centralDate(65)} 23:59 America/Chicago`,
+  }, owner.token);
+  if (!ownerReport.data?.summary || !Array.isArray(ownerReport.data?.rows)) {
+    fail("owner report snapshot", "Owner report did not return summary and rows");
+  }
+  if (!ownerReport.data.rows.some(row => row.booking_id === bookingId && row.app_fee_routing_status === "ledger_only")) {
+    fail("owner report snapshot", "Owner report did not include the created booking with ledger-only app fee");
+  }
+  const ownerReportText = JSON.stringify(ownerReport.data);
+  for (const forbidden of ["claim_token_hash", "checkout_session_id", "payment_intent_id", "connected_account_id"]) {
+    if (ownerReportText.includes(forbidden)) fail("owner report snapshot", `Report exposed ${forbidden}`);
+  }
+  log("pass", "owner can load ledger-only report snapshot");
 
   const customerLedger = await select("app_fee_ledger_entries", `select=*&booking_id=eq.${bookingId}`, customerA.token);
   if (Array.isArray(customerLedger.data) && customerLedger.data.length === 0) {

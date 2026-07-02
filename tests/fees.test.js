@@ -330,6 +330,24 @@ describe('checkout fee logic', () => {
     expect(migration).not.toContain('business_settings');
   });
 
+  it('keeps owner report reads role-gated and ledger-only', () => {
+    const migration = readFileSync('supabase/migrations/20260702195000_owner_reports_read_rpc.sql', 'utf8');
+    expect(migration).toContain('create or replace function public.owner_get_report_snapshot');
+    expect(migration).toContain('perform public.assert_owner_or_developer()');
+    expect(migration).toContain('report range cannot exceed 370 days');
+    expect(migration).toContain("'app_fee_visibility', 'hidden_from_customer'");
+    expect(migration).toContain("'app_fee_routing_status', 'ledger_only'");
+    expect(migration).toContain("'sms_cost_status', 'estimated_not_billed'");
+    expect(migration).toContain("'live_payments', 'not_connected'");
+    expect(migration).toContain('grant execute on function public.owner_get_report_snapshot(timestamptz, timestamptz) to authenticated');
+    expect(migration).toContain('from public.payment_placeholders');
+    expect(migration).toContain('from public.app_fee_ledger_entries');
+    expect(migration).not.toContain('checkout_session_id');
+    expect(migration).not.toContain('payment_intent_id');
+    expect(migration).not.toContain('connected_account_id');
+    expect(migration).not.toMatch(/stripe\.com|twilio|telnyx|service-role/i);
+  });
+
   it('keeps public availability reads customer-safe without exposing owner notes', () => {
     const migration = readFileSync('supabase/migrations/20260702191000_public_availability_read_rpc.sql', 'utf8');
     expect(migration).toContain('create or replace function public.get_public_availability');

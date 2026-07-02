@@ -120,6 +120,8 @@ Before wiring the real login UI, verify the Auth REST adapter can sign up/sign i
 - `owner_list_jobs` includes job status, customer contact, message count, and owner SMS placeholder status without returning app-fee ledger rows or payment placeholder internals.
 - Dane owner can load the notification inbox through `owner_list_notifications`.
 - `owner_list_notifications` includes SMS placeholder status, cost estimate, cost status, body preview, action-required flag, and safe booking context without returning app-fee ledger rows or payment placeholder internals.
+- Dane owner can load report summaries through `owner_get_report_snapshot`.
+- `owner_get_report_snapshot` includes booking totals, online paid amount, cash balance due, card fee, hidden app fee, SMS estimate, BrandNew net estimate, forfeited deposits, and ledger-only routing without returning Stripe IDs, claim tokens, or raw provider fields.
 - Dane owner can acknowledge a normal confirmed booking.
 - Dane owner can confirm a short-notice request.
 - Dane owner can decline a short-notice request.
