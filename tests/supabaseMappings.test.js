@@ -24,6 +24,7 @@ import {
   mapSupabaseBusinessSettingsRows,
   mapSupabaseCustomerProfile,
   mapSupabaseDeveloperAdminSnapshot,
+  mapSupabaseLaunchReadiness,
   mapSupabaseMessageRow,
   mapSupabaseOwnerNotificationRow,
   mapSupabaseOwnerReportSnapshot,
@@ -652,6 +653,48 @@ describe('Supabase mapping helpers', () => {
       },
       liveModeLocks: {
         stripe_live_mode: 'locked_until_explicit_approval',
+      },
+    });
+  });
+
+  it('maps developer launch readiness into app-facing gate status', () => {
+    expect(mapSupabaseLaunchReadiness({
+      status: 'repo_ready_requires_live_verification',
+      free_path: true,
+      missing_tables: [],
+      missing_functions: ['developer_get_launch_readiness'],
+      unprotected_tables: [],
+      integration_status: {
+        supabase_backend: 'planned_not_connected',
+      },
+      business_locks: {
+        stripe_live_mode: 'locked',
+        sms_provider: 'not_connected',
+        customer_sees_app_fee: false,
+      },
+      required_before_customer_data: ['run_api_rls_verifier'],
+      notes: {
+        no_live_stripe: true,
+        no_live_sms: true,
+      },
+    })).toEqual({
+      status: 'repo_ready_requires_live_verification',
+      freePath: true,
+      missingTables: [],
+      missingFunctions: ['developer_get_launch_readiness'],
+      unprotectedTables: [],
+      integrationStatus: {
+        supabase_backend: 'planned_not_connected',
+      },
+      businessLocks: {
+        stripe_live_mode: 'locked',
+        sms_provider: 'not_connected',
+        customer_sees_app_fee: false,
+      },
+      requiredBeforeCustomerData: ['run_api_rls_verifier'],
+      notes: {
+        no_live_stripe: true,
+        no_live_sms: true,
       },
     });
   });

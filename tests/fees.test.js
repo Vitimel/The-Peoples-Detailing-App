@@ -223,6 +223,26 @@ describe('checkout fee logic', () => {
     expect(migration).not.toContain('claim_token_hash');
   });
 
+  it('keeps developer launch readiness role-gated and provider-free', () => {
+    const migration = readFileSync('supabase/migrations/20260702203000_developer_launch_readiness_rpc.sql', 'utf8');
+    expect(migration).toContain('create or replace function public.developer_get_launch_readiness');
+    expect(migration).toContain('perform public.assert_developer()');
+    expect(migration).toContain("'repo_ready_requires_live_verification'");
+    expect(migration).toContain("'free_path', true");
+    expect(migration).toContain("'stripe_live_mode', stripe_live");
+    expect(migration).toContain("'sms_provider', sms_provider");
+    expect(migration).toContain("'customer_sees_app_fee', false");
+    expect(migration).toContain("'app_fee_routing_status', 'ledger_only'");
+    expect(migration).toContain("'live_sms_sends', 'not_connected'");
+    expect(migration).toContain("'live_payment_charges', 'not_connected'");
+    expect(migration).toContain('grant execute on function public.developer_get_launch_readiness() to authenticated');
+    expect(migration).not.toContain('from public.bookings');
+    expect(migration).not.toContain('from public.payment_placeholders');
+    expect(migration).not.toContain('from public.sms_notifications');
+    expect(migration).not.toContain('claim_token_hash');
+    expect(migration).not.toMatch(/stripe\.com|twilio|telnyx|service-role/i);
+  });
+
   it('hardens Supabase Auth profile creation and app-role checks', () => {
     const migration = readFileSync('supabase/migrations/20260702160000_auth_role_hardening.sql', 'utf8');
     expect(migration).toContain('create or replace function public.current_app_role()');

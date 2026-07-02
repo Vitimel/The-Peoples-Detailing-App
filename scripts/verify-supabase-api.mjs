@@ -220,6 +220,10 @@ const main = async () => {
 
   await expectRejected("owner cannot call developer admin snapshot RPC", () => rpc("developer_get_admin_snapshot", {}, owner.token, { ok: false }));
 
+  await expectRejected("customer cannot call developer launch readiness RPC", () => rpc("developer_get_launch_readiness", {}, customerA.token, { ok: false }));
+
+  await expectRejected("owner cannot call developer launch readiness RPC", () => rpc("developer_get_launch_readiness", {}, owner.token, { ok: false }));
+
   await expectRejected("owner cannot call developer pricing RPC", () => rpc("developer_update_service", {
     service_id_input: "basic",
     title_input: "Basic Detail",
@@ -254,6 +258,25 @@ const main = async () => {
     if (snapshotText.includes(forbidden)) fail("developer admin snapshot", `Snapshot exposed ${forbidden}`);
   }
   log("pass", "developer can load safe admin snapshot");
+
+  const readiness = await rpc("developer_get_launch_readiness", {}, developer.token);
+  if (readiness.data?.status !== "repo_ready_requires_live_verification") {
+    fail("developer launch readiness", `Unexpected launch readiness status: ${readiness.data?.status}`);
+  }
+  if (readiness.data?.free_path !== true) {
+    fail("developer launch readiness", "Readiness snapshot did not preserve free_path=true");
+  }
+  if (readiness.data?.business_locks?.stripe_live_mode !== "locked") {
+    fail("developer launch readiness", "Stripe live mode was not locked in readiness snapshot");
+  }
+  if (readiness.data?.business_locks?.sms_provider !== "not_connected") {
+    fail("developer launch readiness", "SMS provider was not not_connected in readiness snapshot");
+  }
+  const readinessText = JSON.stringify(readiness.data);
+  for (const forbidden of ["claim_token_hash", "payment_placeholders", "sms_notifications"]) {
+    if (readinessText.includes(forbidden)) fail("developer launch readiness", `Readiness exposed ${forbidden}`);
+  }
+  log("pass", "developer can load launch readiness safety gate");
 
   const booking = await rpc("create_guest_booking", {
     payload: bookingPayload({

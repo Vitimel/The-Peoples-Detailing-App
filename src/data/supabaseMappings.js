@@ -127,6 +127,18 @@ export const mapSupabaseDeveloperAdminSnapshot = snapshot => {
   };
 };
 
+export const mapSupabaseLaunchReadiness = snapshot => ({
+  status: snapshot?.status || "needs_attention",
+  freePath: Boolean(snapshot?.free_path),
+  missingTables: Array.isArray(snapshot?.missing_tables) ? snapshot.missing_tables : [],
+  missingFunctions: Array.isArray(snapshot?.missing_functions) ? snapshot.missing_functions : [],
+  unprotectedTables: Array.isArray(snapshot?.unprotected_tables) ? snapshot.unprotected_tables : [],
+  integrationStatus: snapshot?.integration_status || {},
+  businessLocks: snapshot?.business_locks || {},
+  requiredBeforeCustomerData: Array.isArray(snapshot?.required_before_customer_data) ? snapshot.required_before_customer_data : [],
+  notes: snapshot?.notes || {},
+});
+
 export const mapSupabaseVehicleRow = row => ({
   id: row?.id,
   nickname: row?.nickname || "",

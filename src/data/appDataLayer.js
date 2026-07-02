@@ -22,6 +22,7 @@ import {
   mapSupabaseBookingRow,
   mapSupabaseBusinessSettingsRows,
   mapSupabaseDeveloperAdminSnapshot,
+  mapSupabaseLaunchReadiness,
   mapSupabaseCustomerProfile,
   mapSupabaseMessageRow,
   mapSupabaseOwnerNotificationRow,
@@ -102,6 +103,10 @@ export const createSupabaseRestAdapter = ({
       method: "POST",
       body: JSON.stringify({}),
     }).then(mapSupabaseDeveloperAdminSnapshot),
+    loadDeveloperLaunchReadiness: () => requestJson("/rest/v1/rpc/developer_get_launch_readiness", {
+      method: "POST",
+      body: JSON.stringify({}),
+    }).then(mapSupabaseLaunchReadiness),
     loadCustomerBookings: async () => requestJson("/rest/v1/rpc/get_customer_bookings", {
       method: "POST",
       body: JSON.stringify({}),
@@ -378,6 +383,7 @@ export const getIntegrationStatus = () => {
       publicAvailabilityReadRpcs: "repo_ready_not_applied",
       developerAdminRpcs: "repo_ready_not_applied",
       developerAdminReadRpcs: "repo_ready_not_applied",
+      developerLaunchReadinessRpcs: "repo_ready_not_applied",
       authRoleRpcs: "repo_ready_not_applied",
     },
     payments: {

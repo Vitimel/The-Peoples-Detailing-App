@@ -133,6 +133,13 @@ The booking timeline read migration in `supabase/migrations/20260702201000_booki
 - safe status-event history ordered oldest to newest.
 - no `created_by`, stored claim-token data, app-fee ledger rows, payment placeholder internals, SMS queue rows, or provider secrets.
 
+The developer launch readiness migration in `supabase/migrations/20260702203000_developer_launch_readiness_rpc.sql` adds:
+
+- `developer_get_launch_readiness` for Tim/developer.
+- a read-only safety snapshot of expected tables, expected RPCs, RLS-enabled tables, integration status, and business locks.
+- explicit no-cost gates before real customer data: migrations, seed, developer bootstrap, SQL smoke checks, API/RLS verifier, and keeping `VITE_USE_SUPABASE=false` until verified.
+- no customer booking reads, payment placeholder reads, SMS queue reads, provider calls, or service-role keys.
+
 `supabase/seed.sql` seeds the current service packages, launch settings, and integration status rows for a fresh project.
 
 ## Frontend Adapter Contract
@@ -166,6 +173,7 @@ The adapter sends the public anon key for guest/public calls and can send a sign
 - signed-in customer profile screens can call customer profile/vehicle RPCs instead of reading or writing raw profile tables.
 - developer admin actions call service, business-setting, and integration-status RPCs that require the developer role.
 - developer admin read screens can call `developer_get_admin_snapshot` instead of reading raw service/settings/integration tables directly.
+- developer launch screens can call `developer_get_launch_readiness` to see whether the no-cost backend gates are ready before customer data is allowed.
 - developer role assignment calls a dedicated RPC after the first developer has been manually bootstrapped in Supabase.
 
 This keeps the React screens from depending on raw Supabase column names and makes the future cutover easier to test.

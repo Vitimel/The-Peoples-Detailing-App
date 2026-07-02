@@ -29,7 +29,8 @@ Run these SQL files in order through Supabase SQL Editor or Supabase CLI:
 17. `supabase/migrations/20260702200000_owner_closeout_rpc.sql`
 18. `supabase/migrations/20260702201000_booking_timeline_read_rpc.sql`
 19. `supabase/migrations/20260702202000_guest_claim_audit_rpc.sql`
-20. `supabase/seed.sql`
+20. `supabase/migrations/20260702203000_developer_launch_readiness_rpc.sql`
+21. `supabase/seed.sql`
 
 ## First Developer Bootstrap
 
@@ -92,7 +93,9 @@ Before storing real customer data:
 - Confirm owner/developer roles can load ledger-only report summaries through `owner_get_report_snapshot`.
 - Confirm developer role can update service prices/durations and developer money settings.
 - Confirm developer role can load the developer admin snapshot.
+- Confirm developer role can load the launch readiness snapshot through `developer_get_launch_readiness`.
 - Confirm non-developer users cannot load the developer admin snapshot.
+- Confirm non-developer users cannot load the launch readiness snapshot.
 - Confirm non-developer users cannot call developer admin RPCs.
 - Confirm developer admin RPCs reject Stripe live mode unlock and real SMS provider activation.
 - Confirm new Supabase Auth users automatically get a `profiles` row with role `customer`.
