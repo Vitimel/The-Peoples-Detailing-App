@@ -31,6 +31,7 @@ describe('Supabase live verification docs', () => {
       'create_guest_booking',
       'get_customer_booking',
       'get_customer_booking_messages',
+      'get_customer_bookings',
       'get_public_availability',
       'owner_list_jobs',
       'developer admin snapshot',
@@ -66,6 +67,7 @@ describe('Supabase live verification docs', () => {
     expect(smoke).toContain('public.create_guest_booking');
     expect(smoke).toContain('public.get_customer_booking');
     expect(smoke).toContain('public.get_customer_booking_messages');
+    expect(smoke).toContain('get_customer_bookings');
     expect(smoke).toContain('public.get_public_availability');
     expect(smoke).toContain('owner_list_jobs');
     expect(smoke).toContain('developer_get_admin_snapshot');
@@ -91,6 +93,7 @@ describe('Supabase live verification docs', () => {
     expect(runner).toContain('claim_guest_booking');
     expect(runner).toContain('get_customer_booking');
     expect(runner).toContain('get_customer_booking_messages');
+    expect(runner).toContain('get_customer_bookings');
     expect(runner).toContain('get_public_availability');
     expect(runner).toContain('owner_list_jobs');
     expect(runner).toContain('developer_get_admin_snapshot');

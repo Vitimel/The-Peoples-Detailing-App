@@ -77,7 +77,10 @@ export const createSupabaseRestAdapter = ({ url, anonKey, fetchImpl = globalThis
       method: "POST",
       body: JSON.stringify({}),
     }).then(mapSupabaseDeveloperAdminSnapshot),
-    loadCustomerBookings: async () => (await requestJson("/rest/v1/bookings?select=*&order=start_at.asc")).map(mapSupabaseBookingRow),
+    loadCustomerBookings: async () => requestJson("/rest/v1/rpc/get_customer_bookings", {
+      method: "POST",
+      body: JSON.stringify({}),
+    }).then(rows => (Array.isArray(rows) ? rows : []).map(mapSupabaseBookingRow)),
     loadAvailabilityBlocks: async input => requestJson("/rest/v1/rpc/get_public_availability", {
       method: "POST",
       body: JSON.stringify(buildSupabasePublicAvailabilityPayload(input)),
@@ -228,6 +231,7 @@ export const getIntegrationStatus = () => {
       ownerReadRpcs: "repo_ready_not_applied",
       customerLifecycleRpcs: "repo_ready_not_applied",
       customerReadRpcs: "repo_ready_not_applied",
+      customerHistoryReadRpcs: "repo_ready_not_applied",
       publicAvailabilityReadRpcs: "repo_ready_not_applied",
       developerAdminRpcs: "repo_ready_not_applied",
       developerAdminReadRpcs: "repo_ready_not_applied",

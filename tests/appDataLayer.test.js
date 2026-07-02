@@ -22,6 +22,7 @@ describe('app data layer readiness', () => {
     expect(status.dataAdapter.ownerReadRpcs).toBe('repo_ready_not_applied');
     expect(status.dataAdapter.customerLifecycleRpcs).toBe('repo_ready_not_applied');
     expect(status.dataAdapter.customerReadRpcs).toBe('repo_ready_not_applied');
+    expect(status.dataAdapter.customerHistoryReadRpcs).toBe('repo_ready_not_applied');
     expect(status.dataAdapter.publicAvailabilityReadRpcs).toBe('repo_ready_not_applied');
     expect(status.dataAdapter.developerAdminRpcs).toBe('repo_ready_not_applied');
     expect(status.dataAdapter.developerAdminReadRpcs).toBe('repo_ready_not_applied');
@@ -84,6 +85,8 @@ describe('app data layer readiness', () => {
         ? [{ id: 'basic', title: 'Basic Detail', price_cents: 15000, duration_minutes: 180, buffer_minutes: 30, visible: true }]
         : url.includes('/business_settings')
           ? [{ key: 'minimum_booking_notice_hours', value: 48 }]
+          : url.includes('/rpc/get_customer_bookings')
+            ? [{ id: 'booking-1', service_id: 'basic', service_title: 'Basic Detail', price_cents: 15000, start_at: '2026-07-05T14:00:00.000Z', end_at: '2026-07-05T17:30:00.000Z', address: '218 Demo Ave', status: 'confirmed', customer_access_mode: 'profile' }]
           : [{ id: 'booking-1', service_id: 'basic', service_title: 'Basic Detail', price_cents: 15000, start_at: '2026-07-05T14:00:00.000Z', address: '218 Demo Ave', status: 'confirmed' }];
       return {
         ok: true,
@@ -99,7 +102,8 @@ describe('app data layer readiness', () => {
 
     await expect(adapter.loadServices()).resolves.toMatchObject([{ id: 'basic', priceCents: 15000, durationHours: '3' }]);
     await expect(adapter.loadBusinessSettings()).resolves.toEqual({ minimumBookingNoticeHours: 48 });
-    await expect(adapter.loadCustomerBookings()).resolves.toMatchObject([{ id: 'booking-1', serviceId: 'basic', priceCents: 15000, startIso: '2026-07-05T14:00:00.000Z' }]);
+    await expect(adapter.loadCustomerBookings()).resolves.toMatchObject([{ id: 'booking-1', serviceId: 'basic', priceCents: 15000, startIso: '2026-07-05T14:00:00.000Z', customerAccessMode: 'profile' }]);
+    expect(fetchImpl.mock.calls.map(call => call[0])).toContain('https://example.supabase.co/rest/v1/rpc/get_customer_bookings');
   });
 
   it('defines future owner operation RPC calls without connecting a live backend', async () => {

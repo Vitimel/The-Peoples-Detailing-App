@@ -254,6 +254,20 @@ describe('checkout fee logic', () => {
     expect(migration).not.toContain('sms_notifications');
   });
 
+  it('lets signed-in customers list claimed bookings without private backend fields', () => {
+    const migration = readFileSync('supabase/migrations/20260702192000_customer_booking_list_rpc.sql', 'utf8');
+    expect(migration).toContain('create or replace function public.get_customer_bookings');
+    expect(migration).toContain('sign in required');
+    expect(migration).toContain('where b.claimed_by_user_id = auth.uid()');
+    expect(migration).toContain("'customer_access_mode', 'profile'");
+    expect(migration).toContain('grant execute on function public.get_customer_bookings() to authenticated');
+    expect(migration).not.toContain("'claim_token_hash'");
+    expect(migration).not.toContain("'claimed_by_user_id'");
+    expect(migration).not.toContain('app_fee_ledger_entries');
+    expect(migration).not.toContain('payment_placeholders');
+    expect(migration).not.toContain('sms_notifications');
+  });
+
   it('keeps active booking overlaps protected by the database', () => {
     const migration = readFileSync('supabase/migrations/20260702175000_booking_overlap_constraint.sql', 'utf8');
     expect(migration).toContain('add column if not exists end_at timestamptz');

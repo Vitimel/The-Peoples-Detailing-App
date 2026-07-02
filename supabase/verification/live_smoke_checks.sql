@@ -71,6 +71,7 @@ begin
       ('developer_assign_app_role'),
       ('get_customer_booking'),
       ('get_customer_booking_messages'),
+      ('get_customer_bookings'),
       ('current_app_role'),
       ('is_owner_or_developer')
   ) as expected(function_name)

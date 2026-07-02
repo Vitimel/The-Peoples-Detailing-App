@@ -89,6 +89,12 @@ The public availability read migration in `supabase/migrations/20260702191000_pu
 - customer-safe unavailable slots from manual owner blocks plus active `requested`/`confirmed` bookings.
 - no owner block reasons, customer contact details, claim tokens, payment records, or SMS records.
 
+The customer booking list migration in `supabase/migrations/20260702192000_customer_booking_list_rpc.sql` adds:
+
+- `get_customer_bookings` for signed-in customer booking history.
+- only bookings claimed by the current Supabase Auth user.
+- the same customer-safe booking shape as the single booking read, without stored claim hashes, raw auth user IDs, app-fee ledger rows, payment placeholder internals, or SMS queue rows.
+
 `supabase/seed.sql` seeds the current service packages, launch settings, and integration status rows for a fresh project.
 
 ## Frontend Adapter Contract
@@ -108,6 +114,7 @@ The public availability read migration in `supabase/migrations/20260702191000_pu
 - owner job dashboards can call `owner_list_jobs` instead of stitching raw tables together in the frontend.
 - customer lifecycle actions call cancellation, reschedule, and message RPCs with either auth ownership or a guest claim token.
 - guest and claimed-customer detail screens can call customer-safe read RPCs instead of reading raw tables directly.
+- signed-in customer history can call `get_customer_bookings` instead of reading the raw bookings table.
 - developer admin actions call service, business-setting, and integration-status RPCs that require the developer role.
 - developer admin read screens can call `developer_get_admin_snapshot` instead of reading raw service/settings/integration tables directly.
 - developer role assignment calls a dedicated RPC after the first developer has been manually bootstrapped in Supabase.

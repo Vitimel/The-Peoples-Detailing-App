@@ -22,11 +22,12 @@
 - `supabase/migrations/20260702185000_owner_job_read_rpc.sql` adds a role-gated owner job queue RPC so Dane can load operational jobs, messages counts, and owner SMS placeholder status without stitching raw tables together.
 - `supabase/migrations/20260702190000_developer_admin_read_rpc.sql` adds a developer-only admin snapshot RPC so Tim can load service pricing, developer money settings, integration readiness, and live-mode lock status without exposing bookings, payment placeholder internals, SMS queue rows, or claim tokens.
 - `supabase/migrations/20260702191000_public_availability_read_rpc.sql` adds a customer-safe public availability RPC so the booking calendar can see owner blocks and active booked/requested slots without exposing owner reasons, customer contact info, claim tokens, payment internals, or SMS records.
+- `supabase/migrations/20260702192000_customer_booking_list_rpc.sql` adds a signed-in customer booking history RPC so profile users can list only their own claimed bookings without raw booking-table fields such as stored claim hashes or auth user IDs.
 - `supabase/seed.sql` seeds the current service menu, business settings, and integration statuses for a fresh Supabase project.
 - `supabase/verification/live_smoke_checks.sql` gives Tim a no-cost SQL Editor preflight for schema/RPC/seed/payment-lock/SMS-placeholder checks after the migrations are applied.
 - `docs/SUPABASE_LIVE_VERIFICATION_CHECKLIST.md` records the API and RLS checks that must pass before `VITE_USE_SUPABASE=true` or real customer data.
 - `scripts/verify-supabase-api.mjs` and `npm run verify:supabase-api` provide a no-dependency live API/RLS runner for a Supabase test project using anon, developer, owner, and two customer test accounts.
-- `src/data/appDataLayer.js` now includes a disabled-by-default Supabase REST adapter contract for reading services/settings/customer-safe availability/messages/integration status/admin snapshots and calling the safe booking, owner operation, customer lifecycle, developer admin, and app-role RPCs.
+- `src/data/appDataLayer.js` now includes a disabled-by-default Supabase REST adapter contract for reading services/settings/customer-safe availability/customer-safe booking history/messages/integration status/admin snapshots and calling the safe booking, owner operation, customer lifecycle, developer admin, and app-role RPCs.
 - `src/data/supabaseMappings.js` translates future Supabase rows into the app's current service, settings, booking, availability, message, and RPC payload shapes so turning on Supabase later does not leak database column names into the UI.
 - Unit tests cover the extracted booking rules, Supabase mapping helpers, adapter contract, and migration readiness.
 
@@ -41,7 +42,7 @@
 
 ## Next Technical Step
 
-Apply the migrations to a new Supabase Free project, run `supabase/seed.sql`, run `supabase/verification/live_smoke_checks.sql`, manually bootstrap the first developer profile, verify API/RLS behavior with `npm run verify:supabase-api` and `docs/SUPABASE_LIVE_VERIFICATION_CHECKLIST.md`, then set frontend env vars while keeping `VITE_USE_SUPABASE=false` until the live verification checklist passes. After that, test the disabled REST adapter against the live project's public services/settings, public availability RPC, booking RPC, owner operation RPCs, customer lifecycle RPCs, developer admin read/write RPCs, and app-role RPC before making it the active data source.
+Apply the migrations to a new Supabase Free project, run `supabase/seed.sql`, run `supabase/verification/live_smoke_checks.sql`, manually bootstrap the first developer profile, verify API/RLS behavior with `npm run verify:supabase-api` and `docs/SUPABASE_LIVE_VERIFICATION_CHECKLIST.md`, then set frontend env vars while keeping `VITE_USE_SUPABASE=false` until the live verification checklist passes. After that, test the disabled REST adapter against the live project's public services/settings, public availability RPC, customer-safe booking history RPC, booking RPC, owner operation RPCs, customer lifecycle RPCs, developer admin read/write RPCs, and app-role RPC before making it the active data source.
 
 See `docs/SUPABASE_FREE_SETUP_STEPS.md`.
 

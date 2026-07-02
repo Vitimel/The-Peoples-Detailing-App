@@ -333,6 +333,22 @@ const main = async () => {
   }, customerA.token);
   log("pass", "customer A can claim booking with raw token");
 
+  const customerAHistory = await rpc("get_customer_bookings", {}, customerA.token);
+  if (!Array.isArray(customerAHistory.data) || !customerAHistory.data.some(row => row.id === bookingId)) {
+    fail("customer A safe booking history", "Claimed booking was missing from customer-safe history");
+  }
+  const customerAHistoryText = JSON.stringify(customerAHistory.data);
+  for (const forbidden of ["claim_token_hash", "claimed_by_user_id", "payment_placeholders", "sms_notifications"]) {
+    if (customerAHistoryText.includes(forbidden)) fail("customer A safe booking history", `History exposed ${forbidden}`);
+  }
+  log("pass", "customer A can load safe claimed booking history");
+
+  const customerBHistory = await rpc("get_customer_bookings", {}, customerB.token);
+  if (!Array.isArray(customerBHistory.data) || customerBHistory.data.some(row => row.id === bookingId)) {
+    fail("customer B safe booking history", "Customer B history included Customer A booking");
+  }
+  log("pass", "customer B history excludes Customer A booking");
+
   const customerABooking = await select("bookings", `select=*&id=eq.${bookingId}`, customerA.token);
   singleRow(customerABooking.data, "customer A reads claimed booking");
   log("pass", "customer A reads claimed booking");

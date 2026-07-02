@@ -93,7 +93,9 @@ Never put the service-role key in GitHub Pages, `.env`, or frontend code.
 - A new Supabase Auth customer automatically gets a `profiles` row with role `customer`.
 - Customer A can claim a guest booking only with the matching raw claim token.
 - Customer A can read/manage only claimed Customer A bookings.
+- Customer A can list claimed bookings through `get_customer_bookings` without stored claim hashes, raw auth user IDs, app-fee ledger rows, payment placeholder internals, or SMS queue rows.
 - Customer A cannot read Customer B bookings.
+- Customer B cannot see Customer A bookings in `get_customer_bookings`.
 - Customer A cannot call owner RPCs.
 - Customer A cannot call developer RPCs.
 - Customer A can send an in-app booking message for an accessible booking.
