@@ -1,6 +1,7 @@
 import {
   buildSupabaseAvailabilityBlockPayload,
   buildSupabaseCancelPayload,
+  buildSupabaseCustomerBookingReadPayload,
   buildSupabaseBusinessSettingPayload,
   buildSupabaseGuestBookingPayload,
   buildSupabaseIntegrationStatusPayload,
@@ -72,6 +73,14 @@ export const createSupabaseRestAdapter = ({ url, anonKey, fetchImpl = globalThis
     loadCustomerBookings: async () => (await requestJson("/rest/v1/bookings?select=*&order=start_at.asc")).map(mapSupabaseBookingRow),
     loadAvailabilityBlocks: async () => (await requestJson("/rest/v1/availability_blocks?select=*&order=block_date.asc")).map(mapSupabaseAvailabilityBlockRow),
     loadBookingMessages: bookingId => requestJson(`/rest/v1/messages?select=*&booking_id=eq.${encodeURIComponent(bookingId)}&order=created_at.asc`).then(rows => rows.map(mapSupabaseMessageRow)),
+    loadCustomerBooking: input => requestJson("/rest/v1/rpc/get_customer_booking", {
+      method: "POST",
+      body: JSON.stringify(buildSupabaseCustomerBookingReadPayload(input)),
+    }).then(mapSupabaseBookingRow),
+    loadCustomerBookingMessages: input => requestJson("/rest/v1/rpc/get_customer_booking_messages", {
+      method: "POST",
+      body: JSON.stringify(buildSupabaseCustomerBookingReadPayload(input)),
+    }).then(rows => (Array.isArray(rows) ? rows : []).map(mapSupabaseMessageRow)),
     createGuestBooking: async draft => {
       const result = await requestJson("/rest/v1/rpc/create_guest_booking", {
         method: "POST",
@@ -202,6 +211,7 @@ export const getIntegrationStatus = () => {
       bookingRpc: "repo_ready_not_applied",
       ownerOperationRpcs: "repo_ready_not_applied",
       customerLifecycleRpcs: "repo_ready_not_applied",
+      customerReadRpcs: "repo_ready_not_applied",
       developerAdminRpcs: "repo_ready_not_applied",
       authRoleRpcs: "repo_ready_not_applied",
     },

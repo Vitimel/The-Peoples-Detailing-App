@@ -134,7 +134,7 @@ export const mapSupabaseBookingRow = row => ({
   lastTrackerAt: row?.last_tracker_at || null,
   shortNoticeRequest: Boolean(row?.short_notice_request),
   ownerAckStatus: row?.owner_ack_status || null,
-  customerAccessMode: row?.claimed_by_user_id ? "profile" : "guest",
+  customerAccessMode: row?.customer_access_mode || (row?.claimed_by_user_id ? "profile" : "guest"),
   guestName: row?.guest_name || "",
   guestPhone: row?.guest_phone || "",
   guestVehicleLabel: row?.guest_vehicle_label || "",
@@ -190,6 +190,11 @@ export const buildSupabaseCancelPayload = input => ({
   booking_id_input: input?.booking_id || input?.bookingId || input,
   claim_token_hash_input: input?.claim_token || input?.claimToken || input?.claim_token_hash || input?.claimTokenHash || null,
   reason_input: input?.reason || null,
+});
+
+export const buildSupabaseCustomerBookingReadPayload = input => ({
+  booking_id_input: input?.booking_id || input?.bookingId || input,
+  claim_token_hash_input: input?.claim_token || input?.claimToken || input?.claim_token_hash || input?.claimTokenHash || null,
 });
 
 export const buildSupabaseReschedulePayload = input => ({

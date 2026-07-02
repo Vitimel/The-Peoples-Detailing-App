@@ -230,6 +230,22 @@ const main = async () => {
   if (!bookingId || !claimToken) fail("anon create guest booking", "No booking id or claim token returned");
   log("pass", "anon can create guest booking", bookingId);
 
+  const guestBookingRead = await rpc("get_customer_booking", {
+    booking_id_input: bookingId,
+    claim_token_hash_input: claimToken,
+  });
+  if (guestBookingRead.data?.id !== bookingId) fail("guest token booking read", "Guest token did not return the expected booking");
+  if ("claim_token_hash" in guestBookingRead.data) fail("guest token booking read", "Safe customer booking read exposed claim_token_hash");
+  if ("claimed_by_user_id" in guestBookingRead.data) fail("guest token booking read", "Safe customer booking read exposed auth user id");
+  log("pass", "guest token can read safe booking details");
+
+  const guestMessageRead = await rpc("get_customer_booking_messages", {
+    booking_id_input: bookingId,
+    claim_token_hash_input: claimToken,
+  });
+  if (!Array.isArray(guestMessageRead.data)) fail("guest token message read", "Expected message array for guest token");
+  log("pass", "guest token can read safe message list");
+
   await expectRejected("overlap rejects second active booking", () => rpc("create_guest_booking", {
     payload: bookingPayload({
       daysAhead: 60,

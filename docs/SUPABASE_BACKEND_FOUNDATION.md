@@ -59,6 +59,12 @@ The guest claim-token migration in `supabase/migrations/20260702170000_guest_cla
 - hashed claim-token storage in `bookings.claim_token_hash`, so the raw token is not stored in the database.
 - claim-token matching for future guest cancellation, reschedule, message, and account-claim RPCs.
 
+The customer booking read migration in `supabase/migrations/20260702180000_customer_booking_read_rpc.sql` adds:
+
+- `get_customer_booking` for claimed users, staff, or guests with the raw claim token.
+- `get_customer_booking_messages` for the same access paths.
+- customer-safe JSON responses that avoid staff-only payment placeholders, app-fee ledger rows, SMS queue records, stored claim hashes, and raw auth user IDs.
+
 `supabase/seed.sql` seeds the current service packages, launch settings, and integration status rows for a fresh project.
 
 ## Frontend Adapter Contract
@@ -75,6 +81,7 @@ The guest claim-token migration in `supabase/migrations/20260702170000_guest_cla
 - app booking drafts become the safe `create_guest_booking(payload jsonb)` RPC payload.
 - owner actions call the future `owner_*` RPCs rather than writing raw table rows directly.
 - customer lifecycle actions call cancellation, reschedule, and message RPCs with either auth ownership or a guest claim token.
+- guest and claimed-customer detail screens can call customer-safe read RPCs instead of reading raw tables directly.
 - developer admin actions call service, business-setting, and integration-status RPCs that require the developer role.
 - developer role assignment calls a dedicated RPC after the first developer has been manually bootstrapped in Supabase.
 

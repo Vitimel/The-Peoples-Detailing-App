@@ -222,6 +222,24 @@ describe('checkout fee logic', () => {
     expect(migration).toContain('grant execute on function public.claim_guest_booking(uuid, text) to authenticated');
   });
 
+  it('lets customers re-open bookings through safe token-gated read RPCs', () => {
+    const migration = readFileSync('supabase/migrations/20260702180000_customer_booking_read_rpc.sql', 'utf8');
+    expect(migration).toContain('create or replace function public.get_customer_booking');
+    expect(migration).toContain('create or replace function public.get_customer_booking_messages');
+    expect(migration).toContain('perform public.assert_booking_access(booking_id_input, claim_token_hash_input)');
+    expect(migration).toContain("'service_title', booking_row.service_title");
+    expect(migration).toContain("'owner_ack_status', booking_row.owner_ack_status");
+    expect(migration).toContain("'payment_status', booking_row.payment_status");
+    expect(migration).toContain("'customer_access_mode'");
+    expect(migration).toContain('grant execute on function public.get_customer_booking(uuid, text) to anon, authenticated');
+    expect(migration).toContain('grant execute on function public.get_customer_booking_messages(uuid, text) to anon, authenticated');
+    expect(migration).not.toContain("'claim_token_hash'");
+    expect(migration).not.toContain("'claimed_by_user_id'");
+    expect(migration).not.toContain('app_fee_ledger_entries');
+    expect(migration).not.toContain('payment_placeholders');
+    expect(migration).not.toContain('sms_notifications');
+  });
+
   it('keeps a Supabase seed for current services and launch settings', () => {
     const seed = readFileSync('supabase/seed.sql', 'utf8');
     expect(seed).toContain("('basic', 'Basic Detail', 15000");

@@ -66,6 +66,8 @@ begin
       ('developer_update_business_setting'),
       ('developer_update_integration_status'),
       ('developer_assign_app_role'),
+      ('get_customer_booking'),
+      ('get_customer_booking_messages'),
       ('current_app_role'),
       ('is_owner_or_developer')
   ) as expected(function_name)
@@ -168,6 +170,14 @@ begin
 
   if nullif(smoke_booking_result->>'claim_token', '') is null then
     raise exception 'create_guest_booking did not return a guest claim token';
+  end if;
+
+  if (public.get_customer_booking(smoke_booking_id, smoke_booking_result->>'claim_token')->>'id')::uuid is distinct from smoke_booking_id then
+    raise exception 'guest claim token could not read safe customer booking';
+  end if;
+
+  if jsonb_typeof(public.get_customer_booking_messages(smoke_booking_id, smoke_booking_result->>'claim_token')) <> 'array' then
+    raise exception 'guest claim token could not read safe customer messages array';
   end if;
 
   if not exists (

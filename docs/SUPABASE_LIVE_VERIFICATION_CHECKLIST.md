@@ -72,6 +72,9 @@ Never put the service-role key in GitHub Pages, `.env`, or frontend code.
 - `create_guest_booking` works with a valid service, future time, address, guest name, phone, and vehicle label.
 - `create_guest_booking` returns both `booking_id` and a one-time raw `claim_token`.
 - The booking row stores `claim_token_hash`, not the raw `claim_token`.
+- The raw `claim_token` can read the booking through `get_customer_booking`.
+- The raw `claim_token` can read in-app messages through `get_customer_booking_messages`.
+- Customer-safe read RPCs do not return `claim_token_hash`, raw auth user IDs, app-fee ledger rows, payment placeholders, or SMS queue rows.
 - A normal future booking becomes `confirmed` and `owner_ack_status = needs_ack`.
 - A short-notice booking inside `minimum_booking_notice_hours` becomes `requested` and `owner_ack_status = approval_needed`.
 - A booking creates exactly one owner SMS placeholder with `provider = not_connected`, `status = would_send`, and `cost_status = estimated_not_billed`.

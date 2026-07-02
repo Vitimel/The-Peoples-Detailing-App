@@ -3,6 +3,7 @@ import {
   buildSupabaseAvailabilityBlockPayload,
   buildSupabaseBusinessSettingPayload,
   buildSupabaseCancelPayload,
+  buildSupabaseCustomerBookingReadPayload,
   buildSupabaseGuestBookingPayload,
   buildSupabaseIntegrationStatusPayload,
   buildSupabaseMessagePayload,
@@ -201,6 +202,14 @@ describe('Supabase mapping helpers', () => {
       booking_id_input: 'booking-1',
       claim_token_hash_input: 'claim-token',
       reason_input: 'Schedule changed',
+    });
+
+    expect(buildSupabaseCustomerBookingReadPayload({
+      bookingId: 'booking-1',
+      claimToken: 'claim-token',
+    })).toEqual({
+      booking_id_input: 'booking-1',
+      claim_token_hash_input: 'claim-token',
     });
 
     expect(buildSupabaseReschedulePayload({
