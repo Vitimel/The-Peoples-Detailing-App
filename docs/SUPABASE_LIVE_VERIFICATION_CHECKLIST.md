@@ -117,6 +117,8 @@ Never put the service-role key in GitHub Pages, `.env`, or frontend code.
 ## Developer Checks
 
 - Tim developer can update a service title, price, duration, buffer, and visibility.
+- Tim developer can load the developer admin snapshot for service pricing, developer money settings, integration readiness, and live-mode lock status.
+- The developer admin snapshot does not expose bookings, claim tokens, payment placeholder internals, or SMS queue rows.
 - Tim developer can update deposit amount.
 - Tim developer can update the hidden `$3.00` app-fee setting.
 - Tim developer can update customer-paid card-processing settings.
@@ -125,6 +127,7 @@ Never put the service-role key in GitHub Pages, `.env`, or frontend code.
 - Tim developer cannot activate a real SMS provider through the current RPC.
 - Tim developer can assign Dane to `owner`.
 - Tim developer cannot remove his own developer role through the role RPC.
+- Dane owner and normal customers cannot load the developer admin snapshot.
 
 ## Frontend Cutover Gate
 

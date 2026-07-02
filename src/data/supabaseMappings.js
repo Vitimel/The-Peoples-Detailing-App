@@ -116,6 +116,17 @@ export const mapSupabaseBusinessSettingsRows = rows => {
   }, {});
 };
 
+export const mapSupabaseDeveloperAdminSnapshot = snapshot => {
+  const settingsRows = Object.entries(snapshot?.developer_settings || {}).map(([key, value]) => ({ key, value }));
+  return {
+    services: (snapshot?.services || []).map(mapSupabaseServiceRow),
+    developerSettings: mapSupabaseBusinessSettingsRows(settingsRows),
+    integrations: Array.isArray(snapshot?.integrations) ? snapshot.integrations : [],
+    moneyFlow: snapshot?.money_flow || {},
+    liveModeLocks: snapshot?.live_mode_locks || {},
+  };
+};
+
 export const mapSupabaseBookingRow = row => ({
   id: row?.id,
   serviceId: row?.service_id,

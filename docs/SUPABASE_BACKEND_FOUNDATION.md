@@ -77,6 +77,12 @@ The owner job read migration in `supabase/migrations/20260702185000_owner_job_re
 - operational fields Dane needs: customer contact, address, status, owner acknowledgment, tracker state, message count, and owner SMS placeholder status.
 - no app-fee ledger rows, Stripe/payment placeholder internals, stored claim hashes, or developer-only settings.
 
+The developer admin read migration in `supabase/migrations/20260702190000_developer_admin_read_rpc.sql` adds:
+
+- `developer_get_admin_snapshot` for Tim/BrandNew admin setup screens.
+- developer-only service pricing/duration data, developer money settings, integration readiness, and live-mode lock status.
+- no booking/customer PII, payment placeholder internals, SMS queue rows, or stored claim tokens.
+
 `supabase/seed.sql` seeds the current service packages, launch settings, and integration status rows for a fresh project.
 
 ## Frontend Adapter Contract
@@ -96,6 +102,7 @@ The owner job read migration in `supabase/migrations/20260702185000_owner_job_re
 - customer lifecycle actions call cancellation, reschedule, and message RPCs with either auth ownership or a guest claim token.
 - guest and claimed-customer detail screens can call customer-safe read RPCs instead of reading raw tables directly.
 - developer admin actions call service, business-setting, and integration-status RPCs that require the developer role.
+- developer admin read screens can call `developer_get_admin_snapshot` instead of reading raw service/settings/integration tables directly.
 - developer role assignment calls a dedicated RPC after the first developer has been manually bootstrapped in Supabase.
 
 This keeps the React screens from depending on raw Supabase column names and makes the future cutover easier to test.

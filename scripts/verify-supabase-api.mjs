@@ -205,6 +205,10 @@ const main = async () => {
     status_filter_input: null,
   }, customerA.token, { ok: false }));
 
+  await expectRejected("customer cannot call developer admin snapshot RPC", () => rpc("developer_get_admin_snapshot", {}, customerA.token, { ok: false }));
+
+  await expectRejected("owner cannot call developer admin snapshot RPC", () => rpc("developer_get_admin_snapshot", {}, owner.token, { ok: false }));
+
   await expectRejected("owner cannot call developer pricing RPC", () => rpc("developer_update_service", {
     service_id_input: "basic",
     title_input: "Basic Detail",
@@ -223,6 +227,22 @@ const main = async () => {
     setting_key_input: "sms_provider",
     setting_value_input: "connected_provider",
   }, developer.token, { ok: false }));
+
+  const developerSnapshot = await rpc("developer_get_admin_snapshot", {}, developer.token);
+  if (!Array.isArray(developerSnapshot.data?.services) || !developerSnapshot.data.services.some(service => service.id === "basic")) {
+    fail("developer admin snapshot", "Developer snapshot did not include service pricing data");
+  }
+  if (developerSnapshot.data?.money_flow?.customer_sees_app_fee !== false) {
+    fail("developer admin snapshot", "Developer snapshot did not preserve hidden app-fee rule");
+  }
+  if (developerSnapshot.data?.money_flow?.app_fee_routing_status !== "ledger_only") {
+    fail("developer admin snapshot", "Developer snapshot did not keep app fee ledger-only");
+  }
+  const snapshotText = JSON.stringify(developerSnapshot.data);
+  for (const forbidden of ["claim_token_hash", "payment_placeholders", "sms_notifications"]) {
+    if (snapshotText.includes(forbidden)) fail("developer admin snapshot", `Snapshot exposed ${forbidden}`);
+  }
+  log("pass", "developer can load safe admin snapshot");
 
   const booking = await rpc("create_guest_booking", {
     payload: bookingPayload({

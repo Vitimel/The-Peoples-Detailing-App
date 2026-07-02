@@ -13,6 +13,7 @@ import {
   mapSupabaseAvailabilityBlockRow,
   mapSupabaseBookingRow,
   mapSupabaseBusinessSettingsRows,
+  mapSupabaseDeveloperAdminSnapshot,
   mapSupabaseMessageRow,
   mapSupabaseServiceRow,
 } from "./supabaseMappings.js";
@@ -71,6 +72,10 @@ export const createSupabaseRestAdapter = ({ url, anonKey, fetchImpl = globalThis
     loadServices: async () => (await requestJson("/rest/v1/services?select=*&visible=eq.true&order=title.asc")).map(mapSupabaseServiceRow),
     loadBusinessSettings: async () => mapSupabaseBusinessSettingsRows(await requestJson("/rest/v1/business_settings?select=key,value")),
     loadIntegrationStatus: () => requestJson("/rest/v1/integration_status?select=*&order=id.asc"),
+    loadDeveloperAdminSnapshot: () => requestJson("/rest/v1/rpc/developer_get_admin_snapshot", {
+      method: "POST",
+      body: JSON.stringify({}),
+    }).then(mapSupabaseDeveloperAdminSnapshot),
     loadCustomerBookings: async () => (await requestJson("/rest/v1/bookings?select=*&order=start_at.asc")).map(mapSupabaseBookingRow),
     loadAvailabilityBlocks: async () => (await requestJson("/rest/v1/availability_blocks?select=*&order=block_date.asc")).map(mapSupabaseAvailabilityBlockRow),
     loadBookingMessages: bookingId => requestJson(`/rest/v1/messages?select=*&booking_id=eq.${encodeURIComponent(bookingId)}&order=created_at.asc`).then(rows => rows.map(mapSupabaseMessageRow)),
@@ -220,6 +225,7 @@ export const getIntegrationStatus = () => {
       customerLifecycleRpcs: "repo_ready_not_applied",
       customerReadRpcs: "repo_ready_not_applied",
       developerAdminRpcs: "repo_ready_not_applied",
+      developerAdminReadRpcs: "repo_ready_not_applied",
       authRoleRpcs: "repo_ready_not_applied",
     },
     payments: {

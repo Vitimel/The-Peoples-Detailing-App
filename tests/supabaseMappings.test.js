@@ -14,6 +14,7 @@ import {
   mapSupabaseAvailabilityBlockRow,
   mapSupabaseBookingRow,
   mapSupabaseBusinessSettingsRows,
+  mapSupabaseDeveloperAdminSnapshot,
   mapSupabaseMessageRow,
   mapSupabaseServiceRow,
 } from '../src/data/supabaseMappings.js';
@@ -301,6 +302,48 @@ describe('Supabase mapping helpers', () => {
       new_role: 'owner',
       name_input: 'Dane',
       phone_input: '(931) 334-0730',
+    });
+  });
+
+  it('maps the developer admin snapshot into safe admin shapes', () => {
+    expect(mapSupabaseDeveloperAdminSnapshot({
+      services: [
+        { id: 'basic', title: 'Basic Detail', price_cents: 15000, duration_minutes: 180, buffer_minutes: 30, visible: true },
+      ],
+      developer_settings: {
+        deposit_cents: 2500,
+        company_app_fee_cents: 300,
+        customer_pays_card_processing_fee: true,
+        stripe_live_mode: 'locked',
+        sms_provider: 'not_connected',
+      },
+      integrations: [
+        { id: 'stripe_live_mode', status: 'locked', details: 'Live payments require approval.' },
+      ],
+      money_flow: {
+        customer_sees_app_fee: false,
+        app_fee_routing_status: 'ledger_only',
+      },
+      live_mode_locks: {
+        stripe_live_mode: 'locked_until_explicit_approval',
+      },
+    })).toMatchObject({
+      services: [{ id: 'basic', priceCents: 15000, durationMinutes: 180 }],
+      developerSettings: {
+        depositCents: 2500,
+        companyAppFeeCents: 300,
+        customerPaysCardProcessingFee: true,
+        stripeLiveMode: 'locked',
+        smsProvider: 'not_connected',
+      },
+      integrations: [{ id: 'stripe_live_mode', status: 'locked' }],
+      moneyFlow: {
+        customer_sees_app_fee: false,
+        app_fee_routing_status: 'ledger_only',
+      },
+      liveModeLocks: {
+        stripe_live_mode: 'locked_until_explicit_approval',
+      },
     });
   });
 });

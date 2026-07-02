@@ -66,6 +66,7 @@ begin
       ('developer_update_service'),
       ('developer_update_business_setting'),
       ('developer_update_integration_status'),
+      ('developer_get_admin_snapshot'),
       ('developer_assign_app_role'),
       ('get_customer_booking'),
       ('get_customer_booking_messages'),

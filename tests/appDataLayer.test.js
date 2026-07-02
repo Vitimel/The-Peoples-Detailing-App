@@ -23,6 +23,7 @@ describe('app data layer readiness', () => {
     expect(status.dataAdapter.customerLifecycleRpcs).toBe('repo_ready_not_applied');
     expect(status.dataAdapter.customerReadRpcs).toBe('repo_ready_not_applied');
     expect(status.dataAdapter.developerAdminRpcs).toBe('repo_ready_not_applied');
+    expect(status.dataAdapter.developerAdminReadRpcs).toBe('repo_ready_not_applied');
     expect(status.dataAdapter.authRoleRpcs).toBe('repo_ready_not_applied');
     expect(status.auth.rowLevelSecurity).toBe('repo_ready_requires_live_verification');
     expect(getSupabaseConfigStatus()).toMatchObject({
@@ -218,7 +219,15 @@ describe('app data layer readiness', () => {
 
   it('defines future developer admin RPC calls without connecting a live backend', async () => {
     const fetchImpl = vi.fn(async url => {
-      const payload = url.includes('/integration_status?select=')
+      const payload = url.includes('/rpc/developer_get_admin_snapshot')
+        ? {
+            services: [{ id: 'basic', title: 'Basic Detail', price_cents: 15000, duration_minutes: 180, buffer_minutes: 30, visible: true }],
+            developer_settings: { deposit_cents: 2500, company_app_fee_cents: 300, stripe_live_mode: 'locked', sms_provider: 'not_connected' },
+            integrations: [{ id: 'stripe_live_mode', status: 'locked', details: 'Live payments require approval.' }],
+            money_flow: { customer_sees_app_fee: false, app_fee_routing_status: 'ledger_only' },
+            live_mode_locks: { stripe_live_mode: 'locked_until_explicit_approval' },
+          }
+        : url.includes('/integration_status?select=')
         ? [{ id: 'stripe_live_mode', status: 'locked', details: 'Live payments require approval.' }]
         : 'ok-id';
       return {
@@ -236,6 +245,12 @@ describe('app data layer readiness', () => {
     await expect(adapter.loadIntegrationStatus()).resolves.toEqual([
       { id: 'stripe_live_mode', status: 'locked', details: 'Live payments require approval.' },
     ]);
+    await expect(adapter.loadDeveloperAdminSnapshot()).resolves.toMatchObject({
+      services: [{ id: 'basic', priceCents: 15000 }],
+      developerSettings: { depositCents: 2500, companyAppFeeCents: 300 },
+      moneyFlow: { customer_sees_app_fee: false },
+      liveModeLocks: { stripe_live_mode: 'locked_until_explicit_approval' },
+    });
     await adapter.developerUpdateService({
       id: 'basic',
       title: 'Basic Detail',
@@ -259,12 +274,13 @@ describe('app data layer readiness', () => {
 
     expect(fetchImpl.mock.calls.map(call => call[0])).toEqual([
       'https://example.supabase.co/rest/v1/integration_status?select=*&order=id.asc',
+      'https://example.supabase.co/rest/v1/rpc/developer_get_admin_snapshot',
       'https://example.supabase.co/rest/v1/rpc/developer_update_service',
       'https://example.supabase.co/rest/v1/rpc/developer_update_business_setting',
       'https://example.supabase.co/rest/v1/rpc/developer_update_integration_status',
       'https://example.supabase.co/rest/v1/rpc/developer_assign_app_role',
     ]);
-    expect(JSON.parse(fetchImpl.mock.calls[1][1].body)).toEqual({
+    expect(JSON.parse(fetchImpl.mock.calls[2][1].body)).toEqual({
       service_id_input: 'basic',
       title_input: 'Basic Detail',
       price_cents_input: 15500,
@@ -272,16 +288,16 @@ describe('app data layer readiness', () => {
       buffer_minutes_input: 30,
       visible_input: true,
     });
-    expect(JSON.parse(fetchImpl.mock.calls[2][1].body)).toEqual({
+    expect(JSON.parse(fetchImpl.mock.calls[3][1].body)).toEqual({
       setting_key_input: 'deposit_cents',
       setting_value_input: 2500,
     });
-    expect(JSON.parse(fetchImpl.mock.calls[3][1].body)).toEqual({
+    expect(JSON.parse(fetchImpl.mock.calls[4][1].body)).toEqual({
       integration_id_input: 'stripe_live_mode',
       status_input: 'locked',
       details_input: 'Live payments require approval.',
     });
-    expect(JSON.parse(fetchImpl.mock.calls[4][1].body)).toEqual({
+    expect(JSON.parse(fetchImpl.mock.calls[5][1].body)).toEqual({
       target_user_id: 'user-1',
       new_role: 'owner',
       name_input: 'Dane',

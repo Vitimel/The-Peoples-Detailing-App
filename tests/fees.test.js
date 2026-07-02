@@ -190,6 +190,20 @@ describe('checkout fee logic', () => {
     expect(migration).toContain('grant execute on function public.developer_update_service(text, text, integer, integer, integer, boolean) to authenticated');
   });
 
+  it('keeps developer admin reads role-gated and free of customer operational data', () => {
+    const migration = readFileSync('supabase/migrations/20260702190000_developer_admin_read_rpc.sql', 'utf8');
+    expect(migration).toContain('create or replace function public.developer_get_admin_snapshot');
+    expect(migration).toContain('perform public.assert_developer()');
+    expect(migration).toContain("'customer_sees_app_fee', false");
+    expect(migration).toContain("'app_fee_routing_status', 'ledger_only'");
+    expect(migration).toContain("'stripe_live_mode', 'locked_until_explicit_approval'");
+    expect(migration).toContain('grant execute on function public.developer_get_admin_snapshot() to authenticated');
+    expect(migration).not.toContain('from public.bookings');
+    expect(migration).not.toContain('payment_placeholders');
+    expect(migration).not.toContain('sms_notifications');
+    expect(migration).not.toContain('claim_token_hash');
+  });
+
   it('hardens Supabase Auth profile creation and app-role checks', () => {
     const migration = readFileSync('supabase/migrations/20260702160000_auth_role_hardening.sql', 'utf8');
     expect(migration).toContain('create or replace function public.current_app_role()');

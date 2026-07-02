@@ -20,7 +20,8 @@ Run these SQL files in order through Supabase SQL Editor or Supabase CLI:
 8. `supabase/migrations/20260702175000_booking_overlap_constraint.sql`
 9. `supabase/migrations/20260702180000_customer_booking_read_rpc.sql`
 10. `supabase/migrations/20260702185000_owner_job_read_rpc.sql`
-11. `supabase/seed.sql`
+11. `supabase/migrations/20260702190000_developer_admin_read_rpc.sql`
+12. `supabase/seed.sql`
 
 ## First Developer Bootstrap
 
@@ -73,6 +74,8 @@ Before storing real customer data:
 - Confirm short-notice requests cannot be self-rescheduled online by the customer.
 - Confirm booking messages create in-app records and owner SMS placeholders without sending live SMS.
 - Confirm developer role can update service prices/durations and developer money settings.
+- Confirm developer role can load the developer admin snapshot.
+- Confirm non-developer users cannot load the developer admin snapshot.
 - Confirm non-developer users cannot call developer admin RPCs.
 - Confirm developer admin RPCs reject Stripe live mode unlock and real SMS provider activation.
 - Confirm new Supabase Auth users automatically get a `profiles` row with role `customer`.
