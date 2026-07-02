@@ -155,6 +155,26 @@ describe('checkout fee logic', () => {
     expect(migration).toContain('grant execute on function public.owner_set_availability_block(text, date, text, text) to authenticated');
   });
 
+  it('keeps customer lifecycle operations server-side without live providers', () => {
+    const migration = readFileSync('supabase/migrations/20260702150000_customer_lifecycle_rpc.sql', 'utf8');
+    expect(migration).toContain('create or replace function public.can_access_booking');
+    expect(migration).toContain('booking access denied');
+    expect(migration).toContain('create or replace function public.customer_cancel_booking');
+    expect(migration).toContain('cancel_deposit_forfeit_days');
+    expect(migration).toContain('Deposit forfeited');
+    expect(migration).toContain('No payment collected');
+    expect(migration).toContain('create or replace function public.reschedule_booking');
+    expect(migration).toContain('short-notice requests cannot be rescheduled online by the customer');
+    expect(migration).toContain('inside customer reschedule cutoff');
+    expect(migration).toContain('perform public.validate_booking_slot');
+    expect(migration).toContain('create or replace function public.create_booking_message');
+    expect(migration).toContain("'not_connected'");
+    expect(migration).toContain("'estimated_not_billed'");
+    expect(migration).toContain('grant execute on function public.customer_cancel_booking(uuid, text, text) to anon, authenticated');
+    expect(migration).toContain('grant execute on function public.reschedule_booking(uuid, timestamptz, text, text, text) to anon, authenticated');
+    expect(migration).toContain('grant execute on function public.create_booking_message(uuid, text, text) to anon, authenticated');
+  });
+
   it('keeps a Supabase seed for current services and launch settings', () => {
     const seed = readFileSync('supabase/seed.sql', 'utf8');
     expect(seed).toContain("('basic', 'Basic Detail', 15000");

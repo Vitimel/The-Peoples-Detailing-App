@@ -18,6 +18,7 @@ describe('app data layer readiness', () => {
     expect(status.dataAdapter.supabase).toBe('repo_ready_disabled');
     expect(status.dataAdapter.bookingRpc).toBe('repo_ready_not_applied');
     expect(status.dataAdapter.ownerOperationRpcs).toBe('repo_ready_not_applied');
+    expect(status.dataAdapter.customerLifecycleRpcs).toBe('repo_ready_not_applied');
     expect(status.auth.rowLevelSecurity).toBe('repo_ready_requires_live_verification');
     expect(getSupabaseConfigStatus()).toMatchObject({
       configured: false,
@@ -124,6 +125,52 @@ describe('app data layer readiness', () => {
       block_date_input: '2026-07-06',
       time_label_input: '10:00 AM',
       reason_input: 'Family appointment',
+    });
+  });
+
+  it('defines future customer lifecycle RPC calls without connecting a live backend', async () => {
+    const fetchImpl = vi.fn(async url => {
+      const payload = url.includes('/messages?select=')
+        ? [{ id: 'msg-1', booking_id: 'booking-1', body: 'Hello', audience: 'owner', direction: 'inbound' }]
+        : 'ok-id';
+      return {
+        ok: true,
+        status: 200,
+        json: async () => payload,
+      };
+    });
+    const adapter = createSupabaseRestAdapter({
+      url: 'https://example.supabase.co',
+      anonKey: 'anon_test_key',
+      fetchImpl,
+    });
+
+    await expect(adapter.loadBookingMessages('booking 1')).resolves.toMatchObject([{ id: 'msg-1', bookingId: 'booking-1', body: 'Hello' }]);
+    await adapter.cancelBooking({ bookingId: 'booking-1', claimTokenHash: 'claim-hash', reason: 'Schedule changed' });
+    await adapter.rescheduleBooking({ bookingId: 'booking-1', newStartAt: '2026-07-07T15:00:00.000Z', timeLabel: '10:00 AM', claimTokenHash: 'claim-hash' });
+    await adapter.createBookingMessage({ bookingId: 'booking-1', body: 'Can I move this?', claimTokenHash: 'claim-hash' });
+
+    expect(fetchImpl.mock.calls.map(call => call[0])).toEqual([
+      'https://example.supabase.co/rest/v1/messages?select=*&booking_id=eq.booking%201&order=created_at.asc',
+      'https://example.supabase.co/rest/v1/rpc/customer_cancel_booking',
+      'https://example.supabase.co/rest/v1/rpc/reschedule_booking',
+      'https://example.supabase.co/rest/v1/rpc/create_booking_message',
+    ]);
+    expect(JSON.parse(fetchImpl.mock.calls[1][1].body)).toEqual({
+      booking_id_input: 'booking-1',
+      claim_token_hash_input: 'claim-hash',
+      reason_input: 'Schedule changed',
+    });
+    expect(JSON.parse(fetchImpl.mock.calls[2][1].body)).toMatchObject({
+      booking_id_input: 'booking-1',
+      new_start_at_input: '2026-07-07T15:00:00.000Z',
+      time_label_input: '10:00 AM',
+      claim_token_hash_input: 'claim-hash',
+    });
+    expect(JSON.parse(fetchImpl.mock.calls[3][1].body)).toEqual({
+      booking_id_input: 'booking-1',
+      body_input: 'Can I move this?',
+      claim_token_hash_input: 'claim-hash',
     });
   });
 });

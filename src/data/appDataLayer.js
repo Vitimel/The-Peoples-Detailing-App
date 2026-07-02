@@ -1,9 +1,13 @@
 import {
   buildSupabaseAvailabilityBlockPayload,
+  buildSupabaseCancelPayload,
   buildSupabaseGuestBookingPayload,
+  buildSupabaseMessagePayload,
+  buildSupabaseReschedulePayload,
   mapSupabaseAvailabilityBlockRow,
   mapSupabaseBookingRow,
   mapSupabaseBusinessSettingsRows,
+  mapSupabaseMessageRow,
   mapSupabaseServiceRow,
 } from "./supabaseMappings.js";
 
@@ -62,9 +66,22 @@ export const createSupabaseRestAdapter = ({ url, anonKey, fetchImpl = globalThis
     loadBusinessSettings: async () => mapSupabaseBusinessSettingsRows(await requestJson("/rest/v1/business_settings?select=key,value")),
     loadCustomerBookings: async () => (await requestJson("/rest/v1/bookings?select=*&order=start_at.asc")).map(mapSupabaseBookingRow),
     loadAvailabilityBlocks: async () => (await requestJson("/rest/v1/availability_blocks?select=*&order=block_date.asc")).map(mapSupabaseAvailabilityBlockRow),
+    loadBookingMessages: bookingId => requestJson(`/rest/v1/messages?select=*&booking_id=eq.${encodeURIComponent(bookingId)}&order=created_at.asc`).then(rows => rows.map(mapSupabaseMessageRow)),
     createGuestBooking: draft => requestJson("/rest/v1/rpc/create_guest_booking", {
       method: "POST",
       body: JSON.stringify({ payload: buildSupabaseGuestBookingPayload(draft) }),
+    }),
+    cancelBooking: input => requestJson("/rest/v1/rpc/customer_cancel_booking", {
+      method: "POST",
+      body: JSON.stringify(buildSupabaseCancelPayload(input)),
+    }),
+    rescheduleBooking: input => requestJson("/rest/v1/rpc/reschedule_booking", {
+      method: "POST",
+      body: JSON.stringify(buildSupabaseReschedulePayload(input)),
+    }),
+    createBookingMessage: input => requestJson("/rest/v1/rpc/create_booking_message", {
+      method: "POST",
+      body: JSON.stringify(buildSupabaseMessagePayload(input)),
     }),
     ownerAcknowledgeBooking: bookingId => requestJson("/rest/v1/rpc/owner_acknowledge_booking", {
       method: "POST",
@@ -152,6 +169,7 @@ export const getIntegrationStatus = () => {
       supabaseReason: DATA_ADAPTERS[DATA_ADAPTER_IDS.SUPABASE].reason,
       bookingRpc: "repo_ready_not_applied",
       ownerOperationRpcs: "repo_ready_not_applied",
+      customerLifecycleRpcs: "repo_ready_not_applied",
     },
     payments: {
       stripeTestMode: "planned_not_connected",

@@ -1,10 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildSupabaseAvailabilityBlockPayload,
+  buildSupabaseCancelPayload,
   buildSupabaseGuestBookingPayload,
+  buildSupabaseMessagePayload,
+  buildSupabaseReschedulePayload,
   mapSupabaseAvailabilityBlockRow,
   mapSupabaseBookingRow,
   mapSupabaseBusinessSettingsRows,
+  mapSupabaseMessageRow,
   mapSupabaseServiceRow,
 } from '../src/data/supabaseMappings.js';
 
@@ -157,6 +161,62 @@ describe('Supabase mapping helpers', () => {
       block_date_input: '2026-07-06',
       time_label_input: '10:00 AM',
       reason_input: 'Family appointment',
+    });
+  });
+
+  it('maps messages and lifecycle RPC payloads', () => {
+    expect(mapSupabaseMessageRow({
+      id: 'msg-1',
+      booking_id: 'booking-1',
+      customer_profile_id: 'profile-1',
+      channel: 'in_app',
+      audience: 'owner',
+      direction: 'inbound',
+      body: 'Can I move this?',
+      created_at: '2026-07-02T15:00:00.000Z',
+    })).toEqual({
+      id: 'msg-1',
+      bookingId: 'booking-1',
+      customerProfileId: 'profile-1',
+      channel: 'in_app',
+      audience: 'owner',
+      direction: 'inbound',
+      body: 'Can I move this?',
+      createdAt: '2026-07-02T15:00:00.000Z',
+    });
+
+    expect(buildSupabaseCancelPayload({
+      bookingId: 'booking-1',
+      claimTokenHash: 'claim-hash',
+      reason: 'Schedule changed',
+    })).toEqual({
+      booking_id_input: 'booking-1',
+      claim_token_hash_input: 'claim-hash',
+      reason_input: 'Schedule changed',
+    });
+
+    expect(buildSupabaseReschedulePayload({
+      bookingId: 'booking-1',
+      newStartAt: '2026-07-07T15:00:00.000Z',
+      timeLabel: '10:00 AM',
+      claimTokenHash: 'claim-hash',
+      reason: 'Better day',
+    })).toEqual({
+      booking_id_input: 'booking-1',
+      new_start_at_input: '2026-07-07T15:00:00.000Z',
+      time_label_input: '10:00 AM',
+      claim_token_hash_input: 'claim-hash',
+      reason_input: 'Better day',
+    });
+
+    expect(buildSupabaseMessagePayload({
+      bookingId: 'booking-1',
+      body: 'Can I move this?',
+      claimTokenHash: 'claim-hash',
+    })).toEqual({
+      booking_id_input: 'booking-1',
+      body_input: 'Can I move this?',
+      claim_token_hash_input: 'claim-hash',
     });
   });
 });

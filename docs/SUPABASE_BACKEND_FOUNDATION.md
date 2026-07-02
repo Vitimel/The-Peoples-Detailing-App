@@ -34,6 +34,12 @@ The owner operation migration in `supabase/migrations/20260702143000_owner_opera
 - updating MVP tracker status: `on_my_way`, `arrived`, and `complete`.
 - creating/removing full-day and time-slot availability blocks.
 
+The customer lifecycle migration in `supabase/migrations/20260702150000_customer_lifecycle_rpc.sql` adds access-checked RPCs for:
+
+- customer/guest cancellation with no-payment, refundable, or deposit-forfeit outcomes.
+- customer/owner rescheduling with slot validation, blocked time enforcement, overlap checks, short-notice restrictions, and customer cutoff enforcement.
+- in-app booking messages that can queue a local owner SMS placeholder without sending a live SMS.
+
 `supabase/seed.sql` seeds the current service packages, launch settings, and integration status rows for a fresh project.
 
 ## Frontend Adapter Contract
@@ -46,8 +52,10 @@ The owner operation migration in `supabase/migrations/20260702143000_owner_opera
 - `business_settings` rows become app settings such as `minimumBookingNoticeHours`, `workingHoursEnd`, and `bookingSubmissionMode`.
 - booking rows become app bookings with `serviceId`, `startIso`, guest/profile fields, short-notice status, owner acknowledgment state, tracker fields, and payment/cancellation status fields.
 - availability block rows become owner scheduling blocks with `type`, `date`, `timeLabel`, and reason.
+- message rows become in-app message records with booking, audience, direction, body, and timestamp.
 - app booking drafts become the safe `create_guest_booking(payload jsonb)` RPC payload.
 - owner actions call the future `owner_*` RPCs rather than writing raw table rows directly.
+- customer lifecycle actions call cancellation, reschedule, and message RPCs with either auth ownership or a guest claim token.
 
 This keeps the React screens from depending on raw Supabase column names and makes the future cutover easier to test.
 

@@ -164,11 +164,42 @@ export const mapSupabaseAvailabilityBlockRow = row => ({
   createdAt: row?.created_at || null,
 });
 
+export const mapSupabaseMessageRow = row => ({
+  id: row?.id,
+  bookingId: row?.booking_id || null,
+  customerProfileId: row?.customer_profile_id || null,
+  channel: row?.channel || "in_app",
+  audience: row?.audience || "",
+  direction: row?.direction || "",
+  body: row?.body || "",
+  createdAt: row?.created_at || null,
+});
+
 export const buildSupabaseAvailabilityBlockPayload = block => ({
   block_type_input: block?.block_type || block?.type || "full_day",
   block_date_input: block?.block_date || block?.date || "",
   time_label_input: block?.time_label || block?.timeLabel || null,
   reason_input: block?.reason || null,
+});
+
+export const buildSupabaseCancelPayload = input => ({
+  booking_id_input: input?.booking_id || input?.bookingId || input,
+  claim_token_hash_input: input?.claim_token_hash || input?.claimTokenHash || null,
+  reason_input: input?.reason || null,
+});
+
+export const buildSupabaseReschedulePayload = input => ({
+  booking_id_input: input?.booking_id || input?.bookingId || "",
+  new_start_at_input: input?.new_start_at || input?.newStartAt || input?.startIso || input?.date || "",
+  time_label_input: input?.time_label || input?.timeLabel || timeLabelFromDate(input?.new_start_at || input?.newStartAt || input?.startIso || input?.date),
+  claim_token_hash_input: input?.claim_token_hash || input?.claimTokenHash || null,
+  reason_input: input?.reason || null,
+});
+
+export const buildSupabaseMessagePayload = input => ({
+  booking_id_input: input?.booking_id || input?.bookingId || "",
+  body_input: input?.body || "",
+  claim_token_hash_input: input?.claim_token_hash || input?.claimTokenHash || null,
 });
 
 const timeLabelFromDate = dateLike => {
