@@ -154,6 +154,9 @@ export const mapSupabaseBookingRow = row => ({
   completedAt: row?.completed_at || null,
   paymentStatus: row?.payment_status || null,
   cancellationOutcome: row?.cancellation_outcome || null,
+  messageCount: numberOrNull(row?.message_count) ?? 0,
+  ownerSmsStatus: row?.owner_sms_status || null,
+  ownerSmsCostStatus: row?.owner_sms_cost_status || null,
   requestedAt: row?.status === "requested" ? row?.created_at || null : null,
   createdAt: row?.created_at || null,
   updatedAt: row?.updated_at || null,
@@ -210,6 +213,12 @@ export const buildSupabaseMessagePayload = input => ({
   booking_id_input: input?.booking_id || input?.bookingId || "",
   body_input: input?.body || "",
   claim_token_hash_input: input?.claim_token || input?.claimToken || input?.claim_token_hash || input?.claimTokenHash || null,
+});
+
+export const buildSupabaseOwnerJobsPayload = input => ({
+  from_at_input: input?.from_at || input?.fromAt || null,
+  to_at_input: input?.to_at || input?.toAt || null,
+  status_filter_input: input?.status_filter || input?.statusFilter || null,
 });
 
 export const buildSupabaseServiceUpdatePayload = service => {

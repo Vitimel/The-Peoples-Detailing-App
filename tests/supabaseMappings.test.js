@@ -7,6 +7,7 @@ import {
   buildSupabaseGuestBookingPayload,
   buildSupabaseIntegrationStatusPayload,
   buildSupabaseMessagePayload,
+  buildSupabaseOwnerJobsPayload,
   buildSupabaseReschedulePayload,
   buildSupabaseRoleAssignmentPayload,
   buildSupabaseServiceUpdatePayload,
@@ -86,6 +87,9 @@ describe('Supabase mapping helpers', () => {
       completed_at: null,
       payment_status: 'balance_due',
       cancellation_outcome: null,
+      message_count: 2,
+      owner_sms_status: 'would_send',
+      owner_sms_cost_status: 'estimated_not_billed',
       created_at: '2026-07-02T15:00:00.000Z',
     })).toMatchObject({
       id: 'booking-1',
@@ -109,6 +113,9 @@ describe('Supabase mapping helpers', () => {
         vehicle: 'Daily driver',
       },
       paymentStatus: 'balance_due',
+      messageCount: 2,
+      ownerSmsStatus: 'would_send',
+      ownerSmsCostStatus: 'estimated_not_billed',
       requestedAt: '2026-07-02T15:00:00.000Z',
     });
   });
@@ -236,6 +243,16 @@ describe('Supabase mapping helpers', () => {
       booking_id_input: 'booking-1',
       body_input: 'Can I move this?',
       claim_token_hash_input: 'claim-token',
+    });
+
+    expect(buildSupabaseOwnerJobsPayload({
+      fromAt: '2026-07-01T00:00:00.000Z',
+      toAt: '2026-08-01T00:00:00.000Z',
+      statusFilter: 'needs_ack',
+    })).toEqual({
+      from_at_input: '2026-07-01T00:00:00.000Z',
+      to_at_input: '2026-08-01T00:00:00.000Z',
+      status_filter_input: 'needs_ack',
     });
   });
 

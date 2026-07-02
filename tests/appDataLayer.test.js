@@ -19,6 +19,7 @@ describe('app data layer readiness', () => {
     expect(status.dataAdapter.bookingRpc).toBe('repo_ready_not_applied');
     expect(status.dataAdapter.bookingOverlapConstraint).toBe('repo_ready_not_applied');
     expect(status.dataAdapter.ownerOperationRpcs).toBe('repo_ready_not_applied');
+    expect(status.dataAdapter.ownerReadRpcs).toBe('repo_ready_not_applied');
     expect(status.dataAdapter.customerLifecycleRpcs).toBe('repo_ready_not_applied');
     expect(status.dataAdapter.customerReadRpcs).toBe('repo_ready_not_applied');
     expect(status.dataAdapter.developerAdminRpcs).toBe('repo_ready_not_applied');
@@ -117,6 +118,11 @@ describe('app data layer readiness', () => {
     await adapter.ownerUpdateBookingTracker({ bookingId: 'booking-1', trackerStatus: 'arrived' });
     await adapter.ownerSetAvailabilityBlock({ type: 'time_slot', date: '2026-07-06', timeLabel: '10:00 AM', reason: 'Family appointment' });
     await adapter.ownerRemoveAvailabilityBlock('block-1');
+    await expect(adapter.loadOwnerJobs({
+      fromAt: '2026-07-01T00:00:00.000Z',
+      toAt: '2026-08-01T00:00:00.000Z',
+      statusFilter: 'needs_ack',
+    })).resolves.toEqual([]);
 
     expect(fetchImpl.mock.calls.map(call => call[0])).toEqual([
       'https://example.supabase.co/rest/v1/rpc/owner_acknowledge_booking',
@@ -125,6 +131,7 @@ describe('app data layer readiness', () => {
       'https://example.supabase.co/rest/v1/rpc/owner_update_booking_tracker',
       'https://example.supabase.co/rest/v1/rpc/owner_set_availability_block',
       'https://example.supabase.co/rest/v1/rpc/owner_remove_availability_block',
+      'https://example.supabase.co/rest/v1/rpc/owner_list_jobs',
     ]);
     expect(JSON.parse(fetchImpl.mock.calls[1][1].body)).toEqual({
       booking_id_input: 'booking-1',
@@ -139,6 +146,11 @@ describe('app data layer readiness', () => {
       block_date_input: '2026-07-06',
       time_label_input: '10:00 AM',
       reason_input: 'Family appointment',
+    });
+    expect(JSON.parse(fetchImpl.mock.calls[6][1].body)).toEqual({
+      from_at_input: '2026-07-01T00:00:00.000Z',
+      to_at_input: '2026-08-01T00:00:00.000Z',
+      status_filter_input: 'needs_ack',
     });
   });
 

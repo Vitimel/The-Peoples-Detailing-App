@@ -199,6 +199,12 @@ const main = async () => {
     booking_id_input: "00000000-0000-0000-0000-000000000000",
   }, customerA.token, { ok: false }));
 
+  await expectRejected("customer cannot call owner job queue RPC", () => rpc("owner_list_jobs", {
+    from_at_input: null,
+    to_at_input: null,
+    status_filter_input: null,
+  }, customerA.token, { ok: false }));
+
   await expectRejected("owner cannot call developer pricing RPC", () => rpc("developer_update_service", {
     service_id_input: "basic",
     title_input: "Basic Detail",
@@ -264,6 +270,19 @@ const main = async () => {
   if (!ownerBooking.claim_token_hash) fail("claim token hash", "Created booking did not store claim_token_hash");
   if (ownerBooking.claim_token_hash === claimToken) fail("claim token storage", "Raw claim token was stored instead of a hash");
   log("pass", "owner reads created booking with hashed claim token");
+
+  const ownerJobQueue = await rpc("owner_list_jobs", {
+    from_at_input: null,
+    to_at_input: null,
+    status_filter_input: null,
+  }, owner.token);
+  if (!Array.isArray(ownerJobQueue.data) || !ownerJobQueue.data.some(job => job.id === bookingId)) {
+    fail("owner job queue", "Owner job queue did not include created booking");
+  }
+  if ("claim_token_hash" in ownerJobQueue.data.find(job => job.id === bookingId)) {
+    fail("owner job queue", "Owner job queue exposed claim_token_hash");
+  }
+  log("pass", "owner can load operational job queue");
 
   const customerBBooking = await select("bookings", `select=*&id=eq.${bookingId}`, customerB.token);
   if (Array.isArray(customerBBooking.data) && customerBBooking.data.length === 0) {

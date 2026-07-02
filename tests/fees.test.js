@@ -254,6 +254,20 @@ describe('checkout fee logic', () => {
     expect(migration).toContain('bookings_active_range_idx');
   });
 
+  it('keeps owner job queue reads role-gated and operational only', () => {
+    const migration = readFileSync('supabase/migrations/20260702185000_owner_job_read_rpc.sql', 'utf8');
+    expect(migration).toContain('create or replace function public.owner_list_jobs');
+    expect(migration).toContain('perform public.assert_owner_or_developer()');
+    expect(migration).toContain("'message_count', coalesce(msg.message_count, 0)");
+    expect(migration).toContain("'owner_sms_status', sms.last_owner_sms_status");
+    expect(migration).toContain("'owner_sms_cost_status', sms.last_owner_sms_cost_status");
+    expect(migration).toContain('grant execute on function public.owner_list_jobs(timestamptz, timestamptz, text) to authenticated');
+    expect(migration).not.toContain("'claim_token_hash'");
+    expect(migration).not.toContain('app_fee_ledger_entries');
+    expect(migration).not.toContain('payment_placeholders');
+    expect(migration).not.toContain('business_settings');
+  });
+
   it('keeps a Supabase seed for current services and launch settings', () => {
     const seed = readFileSync('supabase/seed.sql', 'utf8');
     expect(seed).toContain("('basic', 'Basic Detail', 15000");

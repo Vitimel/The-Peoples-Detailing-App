@@ -59,6 +59,7 @@ begin
       ('owner_update_booking_tracker'),
       ('owner_set_availability_block'),
       ('owner_remove_availability_block'),
+      ('owner_list_jobs'),
       ('customer_cancel_booking'),
       ('reschedule_booking'),
       ('create_booking_message'),

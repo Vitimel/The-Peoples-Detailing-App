@@ -71,6 +71,12 @@ The booking overlap constraint migration in `supabase/migrations/20260702175000_
 - a check that every booking ends after it starts.
 - a GiST exclusion constraint that rejects overlapping `requested` or `confirmed` bookings even if two requests arrive at the same time.
 
+The owner job read migration in `supabase/migrations/20260702185000_owner_job_read_rpc.sql` adds:
+
+- `owner_list_jobs` for owner/developer job queues.
+- operational fields Dane needs: customer contact, address, status, owner acknowledgment, tracker state, message count, and owner SMS placeholder status.
+- no app-fee ledger rows, Stripe/payment placeholder internals, stored claim hashes, or developer-only settings.
+
 `supabase/seed.sql` seeds the current service packages, launch settings, and integration status rows for a fresh project.
 
 ## Frontend Adapter Contract
@@ -86,6 +92,7 @@ The booking overlap constraint migration in `supabase/migrations/20260702175000_
 - message rows become in-app message records with booking, audience, direction, body, and timestamp.
 - app booking drafts become the safe `create_guest_booking(payload jsonb)` RPC payload.
 - owner actions call the future `owner_*` RPCs rather than writing raw table rows directly.
+- owner job dashboards can call `owner_list_jobs` instead of stitching raw tables together in the frontend.
 - customer lifecycle actions call cancellation, reschedule, and message RPCs with either auth ownership or a guest claim token.
 - guest and claimed-customer detail screens can call customer-safe read RPCs instead of reading raw tables directly.
 - developer admin actions call service, business-setting, and integration-status RPCs that require the developer role.

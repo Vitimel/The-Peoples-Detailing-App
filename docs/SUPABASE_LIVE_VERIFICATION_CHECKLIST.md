@@ -103,6 +103,8 @@ Never put the service-role key in GitHub Pages, `.env`, or frontend code.
 ## Owner Checks
 
 - Dane owner can see jobs, availability blocks, owner acknowledgments, messages, and operational status events.
+- Dane owner can load the operational job queue through `owner_list_jobs`.
+- `owner_list_jobs` includes job status, customer contact, message count, and owner SMS placeholder status without returning app-fee ledger rows or payment placeholder internals.
 - Dane owner can acknowledge a normal confirmed booking.
 - Dane owner can confirm a short-notice request.
 - Dane owner can decline a short-notice request.

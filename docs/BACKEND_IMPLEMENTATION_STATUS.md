@@ -19,6 +19,7 @@
 - `supabase/migrations/20260702170000_guest_claim_token_contract.sql` makes guest booking/profile claiming usable by returning a one-time raw claim token from `create_guest_booking`, storing only its hash, and accepting the raw token for future claim, cancel, reschedule, and message access.
 - `supabase/migrations/20260702175000_booking_overlap_constraint.sql` adds a database-level `end_at` field, trigger, and GiST exclusion constraint so overlapping active bookings are rejected even under concurrent requests.
 - `supabase/migrations/20260702180000_customer_booking_read_rpc.sql` adds token-gated customer-safe read RPCs so a guest can reopen their booking and messages without direct table access or staff-only app-fee/payment/SMS records.
+- `supabase/migrations/20260702185000_owner_job_read_rpc.sql` adds a role-gated owner job queue RPC so Dane can load operational jobs, messages counts, and owner SMS placeholder status without stitching raw tables together.
 - `supabase/seed.sql` seeds the current service menu, business settings, and integration statuses for a fresh Supabase project.
 - `supabase/verification/live_smoke_checks.sql` gives Tim a no-cost SQL Editor preflight for schema/RPC/seed/payment-lock/SMS-placeholder checks after the migrations are applied.
 - `docs/SUPABASE_LIVE_VERIFICATION_CHECKLIST.md` records the API and RLS checks that must pass before `VITE_USE_SUPABASE=true` or real customer data.

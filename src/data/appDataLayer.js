@@ -6,6 +6,7 @@ import {
   buildSupabaseGuestBookingPayload,
   buildSupabaseIntegrationStatusPayload,
   buildSupabaseMessagePayload,
+  buildSupabaseOwnerJobsPayload,
   buildSupabaseReschedulePayload,
   buildSupabaseRoleAssignmentPayload,
   buildSupabaseServiceUpdatePayload,
@@ -81,6 +82,10 @@ export const createSupabaseRestAdapter = ({ url, anonKey, fetchImpl = globalThis
       method: "POST",
       body: JSON.stringify(buildSupabaseCustomerBookingReadPayload(input)),
     }).then(rows => (Array.isArray(rows) ? rows : []).map(mapSupabaseMessageRow)),
+    loadOwnerJobs: input => requestJson("/rest/v1/rpc/owner_list_jobs", {
+      method: "POST",
+      body: JSON.stringify(buildSupabaseOwnerJobsPayload(input)),
+    }).then(rows => (Array.isArray(rows) ? rows : []).map(mapSupabaseBookingRow)),
     createGuestBooking: async draft => {
       const result = await requestJson("/rest/v1/rpc/create_guest_booking", {
         method: "POST",
@@ -211,6 +216,7 @@ export const getIntegrationStatus = () => {
       bookingRpc: "repo_ready_not_applied",
       bookingOverlapConstraint: "repo_ready_not_applied",
       ownerOperationRpcs: "repo_ready_not_applied",
+      ownerReadRpcs: "repo_ready_not_applied",
       customerLifecycleRpcs: "repo_ready_not_applied",
       customerReadRpcs: "repo_ready_not_applied",
       developerAdminRpcs: "repo_ready_not_applied",
