@@ -38,6 +38,14 @@ Keep `VITE_USE_SUPABASE=false` until Auth/RLS is tested. Never add the Supabase 
 
 ## First Live Verification
 
+Start with the repo smoke check:
+
+```sql
+supabase/verification/live_smoke_checks.sql
+```
+
+Then complete the API/RLS checklist in `docs/SUPABASE_LIVE_VERIFICATION_CHECKLIST.md`. The SQL Editor check is only a preflight because elevated SQL roles can bypass the same permissions customers, owners, and developers use through the app.
+
 Before storing real customer data:
 
 - Confirm public services can be read.
