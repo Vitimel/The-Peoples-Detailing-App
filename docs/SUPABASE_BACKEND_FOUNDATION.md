@@ -28,6 +28,19 @@ The follow-up migration in `supabase/migrations/20260702130000_booking_rpc_valid
 
 `supabase/seed.sql` seeds the current service packages, launch settings, and integration status rows for a fresh project.
 
+## Frontend Adapter Contract
+
+`src/data/appDataLayer.js` keeps localStorage active, but now has a disabled Supabase REST adapter that is shaped like the future live data source.
+
+`src/data/supabaseMappings.js` handles the translation boundary:
+
+- service rows become app services with `priceCents`, `durationHours`, service copy, and buffer metadata.
+- `business_settings` rows become app settings such as `minimumBookingNoticeHours`, `workingHoursEnd`, and `bookingSubmissionMode`.
+- booking rows become app bookings with `serviceId`, `startIso`, guest/profile fields, short-notice status, and owner acknowledgment state.
+- app booking drafts become the safe `create_guest_booking(payload jsonb)` RPC payload.
+
+This keeps the React screens from depending on raw Supabase column names and makes the future cutover easier to test.
+
 ## Security Direction
 
 - RLS is enabled on every table.
@@ -40,7 +53,7 @@ The follow-up migration in `supabase/migrations/20260702130000_booking_rpc_valid
 ## Current Boundary
 
 - localStorage remains active.
-- Supabase is planned/disabled.
+- Supabase is repo-ready/disabled.
 - Stripe test mode is planned but not connected.
 - Stripe live mode is locked.
 - SMS is queued locally only; no provider is called.

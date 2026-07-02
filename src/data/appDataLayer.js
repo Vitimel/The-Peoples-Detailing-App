@@ -1,3 +1,10 @@
+import {
+  buildSupabaseGuestBookingPayload,
+  mapSupabaseBookingRow,
+  mapSupabaseBusinessSettingsRows,
+  mapSupabaseServiceRow,
+} from "./supabaseMappings.js";
+
 export const DATA_ADAPTER_IDS = {
   LOCAL_STORAGE: "localStorage",
   SUPABASE: "supabase",
@@ -49,12 +56,12 @@ export const createSupabaseRestAdapter = ({ url, anonKey, fetchImpl = globalThis
     id: DATA_ADAPTER_IDS.SUPABASE,
     label: "Supabase REST",
     status: "configured_enabled",
-    loadServices: () => requestJson("/rest/v1/services?select=*&visible=eq.true&order=title.asc"),
-    loadBusinessSettings: () => requestJson("/rest/v1/business_settings?select=key,value"),
-    loadCustomerBookings: () => requestJson("/rest/v1/bookings?select=*&order=start_at.asc"),
-    createGuestBooking: payload => requestJson("/rest/v1/rpc/create_guest_booking", {
+    loadServices: async () => (await requestJson("/rest/v1/services?select=*&visible=eq.true&order=title.asc")).map(mapSupabaseServiceRow),
+    loadBusinessSettings: async () => mapSupabaseBusinessSettingsRows(await requestJson("/rest/v1/business_settings?select=key,value")),
+    loadCustomerBookings: async () => (await requestJson("/rest/v1/bookings?select=*&order=start_at.asc")).map(mapSupabaseBookingRow),
+    createGuestBooking: draft => requestJson("/rest/v1/rpc/create_guest_booking", {
       method: "POST",
-      body: JSON.stringify({ payload }),
+      body: JSON.stringify({ payload: buildSupabaseGuestBookingPayload(draft) }),
     }),
   };
 };

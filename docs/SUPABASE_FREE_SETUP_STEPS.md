@@ -32,6 +32,7 @@ Before storing real customer data:
 
 - Confirm public services can be read.
 - Confirm anonymous guest booking can call `create_guest_booking`.
+- Confirm the frontend Supabase adapter maps service/settings/booking rows into the same shapes used by the localStorage app.
 - Confirm blocked days/times are enforced by the RPC.
 - Confirm overlapping active bookings are rejected by the RPC.
 - Confirm short-notice bookings become `requested`.
