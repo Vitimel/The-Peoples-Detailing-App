@@ -240,6 +240,20 @@ describe('checkout fee logic', () => {
     expect(migration).not.toContain('sms_notifications');
   });
 
+  it('keeps active booking overlaps protected by the database', () => {
+    const migration = readFileSync('supabase/migrations/20260702175000_booking_overlap_constraint.sql', 'utf8');
+    expect(migration).toContain('add column if not exists end_at timestamptz');
+    expect(migration).toContain('create or replace function public.set_booking_end_at');
+    expect(migration).toContain('before insert or update of service_id, start_at');
+    expect(migration).toContain('new.end_at := public.booking_end_at(new.service_id, new.start_at)');
+    expect(migration).toContain('bookings_end_after_start');
+    expect(migration).toContain('bookings_no_active_overlap');
+    expect(migration).toContain('exclude using gist');
+    expect(migration).toContain("where (status in ('requested', 'confirmed'))");
+    expect(migration).toContain('deferrable initially immediate');
+    expect(migration).toContain('bookings_active_range_idx');
+  });
+
   it('keeps a Supabase seed for current services and launch settings', () => {
     const seed = readFileSync('supabase/seed.sql', 'utf8');
     expect(seed).toContain("('basic', 'Basic Detail', 15000");

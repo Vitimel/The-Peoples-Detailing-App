@@ -209,6 +209,7 @@ export const getIntegrationStatus = () => {
       supabaseConfig,
       supabaseReason: DATA_ADAPTERS[DATA_ADAPTER_IDS.SUPABASE].reason,
       bookingRpc: "repo_ready_not_applied",
+      bookingOverlapConstraint: "repo_ready_not_applied",
       ownerOperationRpcs: "repo_ready_not_applied",
       customerLifecycleRpcs: "repo_ready_not_applied",
       customerReadRpcs: "repo_ready_not_applied",

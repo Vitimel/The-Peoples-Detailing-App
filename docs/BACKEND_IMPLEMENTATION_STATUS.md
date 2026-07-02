@@ -17,6 +17,7 @@
 - `supabase/migrations/20260702153000_developer_admin_rpc.sql` adds developer-only RPCs for service pricing/duration, money settings, and integration readiness while keeping Stripe live mode and SMS provider activation locked.
 - `supabase/migrations/20260702160000_auth_role_hardening.sql` hardens app-role helpers for RLS, creates a `profiles` row when Supabase Auth creates a user, and adds a developer-only role assignment RPC for setting Tim/Dane/customer roles after manual bootstrap.
 - `supabase/migrations/20260702170000_guest_claim_token_contract.sql` makes guest booking/profile claiming usable by returning a one-time raw claim token from `create_guest_booking`, storing only its hash, and accepting the raw token for future claim, cancel, reschedule, and message access.
+- `supabase/migrations/20260702175000_booking_overlap_constraint.sql` adds a database-level `end_at` field, trigger, and GiST exclusion constraint so overlapping active bookings are rejected even under concurrent requests.
 - `supabase/migrations/20260702180000_customer_booking_read_rpc.sql` adds token-gated customer-safe read RPCs so a guest can reopen their booking and messages without direct table access or staff-only app-fee/payment/SMS records.
 - `supabase/seed.sql` seeds the current service menu, business settings, and integration statuses for a fresh Supabase project.
 - `supabase/verification/live_smoke_checks.sql` gives Tim a no-cost SQL Editor preflight for schema/RPC/seed/payment-lock/SMS-placeholder checks after the migrations are applied.

@@ -65,6 +65,12 @@ The customer booking read migration in `supabase/migrations/20260702180000_custo
 - `get_customer_booking_messages` for the same access paths.
 - customer-safe JSON responses that avoid staff-only payment placeholders, app-fee ledger rows, SMS queue records, stored claim hashes, and raw auth user IDs.
 
+The booking overlap constraint migration in `supabase/migrations/20260702175000_booking_overlap_constraint.sql` adds:
+
+- `bookings.end_at`, generated from service duration and buffer by a database trigger.
+- a check that every booking ends after it starts.
+- a GiST exclusion constraint that rejects overlapping `requested` or `confirmed` bookings even if two requests arrive at the same time.
+
 `supabase/seed.sql` seeds the current service packages, launch settings, and integration status rows for a fresh project.
 
 ## Frontend Adapter Contract

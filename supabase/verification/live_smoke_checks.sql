@@ -117,6 +117,38 @@ begin
 end $$;
 
 do $$
+begin
+  if not exists (
+    select 1
+    from pg_attribute
+    where attrelid = 'public.bookings'::regclass
+      and attname = 'end_at'
+      and not attisdropped
+  ) then
+    raise exception 'bookings.end_at is missing';
+  end if;
+
+  if not exists (
+    select 1
+    from pg_trigger
+    where tgrelid = 'public.bookings'::regclass
+      and tgname = 'set_booking_end_at_before_write'
+      and not tgisinternal
+  ) then
+    raise exception 'booking end_at trigger is missing';
+  end if;
+
+  if not exists (
+    select 1
+    from pg_constraint
+    where conrelid = 'public.bookings'::regclass
+      and conname = 'bookings_no_active_overlap'
+  ) then
+    raise exception 'active booking overlap exclusion constraint is missing';
+  end if;
+end $$;
+
+do $$
 declare
   basic_price integer;
   app_fee jsonb;

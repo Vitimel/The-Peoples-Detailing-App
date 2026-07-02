@@ -17,8 +17,9 @@ Run these SQL files in order through Supabase SQL Editor or Supabase CLI:
 5. `supabase/migrations/20260702153000_developer_admin_rpc.sql`
 6. `supabase/migrations/20260702160000_auth_role_hardening.sql`
 7. `supabase/migrations/20260702170000_guest_claim_token_contract.sql`
-8. `supabase/migrations/20260702180000_customer_booking_read_rpc.sql`
-9. `supabase/seed.sql`
+8. `supabase/migrations/20260702175000_booking_overlap_constraint.sql`
+9. `supabase/migrations/20260702180000_customer_booking_read_rpc.sql`
+10. `supabase/seed.sql`
 
 ## First Developer Bootstrap
 

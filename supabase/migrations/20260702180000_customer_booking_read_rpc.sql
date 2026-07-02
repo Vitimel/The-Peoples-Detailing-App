@@ -32,6 +32,7 @@ begin
     'service_title', booking_row.service_title,
     'price_cents', booking_row.price_cents,
     'start_at', booking_row.start_at,
+    'end_at', booking_row.end_at,
     'address', booking_row.address,
     'lat', booking_row.lat,
     'lng', booking_row.lng,

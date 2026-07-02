@@ -37,6 +37,7 @@ describe('Supabase live verification docs', () => {
       'blocked full day',
       'blocked time slot',
       'overlapping active booking',
+      'bookings_no_active_overlap',
       'owner SMS placeholder',
       'provider = not_connected',
       'live_mode = false',
@@ -62,6 +63,7 @@ describe('Supabase live verification docs', () => {
     expect(smoke).toContain('public.create_guest_booking');
     expect(smoke).toContain('public.get_customer_booking');
     expect(smoke).toContain('public.get_customer_booking_messages');
+    expect(smoke).toContain('bookings_no_active_overlap');
     expect(smoke).toContain("smoke_booking_result->>'claim_token'");
     expect(smoke).toContain("provider = 'not_connected'");
     expect(smoke).toContain("status = 'would_send'");

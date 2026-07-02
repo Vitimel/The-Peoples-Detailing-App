@@ -235,6 +235,7 @@ const main = async () => {
     claim_token_hash_input: claimToken,
   });
   if (guestBookingRead.data?.id !== bookingId) fail("guest token booking read", "Guest token did not return the expected booking");
+  if (!guestBookingRead.data?.end_at) fail("guest token booking read", "Safe customer booking read did not include end_at");
   if ("claim_token_hash" in guestBookingRead.data) fail("guest token booking read", "Safe customer booking read exposed claim_token_hash");
   if ("claimed_by_user_id" in guestBookingRead.data) fail("guest token booking read", "Safe customer booking read exposed auth user id");
   log("pass", "guest token can read safe booking details");
@@ -259,6 +260,7 @@ const main = async () => {
   if (ownerBooking.status !== "confirmed" || ownerBooking.owner_ack_status !== "needs_ack") {
     fail("normal booking state", `Expected confirmed/needs_ack, got ${ownerBooking.status}/${ownerBooking.owner_ack_status}`);
   }
+  if (!ownerBooking.end_at) fail("booking end_at", "Created booking did not have database-computed end_at");
   if (!ownerBooking.claim_token_hash) fail("claim token hash", "Created booking did not store claim_token_hash");
   if (ownerBooking.claim_token_hash === claimToken) fail("claim token storage", "Raw claim token was stored instead of a hash");
   log("pass", "owner reads created booking with hashed claim token");

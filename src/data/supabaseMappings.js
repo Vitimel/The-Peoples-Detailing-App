@@ -122,6 +122,7 @@ export const mapSupabaseBookingRow = row => ({
   serviceTitle: row?.service_title,
   priceCents: numberOrNull(row?.price_cents) ?? 0,
   startIso: row?.start_at,
+  endIso: row?.end_at || null,
   address: row?.address || "",
   lat: numberOrNull(row?.lat),
   lng: numberOrNull(row?.lng),

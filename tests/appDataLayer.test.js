@@ -17,6 +17,7 @@ describe('app data layer readiness', () => {
     const status = getIntegrationStatus();
     expect(status.dataAdapter.supabase).toBe('repo_ready_disabled');
     expect(status.dataAdapter.bookingRpc).toBe('repo_ready_not_applied');
+    expect(status.dataAdapter.bookingOverlapConstraint).toBe('repo_ready_not_applied');
     expect(status.dataAdapter.ownerOperationRpcs).toBe('repo_ready_not_applied');
     expect(status.dataAdapter.customerLifecycleRpcs).toBe('repo_ready_not_applied');
     expect(status.dataAdapter.customerReadRpcs).toBe('repo_ready_not_applied');
@@ -148,7 +149,7 @@ describe('app data layer readiness', () => {
         : url.includes('/rpc/get_customer_booking_messages')
           ? [{ id: 'msg-2', booking_id: 'booking-1', body: 'Guest read', audience: 'customer', direction: 'outbound' }]
         : url.includes('/rpc/get_customer_booking')
-          ? { id: 'booking-1', service_id: 'basic', service_title: 'Basic Detail', price_cents: 15000, start_at: '2026-07-05T14:00:00.000Z', status: 'confirmed', guest_name: 'Tim' }
+          ? { id: 'booking-1', service_id: 'basic', service_title: 'Basic Detail', price_cents: 15000, start_at: '2026-07-05T14:00:00.000Z', end_at: '2026-07-05T17:30:00.000Z', status: 'confirmed', guest_name: 'Tim' }
         : 'ok-id';
       return {
         ok: true,
@@ -163,7 +164,7 @@ describe('app data layer readiness', () => {
     });
 
     await expect(adapter.loadBookingMessages('booking 1')).resolves.toMatchObject([{ id: 'msg-1', bookingId: 'booking-1', body: 'Hello' }]);
-    await expect(adapter.loadCustomerBooking({ bookingId: 'booking-1', claimToken: 'claim-token' })).resolves.toMatchObject({ id: 'booking-1', serviceId: 'basic', guestName: 'Tim' });
+    await expect(adapter.loadCustomerBooking({ bookingId: 'booking-1', claimToken: 'claim-token' })).resolves.toMatchObject({ id: 'booking-1', serviceId: 'basic', endIso: '2026-07-05T17:30:00.000Z', guestName: 'Tim' });
     await expect(adapter.loadCustomerBookingMessages({ bookingId: 'booking-1', claimToken: 'claim-token' })).resolves.toMatchObject([{ id: 'msg-2', bookingId: 'booking-1', body: 'Guest read' }]);
     await adapter.cancelBooking({ bookingId: 'booking-1', claimToken: 'claim-token', reason: 'Schedule changed' });
     await adapter.rescheduleBooking({ bookingId: 'booking-1', newStartAt: '2026-07-07T15:00:00.000Z', timeLabel: '10:00 AM', claimToken: 'claim-token' });

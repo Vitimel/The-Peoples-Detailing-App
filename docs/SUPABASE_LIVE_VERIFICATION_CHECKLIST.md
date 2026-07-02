@@ -83,6 +83,7 @@ Never put the service-role key in GitHub Pages, `.env`, or frontend code.
 - A blocked full day rejects booking.
 - A blocked time slot rejects booking.
 - An overlapping active booking rejects booking.
+- The database has `bookings_no_active_overlap`, so overlapping active bookings are rejected even under concurrent requests.
 - A time outside working hours rejects booking.
 
 ## Customer Account Checks
