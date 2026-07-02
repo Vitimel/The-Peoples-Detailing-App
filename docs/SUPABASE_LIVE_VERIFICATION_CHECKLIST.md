@@ -80,8 +80,10 @@ Before wiring the real login UI, verify the Auth REST adapter can sign up/sign i
 - The booking row stores `claim_token_hash`, not the raw `claim_token`.
 - The raw `claim_token` can read the booking through `get_customer_booking`.
 - The raw `claim_token` can read in-app messages through `get_customer_booking_messages`.
+- The raw `claim_token` can read safe booking history through `get_booking_timeline`.
 - Booking message reads use `get_customer_booking_messages`; the frontend does not need direct `messages` table reads.
 - Customer-safe read RPCs do not return `claim_token_hash`, raw auth user IDs, app-fee ledger rows, payment placeholders, or SMS queue rows.
+- Booking timeline reads do not return `created_by`, raw auth user IDs, app-fee ledger rows, payment placeholders, SMS queue rows, or claim-token fields.
 - A normal future booking becomes `confirmed` and `owner_ack_status = needs_ack`.
 - A short-notice booking inside `minimum_booking_notice_hours` becomes `requested` and `owner_ack_status = approval_needed`.
 - A booking creates exactly one owner SMS placeholder with `provider = not_connected`, `status = would_send`, and `cost_status = estimated_not_billed`.
@@ -100,6 +102,7 @@ Before wiring the real login UI, verify the Auth REST adapter can sign up/sign i
 - Customer A can claim a guest booking only with the matching raw claim token.
 - Customer A can read/manage only claimed Customer A bookings.
 - Customer A can list claimed bookings through `get_customer_bookings` without stored claim hashes, raw auth user IDs, app-fee ledger rows, payment placeholder internals, or SMS queue rows.
+- Customer A can read claimed booking history through `get_booking_timeline`.
 - Customer A can load their profile through `get_my_customer_profile`, including saved vehicles from claimed guest bookings.
 - Customer A can update their name, phone, and notification preference through `upsert_my_customer_profile`.
 - Customer A can add/update/delete their own saved vehicles through `upsert_my_vehicle` and `delete_my_vehicle`.
@@ -117,6 +120,7 @@ Before wiring the real login UI, verify the Auth REST adapter can sign up/sign i
 
 - Dane owner can see jobs, availability blocks, owner acknowledgments, messages, and operational status events.
 - Dane owner can load the operational job queue through `owner_list_jobs`.
+- Dane owner can load safe booking timeline history through `get_booking_timeline`.
 - `owner_list_jobs` includes job status, customer contact, message count, and owner SMS placeholder status without returning app-fee ledger rows or payment placeholder internals.
 - Dane owner can load the notification inbox through `owner_list_notifications`.
 - `owner_list_notifications` includes SMS placeholder status, cost estimate, cost status, body preview, action-required flag, and safe booking context without returning app-fee ledger rows or payment placeholder internals.

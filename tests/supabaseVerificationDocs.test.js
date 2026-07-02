@@ -31,6 +31,7 @@ describe('Supabase live verification docs', () => {
       'create_guest_booking',
       'get_customer_booking',
       'get_customer_booking_messages',
+      'get_booking_timeline',
       'get_customer_bookings',
       'get_my_customer_profile',
       'upsert_my_customer_profile',
@@ -74,6 +75,7 @@ describe('Supabase live verification docs', () => {
     expect(smoke).toContain('public.create_guest_booking');
     expect(smoke).toContain('public.get_customer_booking');
     expect(smoke).toContain('public.get_customer_booking_messages');
+    expect(smoke).toContain('public.get_booking_timeline');
     expect(smoke).toContain('get_customer_bookings');
     expect(smoke).toContain('get_my_customer_profile');
     expect(smoke).toContain('upsert_my_customer_profile');
@@ -107,6 +109,7 @@ describe('Supabase live verification docs', () => {
     expect(runner).toContain('claim_guest_booking');
     expect(runner).toContain('get_customer_booking');
     expect(runner).toContain('get_customer_booking_messages');
+    expect(runner).toContain('get_booking_timeline');
     expect(runner).toContain('get_customer_bookings');
     expect(runner).toContain('get_my_customer_profile');
     expect(runner).toContain('upsert_my_customer_profile');

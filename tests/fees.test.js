@@ -273,6 +273,23 @@ describe('checkout fee logic', () => {
     expect(migration).not.toContain('sms_notifications');
   });
 
+  it('lets booking parties read a safe status timeline without backend internals', () => {
+    const migration = readFileSync('supabase/migrations/20260702201000_booking_timeline_read_rpc.sql', 'utf8');
+    expect(migration).toContain('create or replace function public.get_booking_timeline');
+    expect(migration).toContain('perform public.assert_booking_access(booking_id_input, claim_token_hash_input)');
+    expect(migration).toContain('from public.status_events e');
+    expect(migration).toContain("'event_type', e.event_type");
+    expect(migration).toContain("'display_group'");
+    expect(migration).toContain('order by e.created_at asc');
+    expect(migration).toContain('grant execute on function public.get_booking_timeline(uuid, text) to anon, authenticated');
+    expect(migration).not.toContain("'created_by'");
+    expect(migration).not.toContain("'claim_token_hash'");
+    expect(migration).not.toContain('app_fee_ledger_entries');
+    expect(migration).not.toContain('payment_placeholders');
+    expect(migration).not.toContain('sms_notifications');
+    expect(migration).not.toMatch(/stripe\.com|twilio|telnyx|service-role/i);
+  });
+
   it('lets signed-in customers list claimed bookings without private backend fields', () => {
     const migration = readFileSync('supabase/migrations/20260702192000_customer_booking_list_rpc.sql', 'utf8');
     expect(migration).toContain('create or replace function public.get_customer_bookings');

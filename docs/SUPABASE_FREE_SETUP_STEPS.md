@@ -27,7 +27,8 @@ Run these SQL files in order through Supabase SQL Editor or Supabase CLI:
 15. `supabase/migrations/20260702194000_customer_profile_vehicle_rpc.sql`
 16. `supabase/migrations/20260702195000_owner_reports_read_rpc.sql`
 17. `supabase/migrations/20260702200000_owner_closeout_rpc.sql`
-18. `supabase/seed.sql`
+18. `supabase/migrations/20260702201000_booking_timeline_read_rpc.sql`
+19. `supabase/seed.sql`
 
 ## First Developer Bootstrap
 
@@ -82,6 +83,7 @@ Before storing real customer data:
 - Confirm owner/developer roles can add/remove availability blocks.
 - Confirm non-owner customers cannot call owner operation RPCs.
 - Confirm claimed customers or guest claim-token users can cancel eligible active bookings.
+- Confirm claimed customers or guest claim-token users can read safe booking history through `get_booking_timeline`.
 - Confirm customer reschedules enforce cutoff, blocked times, and overlap rules.
 - Confirm short-notice requests cannot be self-rescheduled online by the customer.
 - Confirm booking messages create in-app records and owner SMS placeholders without sending live SMS.

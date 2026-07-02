@@ -74,6 +74,7 @@ begin
       ('developer_assign_app_role'),
       ('get_customer_booking'),
       ('get_customer_booking_messages'),
+      ('get_booking_timeline'),
       ('get_customer_bookings'),
       ('get_my_customer_profile'),
       ('upsert_my_customer_profile'),
@@ -221,6 +222,14 @@ begin
 
   if jsonb_typeof(public.get_customer_booking_messages(smoke_booking_id, smoke_booking_result->>'claim_token')) <> 'array' then
     raise exception 'guest claim token could not read safe customer messages array';
+  end if;
+
+  if jsonb_typeof(public.get_booking_timeline(smoke_booking_id, smoke_booking_result->>'claim_token')) <> 'array' then
+    raise exception 'guest claim token could not read safe booking timeline array';
+  end if;
+
+  if public.get_booking_timeline(smoke_booking_id, smoke_booking_result->>'claim_token')::text ~ 'created_by|claim_token_hash|app_fee_ledger_entries|payment_placeholders|sms_notifications' then
+    raise exception 'booking timeline exposed private backend fields';
   end if;
 
   if not exists (

@@ -1,5 +1,6 @@
 import {
   buildSupabaseAvailabilityBlockPayload,
+  buildSupabaseBookingTimelinePayload,
   buildSupabaseCancelPayload,
   buildSupabaseCustomerBookingReadPayload,
   buildSupabaseCustomerProfilePayload,
@@ -25,6 +26,7 @@ import {
   mapSupabaseOwnerNotificationRow,
   mapSupabaseOwnerReportSnapshot,
   mapSupabaseServiceRow,
+  mapSupabaseTimelineEventRow,
 } from "./supabaseMappings.js";
 
 export const DATA_ADAPTER_IDS = {
@@ -123,6 +125,10 @@ export const createSupabaseRestAdapter = ({
       method: "POST",
       body: JSON.stringify(buildSupabaseCustomerBookingReadPayload(input)),
     }).then(rows => (Array.isArray(rows) ? rows : []).map(mapSupabaseMessageRow)),
+    loadBookingTimeline: input => requestJson("/rest/v1/rpc/get_booking_timeline", {
+      method: "POST",
+      body: JSON.stringify(buildSupabaseBookingTimelinePayload(input)),
+    }).then(rows => (Array.isArray(rows) ? rows : []).map(mapSupabaseTimelineEventRow)),
     loadOwnerJobs: input => requestJson("/rest/v1/rpc/owner_list_jobs", {
       method: "POST",
       body: JSON.stringify(buildSupabaseOwnerJobsPayload(input)),
@@ -360,6 +366,7 @@ export const getIntegrationStatus = () => {
       customerLifecycleRpcs: "repo_ready_not_applied",
       customerReadRpcs: "repo_ready_not_applied",
       customerHistoryReadRpcs: "repo_ready_not_applied",
+      bookingTimelineReadRpcs: "repo_ready_not_applied",
       customerProfileVehicleRpcs: "repo_ready_not_applied",
       messageReadRpcs: "repo_ready_not_applied",
       publicAvailabilityReadRpcs: "repo_ready_not_applied",

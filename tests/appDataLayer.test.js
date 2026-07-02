@@ -28,6 +28,7 @@ describe('app data layer readiness', () => {
     expect(status.dataAdapter.customerLifecycleRpcs).toBe('repo_ready_not_applied');
     expect(status.dataAdapter.customerReadRpcs).toBe('repo_ready_not_applied');
     expect(status.dataAdapter.customerHistoryReadRpcs).toBe('repo_ready_not_applied');
+    expect(status.dataAdapter.bookingTimelineReadRpcs).toBe('repo_ready_not_applied');
     expect(status.dataAdapter.customerProfileVehicleRpcs).toBe('repo_ready_not_applied');
     expect(status.dataAdapter.messageReadRpcs).toBe('repo_ready_not_applied');
     expect(status.dataAdapter.publicAvailabilityReadRpcs).toBe('repo_ready_not_applied');
@@ -433,6 +434,8 @@ describe('app data layer readiness', () => {
     const fetchImpl = vi.fn(async url => {
       const payload = url.includes('/rpc/get_customer_booking_messages')
         ? [{ id: 'msg-2', booking_id: 'booking-1', body: 'Guest read', audience: 'customer', direction: 'outbound' }]
+        : url.includes('/rpc/get_booking_timeline')
+          ? [{ id: 'event-1', booking_id: 'booking-1', event_type: 'booking_confirmed', status: 'confirmed', display_group: 'booking', created_at: '2026-07-02T15:00:00.000Z' }]
         : url.includes('/rpc/get_customer_booking')
           ? { id: 'booking-1', service_id: 'basic', service_title: 'Basic Detail', price_cents: 15000, start_at: '2026-07-05T14:00:00.000Z', end_at: '2026-07-05T17:30:00.000Z', status: 'confirmed', guest_name: 'Tim' }
         : 'ok-id';
@@ -451,6 +454,14 @@ describe('app data layer readiness', () => {
     await expect(adapter.loadBookingMessages({ bookingId: 'booking-1', claimToken: 'claim-token' })).resolves.toMatchObject([{ id: 'msg-2', bookingId: 'booking-1', body: 'Guest read' }]);
     await expect(adapter.loadCustomerBooking({ bookingId: 'booking-1', claimToken: 'claim-token' })).resolves.toMatchObject({ id: 'booking-1', serviceId: 'basic', endIso: '2026-07-05T17:30:00.000Z', guestName: 'Tim' });
     await expect(adapter.loadCustomerBookingMessages({ bookingId: 'booking-1', claimToken: 'claim-token' })).resolves.toMatchObject([{ id: 'msg-2', bookingId: 'booking-1', body: 'Guest read' }]);
+    await expect(adapter.loadBookingTimeline({ bookingId: 'booking-1', claimToken: 'claim-token' })).resolves.toEqual([{
+      id: 'event-1',
+      bookingId: 'booking-1',
+      eventType: 'booking_confirmed',
+      status: 'confirmed',
+      displayGroup: 'booking',
+      createdAt: '2026-07-02T15:00:00.000Z',
+    }]);
     await adapter.cancelBooking({ bookingId: 'booking-1', claimToken: 'claim-token', reason: 'Schedule changed' });
     await adapter.rescheduleBooking({ bookingId: 'booking-1', newStartAt: '2026-07-07T15:00:00.000Z', timeLabel: '10:00 AM', claimToken: 'claim-token' });
     await adapter.createBookingMessage({ bookingId: 'booking-1', body: 'Can I move this?', claimToken: 'claim-token' });
@@ -459,6 +470,7 @@ describe('app data layer readiness', () => {
       'https://example.supabase.co/rest/v1/rpc/get_customer_booking_messages',
       'https://example.supabase.co/rest/v1/rpc/get_customer_booking',
       'https://example.supabase.co/rest/v1/rpc/get_customer_booking_messages',
+      'https://example.supabase.co/rest/v1/rpc/get_booking_timeline',
       'https://example.supabase.co/rest/v1/rpc/customer_cancel_booking',
       'https://example.supabase.co/rest/v1/rpc/reschedule_booking',
       'https://example.supabase.co/rest/v1/rpc/create_booking_message',
@@ -478,15 +490,19 @@ describe('app data layer readiness', () => {
     expect(JSON.parse(fetchImpl.mock.calls[3][1].body)).toEqual({
       booking_id_input: 'booking-1',
       claim_token_hash_input: 'claim-token',
+    });
+    expect(JSON.parse(fetchImpl.mock.calls[4][1].body)).toEqual({
+      booking_id_input: 'booking-1',
+      claim_token_hash_input: 'claim-token',
       reason_input: 'Schedule changed',
     });
-    expect(JSON.parse(fetchImpl.mock.calls[4][1].body)).toMatchObject({
+    expect(JSON.parse(fetchImpl.mock.calls[5][1].body)).toMatchObject({
       booking_id_input: 'booking-1',
       new_start_at_input: '2026-07-07T15:00:00.000Z',
       time_label_input: '10:00 AM',
       claim_token_hash_input: 'claim-token',
     });
-    expect(JSON.parse(fetchImpl.mock.calls[5][1].body)).toEqual({
+    expect(JSON.parse(fetchImpl.mock.calls[6][1].body)).toEqual({
       booking_id_input: 'booking-1',
       body_input: 'Can I move this?',
       claim_token_hash_input: 'claim-token',

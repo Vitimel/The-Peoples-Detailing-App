@@ -284,6 +284,20 @@ const main = async () => {
   if (!Array.isArray(guestMessageRead.data)) fail("guest token message read", "Expected message array for guest token");
   log("pass", "guest token can read safe message list");
 
+  const guestTimelineRead = await rpc("get_booking_timeline", {
+    booking_id_input: bookingId,
+    claim_token_hash_input: claimToken,
+  });
+  if (!Array.isArray(guestTimelineRead.data)) fail("guest token timeline read", "Expected timeline array for guest token");
+  if (!guestTimelineRead.data.some(event => event.booking_id === bookingId && event.event_type === "booking_confirmed")) {
+    fail("guest token timeline read", "Timeline did not include the booking creation/confirmation event");
+  }
+  const guestTimelineText = JSON.stringify(guestTimelineRead.data);
+  for (const forbidden of ["created_by", "claim_token_hash", "payment_placeholders", "sms_notifications", "app_fee_ledger_entries"]) {
+    if (guestTimelineText.includes(forbidden)) fail("guest token timeline read", `Timeline exposed ${forbidden}`);
+  }
+  log("pass", "guest token can read safe booking timeline");
+
   const publicAvailability = await rpc("get_public_availability", {
     from_date_input: centralDate(55),
     to_date_input: centralDate(65),
@@ -349,6 +363,15 @@ const main = async () => {
     fail("owner closeout", "Owner closeout did not close the job with expected cash collection");
   }
   log("pass", "owner can close out booking without live payment provider");
+
+  const ownerTimelineRead = await rpc("get_booking_timeline", {
+    booking_id_input: bookingId,
+    claim_token_hash_input: null,
+  }, owner.token);
+  if (!Array.isArray(ownerTimelineRead.data) || !ownerTimelineRead.data.some(event => event.event_type === "owner_closed_out_booking")) {
+    fail("owner timeline read", "Owner timeline did not include closeout event");
+  }
+  log("pass", "owner can read safe booking timeline with closeout history");
 
   await rpc("claim_guest_booking", {
     booking_id_input: bookingId,

@@ -120,6 +120,12 @@ The owner closeout migration in `supabase/migrations/20260702200000_owner_closeo
 - owner adjustment, adjusted job total, cash collected, remaining balance due, refund-needed amount, closeout note, completed job status, and audit status event.
 - no live payment capture, Stripe refund, payout routing, SMS send, or paid-provider action.
 
+The booking timeline read migration in `supabase/migrations/20260702201000_booking_timeline_read_rpc.sql` adds:
+
+- `get_booking_timeline` for owners, claimed customers, or guests with the raw claim token.
+- safe status-event history ordered oldest to newest.
+- no `created_by`, stored claim-token data, app-fee ledger rows, payment placeholder internals, SMS queue rows, or provider secrets.
+
 `supabase/seed.sql` seeds the current service packages, launch settings, and integration status rows for a fresh project.
 
 ## Frontend Adapter Contract
@@ -139,6 +145,7 @@ The adapter sends the public anon key for guest/public calls and can send a sign
 - public availability reads use `get_public_availability` so the customer UI can see unavailable slots without raw booking or owner-note access.
 - booking message reads use `get_customer_booking_messages` so owners, claimed customers, and guests with a claim token do not need raw `messages` table access.
 - message rows become in-app message records with booking, audience, direction, body, and timestamp.
+- booking timeline reads use `get_booking_timeline` so owners, claimed customers, and guests with a claim token can see safe status history without raw `status_events` table access.
 - app booking drafts become the safe `create_guest_booking(payload jsonb)` RPC payload.
 - owner actions call the future `owner_*` RPCs rather than writing raw table rows directly.
 - owner job dashboards can call `owner_list_jobs` instead of stitching raw tables together in the frontend.

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildSupabaseAvailabilityBlockPayload,
+  buildSupabaseBookingTimelinePayload,
   buildSupabaseBusinessSettingPayload,
   buildSupabaseCancelPayload,
   buildSupabaseCustomerBookingReadPayload,
@@ -26,6 +27,7 @@ import {
   mapSupabaseOwnerNotificationRow,
   mapSupabaseOwnerReportSnapshot,
   mapSupabaseServiceRow,
+  mapSupabaseTimelineEventRow,
   mapSupabaseVehicleRow,
 } from '../src/data/supabaseMappings.js';
 
@@ -292,6 +294,30 @@ describe('Supabase mapping helpers', () => {
     });
 
     expect(buildSupabaseCustomerBookingReadPayload({
+      bookingId: 'booking-1',
+      claimToken: 'claim-token',
+    })).toEqual({
+      booking_id_input: 'booking-1',
+      claim_token_hash_input: 'claim-token',
+    });
+
+    expect(mapSupabaseTimelineEventRow({
+      id: 'event-1',
+      booking_id: 'booking-1',
+      event_type: 'owner_message_sent',
+      status: 'message_created',
+      display_group: 'owner',
+      created_at: '2026-07-02T15:00:00.000Z',
+    })).toEqual({
+      id: 'event-1',
+      bookingId: 'booking-1',
+      eventType: 'owner_message_sent',
+      status: 'message_created',
+      displayGroup: 'owner',
+      createdAt: '2026-07-02T15:00:00.000Z',
+    });
+
+    expect(buildSupabaseBookingTimelinePayload({
       bookingId: 'booking-1',
       claimToken: 'claim-token',
     })).toEqual({

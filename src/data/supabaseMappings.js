@@ -232,6 +232,15 @@ export const mapSupabaseMessageRow = row => ({
   createdAt: row?.created_at || null,
 });
 
+export const mapSupabaseTimelineEventRow = row => ({
+  id: row?.id,
+  bookingId: row?.booking_id || null,
+  eventType: row?.event_type || "",
+  status: row?.status || "",
+  displayGroup: row?.display_group || "system",
+  createdAt: row?.created_at || null,
+});
+
 export const mapSupabaseOwnerNotificationRow = row => ({
   id: row?.id,
   bookingId: row?.booking_id || row?.booking?.id || null,
@@ -322,6 +331,11 @@ export const buildSupabaseCancelPayload = input => ({
 });
 
 export const buildSupabaseCustomerBookingReadPayload = input => ({
+  booking_id_input: input?.booking_id || input?.bookingId || input,
+  claim_token_hash_input: input?.claim_token || input?.claimToken || input?.claim_token_hash || input?.claimTokenHash || null,
+});
+
+export const buildSupabaseBookingTimelinePayload = input => ({
   booking_id_input: input?.booking_id || input?.bookingId || input,
   claim_token_hash_input: input?.claim_token || input?.claimToken || input?.claim_token_hash || input?.claimTokenHash || null,
 });
