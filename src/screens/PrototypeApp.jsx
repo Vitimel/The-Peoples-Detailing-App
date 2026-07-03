@@ -1111,6 +1111,17 @@ const BookForm = (p) => {
     const hour = parseSlotLabel(label).h;
     return hour >= (p.settings.workingHoursStart ?? 8) && hour < (p.settings.workingHoursEnd ?? 18);
   });
+  const selectedTimeLabel = isoToTime(time.toISOString());
+  const selectedSlotInfo = availableSlotInfo({
+    date: time,
+    label: selectedTimeLabel,
+    bookings: p.bookings,
+    services: p.services,
+    service: svc,
+    settings: p.settings,
+    activeBookingId: p.draft?.rescheduleBookingId,
+    enforceMinimumNotice,
+  });
 
   // Build availability map from existing bookings (same source as the calendar overlay)
   const busyMap = useMemo(() => {
@@ -1263,7 +1274,7 @@ const BookForm = (p) => {
 
         <div className="mt-5">
           <div className="text-xs uppercase tracking-wider text-[#9FB3C8] mb-2">Select Time</div>
-          {enforceMinimumNotice && (
+          {selectedSlotInfo.available && selectedSlotInfo.shortNotice && (
             <div className="text-[11px] text-[#fed7aa] mb-2">
               Short-notice times need Dane's approval and can't be rescheduled online. If this time might change, pick a later spot.
             </div>

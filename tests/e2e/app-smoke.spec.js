@@ -570,6 +570,16 @@ test('owner can block a time slot from customer booking', async ({ page }) => {
   await expect(page.getByRole('button', { name: /8:00 AM.*Blocked time/i })).toBeVisible();
 });
 
+test('normal notice-window dates do not show short-notice approval copy', async ({ page }) => {
+  await resetAndEnterHome(page);
+  await page.getByRole('button', { name: /Basic Detail/i }).click();
+  await page.getByRole('button', { name: /Book Basic Detail/i }).click();
+  await chooseGuestAccess(page);
+  await expect(page.getByRole('button', { name: /^10:00 AM$/i })).toBeEnabled();
+  await expect(page.getByText(/Short-notice times need Dane's approval/i)).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /Needs approval/i })).toHaveCount(0);
+});
+
 test('minimum booking notice turns near-term open slots into approval requests', async ({ page }) => {
   await page.goto('/?demo=1');
   await page.getByRole('button', { name: /reset demo/i }).click();
