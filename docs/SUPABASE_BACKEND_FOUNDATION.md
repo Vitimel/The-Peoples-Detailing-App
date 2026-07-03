@@ -146,6 +146,12 @@ The checkout quote migration in `supabase/migrations/20260702204000_checkout_quo
 - server-side service price, travel fee, discount, deposit/full/pay-later choice, card-processing fee, due-today total, balance due, and no-real-payment status.
 - no returned hidden BrandNew app-fee amount, payment placeholder internals, app-fee ledger rows, SMS queue rows, or live payment provider calls.
 
+The booking quote alignment migration in `supabase/migrations/20260702205000_booking_quote_alignment_rpc.sql` adds:
+
+- quote-intent fields on `payment_placeholders` for payment choice, quoted job total, quoted card-processing fee path, due-today amount, and balance due.
+- a replacement `create_guest_booking` that calls `get_checkout_quote` before writing booking/payment rows.
+- no-real-money protection: `payment_placeholders.amount_cents` stays `0`, `live_mode` stays `false`, and `no_real_payment_collected` stays `true` until Stripe is separately approved.
+
 `supabase/seed.sql` seeds the current service packages, launch settings, and integration status rows for a fresh project.
 
 ## Frontend Adapter Contract

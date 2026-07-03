@@ -31,6 +31,7 @@
 - `supabase/migrations/20260702202000_guest_claim_audit_rpc.sql` hardens the guest-to-profile claim flow so saving a guest booking attaches prior messages, preserves profile/vehicle data, sets a default vehicle when appropriate, and writes a `guest_booking_claimed` timeline event.
 - `supabase/migrations/20260702203000_developer_launch_readiness_rpc.sql` adds a developer-only launch readiness snapshot that checks required tables/RPCs/RLS flags, confirms live Stripe/SMS are locked, and lists the no-cost gates that must pass before customer data.
 - `supabase/migrations/20260702204000_checkout_quote_rpc.sql` adds a customer-safe checkout quote RPC for server-side service/travel/discount/deposit/card-fee totals without exposing the hidden BrandNew app-fee amount or collecting real money.
+- `supabase/migrations/20260702205000_booking_quote_alignment_rpc.sql` aligns booking creation with the checkout quote by storing future-payment quote intent on the payment placeholder while keeping actual collected online amount at `$0`, `live_mode = false`, and `no_real_payment_collected = true`.
 - `supabase/seed.sql` seeds the current service menu, business settings, and integration statuses for a fresh Supabase project.
 - `supabase/verification/live_smoke_checks.sql` gives Tim a no-cost SQL Editor preflight for schema/RPC/seed/payment-lock/SMS-placeholder checks after the migrations are applied.
 - `docs/SUPABASE_LIVE_VERIFICATION_CHECKLIST.md` records the API and RLS checks that must pass before `VITE_USE_SUPABASE=true` or real customer data.

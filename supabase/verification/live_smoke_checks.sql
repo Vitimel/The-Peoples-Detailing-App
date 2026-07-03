@@ -225,6 +225,7 @@ declare
   owner_sms_count integer;
   app_fee_visible boolean;
   payment_live boolean;
+  payment_row public.payment_placeholders%rowtype;
 begin
   smoke_booking_result := public.create_guest_booking(jsonb_build_object(
     'service_id', 'basic',
@@ -307,12 +308,29 @@ begin
     raise exception 'Hidden app-fee ledger entry became customer-visible';
   end if;
 
-  select live_mode into payment_live
+  select * into payment_row
   from public.payment_placeholders
   where booking_id = smoke_booking_id;
+  payment_live := payment_row.live_mode;
 
   if payment_live is distinct from false then
     raise exception 'Payment placeholder unexpectedly marked live';
+  end if;
+
+  if payment_row.amount_cents is distinct from 0 then
+    raise exception 'Payment placeholder claimed real online money was collected';
+  end if;
+
+  if payment_row.no_real_payment_collected is distinct from true then
+    raise exception 'Payment placeholder did not preserve no-real-payment status';
+  end if;
+
+  if payment_row.payment_choice is distinct from 'deposit_cash_balance'
+    or payment_row.quoted_due_today_cents <= 0
+    or payment_row.quoted_job_total_cents is distinct from 15000
+    or payment_row.balance_due_cents is distinct from 12500
+  then
+    raise exception 'Payment placeholder did not record the expected checkout quote intent';
   end if;
 end $$;
 

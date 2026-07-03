@@ -92,6 +92,7 @@ Before wiring the real login UI, verify the Auth REST adapter can sign up/sign i
 - A booking creates exactly one owner SMS placeholder with `provider = not_connected`, `status = would_send`, and `cost_status = estimated_not_billed`.
 - The owner notification feed `owner_list_notifications` returns that placeholder to owner/developer roles without app-fee ledger rows, payment placeholders, stored claim hashes, or raw provider sends.
 - A booking creates a payment placeholder with `live_mode = false` and `routing_status = ledger_only`.
+- The payment placeholder stores the checkout quote intent, but `amount_cents = 0` and `no_real_payment_collected = true` until Stripe is explicitly approved.
 - A booking creates a hidden app-fee ledger entry with `visible_to_customer = false`.
 - A blocked full day rejects booking.
 - A blocked time slot rejects booking.

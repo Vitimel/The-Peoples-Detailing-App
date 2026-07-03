@@ -375,6 +375,21 @@ const main = async () => {
   if (ownerBooking.claim_token_hash === claimToken) fail("claim token storage", "Raw claim token was stored instead of a hash");
   log("pass", "owner reads created booking with hashed claim token");
 
+  const ownerPayments = await select("payment_placeholders", `select=*&booking_id=eq.${bookingId}`, owner.token);
+  const ownerPayment = singleRow(ownerPayments.data, "owner reads payment placeholder");
+  if (ownerPayment.live_mode !== false || ownerPayment.amount_cents !== 0 || ownerPayment.no_real_payment_collected !== true) {
+    fail("payment placeholder state", "Payment placeholder did not preserve no-real-payment state");
+  }
+  if (
+    ownerPayment.payment_choice !== "deposit_cash_balance" ||
+    ownerPayment.quoted_due_today_cents <= 0 ||
+    ownerPayment.quoted_job_total_cents !== 15000 ||
+    ownerPayment.balance_due_cents !== 12500
+  ) {
+    fail("payment quote intent", "Payment placeholder did not store the expected future checkout quote values");
+  }
+  log("pass", "booking stores checkout quote intent without collecting money");
+
   const ownerJobQueue = await rpc("owner_list_jobs", {
     from_at_input: null,
     to_at_input: null,

@@ -160,6 +160,26 @@ describe('checkout fee logic', () => {
     expect(migration).not.toMatch(/stripe\.com|checkout\.sessions|payment_intents|twilio|telnyx|service-role/i);
   });
 
+  it('records booking quote intent without claiming real online money was collected', () => {
+    const migration = readFileSync('supabase/migrations/20260702205000_booking_quote_alignment_rpc.sql', 'utf8');
+    expect(migration).toContain('add column if not exists payment_choice text');
+    expect(migration).toContain('add column if not exists quoted_job_total_cents integer');
+    expect(migration).toContain('add column if not exists quoted_amount_before_card_fee_cents integer');
+    expect(migration).toContain('add column if not exists quoted_due_today_cents integer');
+    expect(migration).toContain('add column if not exists balance_due_cents integer');
+    expect(migration).toContain('add column if not exists no_real_payment_collected boolean');
+    expect(migration).toContain('quote := public.get_checkout_quote(payload)');
+    expect(migration).toContain("amount_cents,\n    deposit_cents");
+    expect(migration).toContain("new_booking_id, 'stripe', 'test_mode_ready_not_connected', app_fee_cents, 0");
+    expect(migration).toContain('quote_card_processing_fee_cents');
+    expect(migration).toContain('quote_due_today_cents');
+    expect(migration).toContain('quote_balance_due_cents');
+    expect(migration).toContain("'not_collected'");
+    expect(migration).toContain("'no_real_payment_collected', true");
+    expect(migration).toContain('grant execute on function public.create_guest_booking(jsonb) to anon, authenticated');
+    expect(migration).not.toMatch(/stripe\.com|checkout\.sessions|payment_intents|twilio|telnyx|service-role/i);
+  });
+
   it('keeps owner operations server-side and role-gated for the future backend', () => {
     const migration = readFileSync('supabase/migrations/20260702143000_owner_operations_rpc.sql', 'utf8');
     expect(migration).toContain('create or replace function public.assert_owner_or_developer');
