@@ -605,6 +605,18 @@ const main = async () => {
   await rpc("owner_remove_availability_block", { block_id_input: blockId }, owner.token);
   log("pass", "owner can remove blocked time slot");
 
+  await expectRejected("long service rejects slot that crosses working-hours end", () => rpc("create_guest_booking", {
+    payload: {
+      ...bookingPayload({
+        daysAhead: 70,
+        timeLabel: "4:00 PM",
+        name: `Premium late ${unique}`,
+        addressSuffix: unique,
+      }),
+      service_id: "premium",
+    },
+  }, undefined, { ok: false }));
+
   const shortNotice = await rpc("create_guest_booking", {
     payload: bookingPayload({
       daysAhead: 1,

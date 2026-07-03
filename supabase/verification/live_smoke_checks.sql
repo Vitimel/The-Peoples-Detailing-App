@@ -83,7 +83,9 @@ begin
       ('upsert_my_vehicle'),
       ('delete_my_vehicle'),
       ('current_app_role'),
-      ('is_owner_or_developer')
+      ('is_owner_or_developer'),
+      ('local_working_end_at'),
+      ('booking_fits_working_hours')
   ) as expected(function_name)
   where not exists (
     select 1
@@ -95,6 +97,23 @@ begin
 
   if missing_count > 0 then
     raise exception 'Missing % expected public functions/RPCs', missing_count;
+  end if;
+end $$;
+
+do $$
+begin
+  if public.booking_fits_working_hours(
+    'premium',
+    ('2035-06-04 16:00 America/Chicago')::timestamptz
+  ) is distinct from false then
+    raise exception 'Premium 4 PM incorrectly fits before working-hours end';
+  end if;
+
+  if public.booking_fits_working_hours(
+    'monthly',
+    ('2035-06-04 16:00 America/Chicago')::timestamptz
+  ) is distinct from true then
+    raise exception 'Monthly 4 PM should fit before working-hours end';
   end if;
 end $$;
 

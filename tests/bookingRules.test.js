@@ -13,6 +13,7 @@ import { SERVICES, SETTINGS } from '../src/data/prototypeState.js';
 
 const basic = SERVICES.find(service => service.id === 'basic');
 const deluxe = SERVICES.find(service => service.id === 'deluxe');
+const premium = SERVICES.find(service => service.id === 'premium');
 
 const at = (daysFromNow, hour) => {
   const d = new Date('2026-07-02T12:00:00-05:00');
@@ -81,6 +82,20 @@ describe('booking rules', () => {
     });
 
     expect(result).toEqual({ available: true, reason: 'Needs approval', shortNotice: true });
+  });
+
+  it('blocks long jobs that would end after the workday even when they cross midnight', () => {
+    const date = at(5, 16);
+    const result = availableSlotInfo({
+      date,
+      label: '4:00 PM',
+      bookings: [],
+      services: SERVICES,
+      service: premium,
+      settings: SETTINGS,
+    });
+
+    expect(result).toMatchObject({ available: false, reason: 'Needs more time' });
   });
 
   it('allows owner availability to expose the expected appointment slots', () => {

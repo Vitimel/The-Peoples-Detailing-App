@@ -87,12 +87,16 @@ export const availableSlotInfo = ({
   const startHour = slotStart.getHours() + slotStart.getMinutes() / 60;
   const durationMinutes = serviceDurationMinutes(service) + (s.bufferMinutes || 0);
   const slotEnd = new Date(slotStart.getTime() + durationMinutes * 60_000);
+  const workingEnd = new Date(slotStart);
+  const workingEndHour = Math.floor(s.workingHoursEnd);
+  const workingEndMinutes = Math.round((s.workingHoursEnd - workingEndHour) * 60);
+  workingEnd.setHours(workingEndHour, workingEndMinutes, 0, 0);
   const shortNotice = enforceMinimumNotice && slotStart.getTime() < nowMs + (s.minimumBookingNoticeHours || 0) * 60 * 60_000;
 
   if (s.blockedDates.includes(dateKey(slotStart))) return { available: false, reason: 'Blocked day' };
   if (s.blockedSlots.includes(slotKey(slotStart, label))) return { available: false, reason: 'Blocked time' };
   if (startHour < s.workingHoursStart || startHour >= s.workingHoursEnd) return { available: false, reason: 'Outside hours' };
-  if (slotEnd.getHours() + slotEnd.getMinutes() / 60 > s.workingHoursEnd) return { available: false, reason: 'Needs more time' };
+  if (slotEnd > workingEnd) return { available: false, reason: 'Needs more time' };
 
   const overlaps = bookings.some(b => {
     if (b.id === activeBookingId || b.status === 'cancelled' || b.status === 'declined') return false;

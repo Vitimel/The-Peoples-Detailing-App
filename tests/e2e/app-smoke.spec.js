@@ -120,6 +120,16 @@ test('basic detail can use 4 PM but deluxe still needs earlier time', async ({ p
   await expect(page.getByRole('button', { name: /4:00 PM.*Needs more time/i })).toBeVisible();
 });
 
+test('premium detail blocks every slot that cannot finish before closing', async ({ page }) => {
+  await resetAndEnterHome(page);
+  await page.getByRole('button', { name: /Premium Detail/i }).click();
+  await page.getByRole('button', { name: /Book Premium Detail/i }).click();
+  await chooseGuestAccess(page);
+  await expect(page.getByRole('button', { name: '12:00 PM Needs more time', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: '2:00 PM Needs more time', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: '4:00 PM Needs more time', exact: true })).toBeVisible();
+});
+
 test('date strip keeps the previous date visible after selecting the next day', async ({ page }) => {
   await resetAndEnterHome(page);
   await page.getByRole('button', { name: /Basic Detail/i }).click();

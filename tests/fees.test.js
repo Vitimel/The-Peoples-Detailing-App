@@ -180,6 +180,18 @@ describe('checkout fee logic', () => {
     expect(migration).not.toMatch(/stripe\.com|checkout\.sessions|payment_intents|twilio|telnyx|service-role/i);
   });
 
+  it('keeps long-service working-hours validation from wrapping after midnight', () => {
+    const migration = readFileSync('supabase/migrations/20260702210000_workday_end_wraparound_fix.sql', 'utf8');
+    expect(migration).toContain('create or replace function public.local_working_end_at');
+    expect(migration).toContain('create or replace function public.booking_fits_working_hours');
+    expect(migration).toContain('requested_end_local <= public.local_working_end_at(requested_start)');
+    expect(migration).toContain('create or replace function public.validate_booking_slot');
+    expect(migration).toContain('if not public.booking_fits_working_hours(service_id_input, requested_start) then');
+    expect(migration).toContain('if not public.booking_fits_working_hours(service_row.id, requested_start) then');
+    expect(migration).toContain('grant execute on function public.create_guest_booking(jsonb) to anon, authenticated');
+    expect(migration).not.toMatch(/stripe\.com|checkout\.sessions|payment_intents|twilio|telnyx|service-role/i);
+  });
+
   it('keeps owner operations server-side and role-gated for the future backend', () => {
     const migration = readFileSync('supabase/migrations/20260702143000_owner_operations_rpc.sql', 'utf8');
     expect(migration).toContain('create or replace function public.assert_owner_or_developer');

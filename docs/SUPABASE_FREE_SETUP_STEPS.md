@@ -32,7 +32,8 @@ Run these SQL files in order through Supabase SQL Editor or Supabase CLI:
 20. `supabase/migrations/20260702203000_developer_launch_readiness_rpc.sql`
 21. `supabase/migrations/20260702204000_checkout_quote_rpc.sql`
 22. `supabase/migrations/20260702205000_booking_quote_alignment_rpc.sql`
-23. `supabase/seed.sql`
+23. `supabase/migrations/20260702210000_workday_end_wraparound_fix.sql`
+24. `supabase/seed.sql`
 
 ## First Developer Bootstrap
 
@@ -81,6 +82,7 @@ Before storing real customer data:
 - Confirm public availability can be read through `get_public_availability` without exposing owner reasons or customer data.
 - Confirm checkout totals can be quoted through `get_checkout_quote` without exposing the hidden `$3.00` app fee.
 - Confirm booking creation stores checkout quote intent on the payment placeholder while keeping actual collected online amount at `$0`.
+- Confirm long services that would end after the workday, including after midnight, are rejected.
 - Confirm overlapping active bookings are rejected by the RPC.
 - Confirm short-notice bookings become `requested`.
 - Confirm owner/developer roles can acknowledge confirmed bookings.

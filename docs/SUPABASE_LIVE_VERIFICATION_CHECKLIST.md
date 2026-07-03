@@ -96,6 +96,7 @@ Before wiring the real login UI, verify the Auth REST adapter can sign up/sign i
 - A booking creates a hidden app-fee ledger entry with `visible_to_customer = false`.
 - A blocked full day rejects booking.
 - A blocked time slot rejects booking.
+- A long service that would end after Dane's workday rejects booking, even if the calculated end time crosses midnight.
 - An overlapping active booking rejects booking.
 - The database has `bookings_no_active_overlap`, so overlapping active bookings are rejected even under concurrent requests.
 - A time outside working hours rejects booking.
