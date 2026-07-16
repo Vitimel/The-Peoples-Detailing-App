@@ -17,6 +17,7 @@ This app should behave like a usable localStorage prototype of The Peoples Detai
 - No production Stripe, SMS, email, auth, backend, database, calendar, maps/routing, reverse geocoding, or automatic payout routing is connected.
 - No secret keys or private credentials belong in this GitHub repo or the GitHub Pages frontend.
 - New bookings also create local near-live records for future customers, messages, owner acknowledgments, status events, payment intent placeholders, app-fee ledger entries, and owner SMS notification queue entries.
+- Customer and owner booking messages now save as local in-app thread records. These are visible from the customer Messages tab and owner job detail, but they do not send real push notifications or SMS yet.
 - Guest booking records include future claim fields so Supabase Auth can later attach the booking to a customer profile.
 
 ## Customer Booking Rules

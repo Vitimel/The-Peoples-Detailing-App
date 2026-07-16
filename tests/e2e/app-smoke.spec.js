@@ -216,6 +216,26 @@ test('booking detail message icon opens messages', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Messages' })).toBeVisible();
 });
 
+test('customer in-app message is visible in owner job detail', async ({ page }) => {
+  await reachCheckout(page);
+  await page.getByRole('button', { name: /Book This Spot/i }).click();
+  await expect(page.getByRole('heading', { name: /You're Booked/i })).toBeVisible();
+  await page.getByRole('button', { name: /View Booking/i }).click();
+  await page.getByRole('button', { name: /Open booking messages/i }).click();
+  await page.getByLabel('Message to Dane').fill('Please use the side driveway.');
+  await page.getByRole('button', { name: 'Send Message' }).click();
+  await expect(page.getByText('Please use the side driveway.')).toBeVisible();
+
+  await page.getByRole('button', { name: /^Owner$/i }).click();
+  await page.locator('button.card').filter({ hasText: 'Jobs' }).click();
+  await page.locator('button.card').filter({ hasText: 'Deluxe Detail' }).first().click();
+  await expect(page.getByText('In-app thread')).toBeVisible();
+  await expect(page.getByText('Please use the side driveway.')).toBeVisible();
+  await page.getByLabel('Owner message to customer').fill('Got it. I will use the side driveway.');
+  await page.getByRole('button', { name: 'Save Owner Reply' }).click();
+  await expect(page.getByText('Got it. I will use the side driveway.')).toBeVisible();
+});
+
 test('service selection and booking flow reaches checkout with deposit rules', async ({ page }) => {
   await reachCheckout(page);
   await expect(page.getByText('Subtotal')).toBeVisible();

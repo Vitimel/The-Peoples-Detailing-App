@@ -73,7 +73,7 @@ Classification key:
 | Vehicles | Remove | works now | Remove vehicle unless only one remains | Works | None |
 | Vehicles | Decode | works now | Call NHTSA vPIC or fallback demo match | Works | None |
 | Vehicles | Save & Use/Update & Use | works now | Validate and save vehicle | Works | None |
-| Messages | Message cards | prototype info | Show local demo messages | Informational | Do not show reply box until it works |
+| Messages | Booking thread and Send Message | works now | Save local in-app customer notes for Dane and show owner replies | Local-only | Real push/SMS waits for backend provider |
 
 ## Owner
 

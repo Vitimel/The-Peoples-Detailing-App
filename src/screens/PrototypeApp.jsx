@@ -2,7 +2,13 @@ import React, { useEffect, useMemo, useState } from 'react';
 import LOGO_DATA_URI from '../assets/The_Peoples_Detailing_Primary_Crest_Logo.webp';
 import MASCOT_DATA_URI from '../assets/Booking_App_Hero_Concept_Mascot_Car_Logo.png';
 import { calculateCustomerCheckoutTotals } from '../utils/fees.js';
-import { createNearLiveRecordsForBooking, ensureProductionState, upsertById } from '../utils/nearLiveRecords.js';
+import {
+  DEFAULT_OWNER_SMS_COST_CENTS,
+  calculateOwnerSmsEstimateCents,
+  createNearLiveRecordsForBooking,
+  ensureProductionState,
+  upsertById,
+} from '../utils/nearLiveRecords.js';
 import { calculateTravelFeeCents, estimateMilesFromAddress, milesBetween, MURFREESBORO_BASE } from '../utils/travel.js';
 import { decodeVinSample, lookupVinDetails, normalizeVin } from '../utils/vin.js';
 import {
@@ -688,6 +694,52 @@ const App = () => {
     showToast(choice === "save_info" ? "Profile save is ready for future login setup" : "Saved as guest booking");
   };
 
+  const createBookingMessage = (bookingId, body, sender = "customer") => {
+    const cleanBody = String(body || "").trim();
+    if (!bookingId || cleanBody.length < 2) {
+      showToast("Write a short message first");
+      return false;
+    }
+    const now = Date.now();
+    const booking = bookings.find(b => b.id === bookingId);
+    const fromOwner = sender === "owner";
+    const message = {
+      id: `msg_${bookingId}_${now}`,
+      bookingId,
+      customerId: booking?.customerId || `customer_${bookingId}`,
+      channel: "in_app",
+      audience: fromOwner ? "customer" : "owner",
+      direction: fromOwner ? "owner_to_customer" : "customer_to_owner",
+      body: cleanBody,
+      createdAt: now,
+    };
+    setMessages(list => upsertById(list, message));
+    setStatusEvents(list => upsertById(list, {
+      id: `event_${bookingId}_message_${now}`,
+      bookingId,
+      type: fromOwner ? "owner_message_created" : "customer_message_created",
+      status: "message_created",
+      createdAt: now,
+    }));
+    if (!fromOwner) {
+      const smsCostCents = calculateOwnerSmsEstimateCents(1, settings.ownerSmsEstimateCents ?? DEFAULT_OWNER_SMS_COST_CENTS);
+      setSmsNotifications(list => upsertById(list, {
+        id: `sms_${bookingId}_customer_message_${now}`,
+        bookingId,
+        audience: "owner",
+        provider: "not_connected",
+        toRole: "owner",
+        status: "would_send",
+        costEstimateCents: smsCostCents,
+        costStatus: "estimated_not_billed",
+        bodyPreview: `Customer message about ${booking?.serviceTitle || "a booking"}: ${cleanBody.slice(0, 90)}`,
+        createdAt: now,
+      }));
+    }
+    showToast(fromOwner ? "In-app reply saved" : "Message saved for Dane");
+    return true;
+  };
+
   const props = {
     role, setRole,
     screen, setScreen,
@@ -703,7 +755,7 @@ const App = () => {
     setSmsNotifications, integrationStatus, setIntegrationStatus,
     confirmBooking, startBooking, beginReschedule, finishReschedule,
     confirmRequestedBooking, declineRequestedBooking, acknowledgeBooking, requestBookingReschedule,
-    setBookingProfileSaveChoice,
+    setBookingProfileSaveChoice, createBookingMessage,
     updateTracker, completeJob, closeOutJob, cancelBooking,
     resetApp, showToast, previewAsCustomer, exitCustomerPreview, previewReturnRole,
   };
@@ -787,7 +839,7 @@ const Screen = (p) => {
       case "bookingDetail": return <BookingDetail {...p} />;
       case "profile": return <CustomerProfile {...p} />;
       case "vehicles": return <VehicleManager {...p} />;
-      case "messages": return <CustomerMessages {...p} />;
+      case "messages": return <CustomerMessagesThread {...p} />;
       default: return <Home {...p} />;
     }
   } else {
@@ -2412,6 +2464,90 @@ const CustomerMessages = (p) => (
     </div>
 );
 
+const CustomerMessagesThread = (p) => {
+  const customerBookings = [...(p.bookings || [])]
+    .filter(b => !["cancelled", "declined"].includes(b.status))
+    .sort((a,b) => new Date(a.startIso) - new Date(b.startIso));
+  const initialBooking = customerBookings.find(b => b.id === p.activeBookingId) || customerBookings[0] || null;
+  const [selectedBookingId, setSelectedBookingId] = useState(initialBooking?.id || "");
+  const [body, setBody] = useState("");
+  const selectedBooking = customerBookings.find(b => b.id === selectedBookingId) || initialBooking;
+  const thread = (p.messages || [])
+    .filter(m => m.bookingId === selectedBooking?.id)
+    .filter(m => ["customer_to_owner", "owner_to_customer", "system_to_customer"].includes(m.direction))
+    .sort((a,b) => new Date(a.createdAt || 0) - new Date(b.createdAt || 0));
+  const selectBooking = (id) => {
+    setSelectedBookingId(id);
+    p.setActiveBookingId(id);
+  };
+  const send = () => {
+    if (p.createBookingMessage(selectedBooking?.id, body, "customer")) setBody("");
+  };
+
+  return (
+    <div className="pb-6">
+      <HeaderBar title="Messages" />
+      <div className="px-5 flex flex-col gap-3">
+        <div className="card">
+          <div className="label-up mb-1">In-app messages</div>
+          <div className="text-sm font-semibold">Send Dane a note about a booking.</div>
+          <div className="text-xs text-[#9FB3C8] mt-1">This saves a local message Dane can see in Owner tools. Real SMS notifications are still not connected.</div>
+        </div>
+
+        {customerBookings.length > 0 ? (
+          <>
+            <div className="flex gap-2 overflow-x-auto pb-1">
+              {customerBookings.slice(0, 6).map(b => (
+                <button
+                  key={b.id}
+                  className={`min-w-[132px] text-left rounded-xl border px-3 py-2 ${selectedBooking?.id===b.id ? "border-[var(--orange)] bg-[var(--orange)]/15" : "border-[#1f3b5c] bg-[#0d2236]"}`}
+                  onClick={()=> selectBooking(b.id)}
+                >
+                  <div className="text-xs font-bold truncate">{b.serviceTitle}</div>
+                  <div className="text-[10px] text-[#9FB3C8] mt-0.5">{isoToDay(b.startIso)} at {isoToTime(b.startIso)}</div>
+                </button>
+              ))}
+            </div>
+
+            <div className="card">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="label-up mb-1">Thread</div>
+                  <div className="text-sm font-semibold">{selectedBooking?.serviceTitle}</div>
+                </div>
+                <span className={`pill ${statusClass(selectedBooking?.status)}`}>{statusLabel(selectedBooking?.status)}</span>
+              </div>
+              <div className="mt-3 flex flex-col gap-2">
+                {thread.length === 0 && (
+                  <div className="text-xs text-[#9FB3C8]">No messages yet. Send a note if Dane needs anything before the job.</div>
+                )}
+                {thread.map(m => (
+                  <div key={m.id} className={`rounded-xl border px-3 py-2 ${m.direction === "owner_to_customer" ? "border-[#38bdf8]/40 bg-[#38bdf8]/10" : "border-[#1f3b5c] bg-[#0d2236]"}`}>
+                    <div className="text-[10px] text-[#9FB3C8] uppercase tracking-[0.08em]">{m.direction === "owner_to_customer" ? "Dane" : "You"}</div>
+                    <div className="text-xs text-[#E6F2FF] mt-1 whitespace-pre-wrap">{m.body}</div>
+                  </div>
+                ))}
+              </div>
+              <label className="block text-xs text-[#9FB3C8] mt-4 mb-1" htmlFor="customer-message-body">Message to Dane</label>
+              <textarea
+                id="customer-message-body"
+                aria-label="Message to Dane"
+                className="input min-h-[82px] resize-none"
+                value={body}
+                onChange={e=> setBody(e.target.value)}
+                placeholder="Example: Please use the side driveway."
+              />
+              <button className="btn-primary !py-3 mt-2" onClick={send}>Send Message</button>
+            </div>
+          </>
+        ) : (
+          <div className="card text-sm text-[#C7D8EA]">Book an appointment first, then messages for that booking will show here.</div>
+        )}
+      </div>
+    </div>
+  );
+};
+
 const CustomerBottomNav = ({ active, setScreen }) => (
   <div className="absolute bottom-0 left-0 right-0 bg-[#08151f]/95 border-t border-[#1f3b5c] backdrop-blur">
     <div className="flex items-center justify-around py-2 px-3">
@@ -2682,11 +2818,19 @@ const OwnerNotifications = (p) => {
 };
 
 const OwnerJobDetail = (p) => {
+  const [ownerMessageBody, setOwnerMessageBody] = useState("");
   const b = p.bookings.find(x => x.id === p.activeBookingId);
   if (!b) return <div className="p-6">No job selected.</div>;
   const isRequested = b.status === "requested";
   const needsAck = b.status === "confirmed" && !b.ownerAcknowledgedAt && b.ownerAckStatus !== "reschedule_requested";
   const smsNotice = (p.smsNotifications || []).find(n => n.bookingId === b.id);
+  const bookingMessages = (p.messages || [])
+    .filter(m => m.bookingId === b.id)
+    .filter(m => ["customer_to_owner", "owner_to_customer"].includes(m.direction))
+    .sort((a,b) => new Date(a.createdAt || 0) - new Date(b.createdAt || 0));
+  const sendOwnerReply = () => {
+    if (p.createBookingMessage(b.id, ownerMessageBody, "owner")) setOwnerMessageBody("");
+  };
   return (
     <div className="pb-6">
       <HeaderBar title="Job Detail" onBack={()=> p.setScreen("ownerJobs")} />
@@ -2745,6 +2889,37 @@ const OwnerJobDetail = (p) => {
             </div>
           </div>
         )}
+        <div className="card mt-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="label-up mb-1">Messages</div>
+              <div className="text-sm font-semibold">In-app thread</div>
+            </div>
+            <span className="text-[10px] text-[#9FB3C8]">{bookingMessages.length} saved</span>
+          </div>
+          <div className="mt-3 flex flex-col gap-2">
+            {bookingMessages.length === 0 && (
+              <div className="text-xs text-[#9FB3C8]">No in-app messages for this job yet.</div>
+            )}
+            {bookingMessages.map(m => (
+              <div key={m.id} className={`rounded-xl border px-3 py-2 ${m.direction === "customer_to_owner" ? "border-[var(--orange)]/40 bg-[var(--orange)]/10" : "border-[#38bdf8]/40 bg-[#38bdf8]/10"}`}>
+                <div className="text-[10px] text-[#9FB3C8] uppercase tracking-[0.08em]">{m.direction === "customer_to_owner" ? "Customer" : "Owner"}</div>
+                <div className="text-xs text-[#E6F2FF] mt-1 whitespace-pre-wrap">{m.body}</div>
+              </div>
+            ))}
+          </div>
+          <label className="block text-xs text-[#9FB3C8] mt-4 mb-1" htmlFor="owner-message-body">Owner message to customer</label>
+          <textarea
+            id="owner-message-body"
+            aria-label="Owner message to customer"
+            className="input min-h-[72px] resize-none"
+            value={ownerMessageBody}
+            onChange={e=> setOwnerMessageBody(e.target.value)}
+            placeholder="Example: I can still make this time work."
+          />
+          <button className="btn-secondary !py-2 text-sm mt-2" onClick={sendOwnerReply}>Save Owner Reply</button>
+          <div className="text-[11px] text-[#9FB3C8] mt-2">Saved in-app only. Use Text Customer for real SMS until a provider is connected.</div>
+        </div>
         <div className="card mt-3">
           <div className="label-up mb-1">Service</div>
           <div className="flex justify-between items-center">
