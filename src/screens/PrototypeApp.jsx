@@ -417,6 +417,69 @@ const App = () => {
     showToast("Demo reset");
   };
 
+  const exportLocalBackup = () => JSON.stringify({
+    app: "The Peoples Detailing",
+    format: "tpd_local_backup_v1",
+    exportedAt: new Date().toISOString(),
+    data: {
+      bookings,
+      services,
+      draft,
+      settings,
+      activeBookingId,
+      vehicles,
+      activeVehicleId,
+      customers,
+      customerProfiles,
+      availabilityBlocks,
+      messages,
+      ownerAcknowledgments,
+      statusEvents,
+      paymentIntents,
+      appFeeLedgerEntries,
+      smsNotifications,
+      integrationStatus,
+    },
+  }, null, 2);
+
+  const importLocalBackup = backupText => {
+    let parsed;
+    try {
+      parsed = JSON.parse(String(backupText || ""));
+    } catch {
+      showToast("Backup JSON could not be read");
+      return false;
+    }
+    const data = parsed?.data || parsed;
+    if (!Array.isArray(data?.bookings) || !Array.isArray(data?.services) || !data?.settings) {
+      showToast("Backup is missing app data");
+      return false;
+    }
+    const restoredSettings = normalizedSettings(data.settings);
+    const productionState = ensureProductionState(data);
+    setBookings(data.bookings.map(b => normalizeBooking(b, restoredSettings)));
+    setServices(data.services);
+    setDraft(data.draft || null);
+    setActiveBookingId(data.activeBookingId || null);
+    setSettings(restoredSettings);
+    setVehicles(Array.isArray(data.vehicles) && data.vehicles.length ? data.vehicles : seedVehicles());
+    setActiveVehicleId(data.activeVehicleId || data.vehicles?.find?.(v => v.isDefault)?.id || "vehicle-demo-1");
+    setCustomers(productionState.customers);
+    setCustomerProfiles(productionState.customerProfiles);
+    setAvailabilityBlocks(productionState.availabilityBlocks);
+    setMessages(productionState.messages);
+    setOwnerAcknowledgments(productionState.ownerAcknowledgments);
+    setStatusEvents(productionState.statusEvents);
+    setPaymentIntents(productionState.paymentIntents);
+    setAppFeeLedgerEntries(productionState.appFeeLedgerEntries);
+    setSmsNotifications(productionState.smsNotifications);
+    setIntegrationStatus(productionState.integrationStatus);
+    setRole("developer");
+    setScreen("developerSettings");
+    showToast("Local backup restored");
+    return true;
+  };
+
   const previewAsCustomer = () => {
     const returnRole = role === "developer" ? "developer" : "owner";
     setPreviewReturnRole(returnRole);
@@ -755,7 +818,7 @@ const App = () => {
     setSmsNotifications, integrationStatus, setIntegrationStatus,
     confirmBooking, startBooking, beginReschedule, finishReschedule,
     confirmRequestedBooking, declineRequestedBooking, acknowledgeBooking, requestBookingReschedule,
-    setBookingProfileSaveChoice, createBookingMessage,
+    setBookingProfileSaveChoice, createBookingMessage, exportLocalBackup, importLocalBackup,
     updateTracker, completeJob, closeOutJob, cancelBooking,
     resetApp, showToast, previewAsCustomer, exitCustomerPreview, previewReturnRole,
   };
@@ -3320,6 +3383,25 @@ const OwnerSettings = (p) => {
   const todayInput = dateKey(new Date());
   const [blockDate, setBlockDate] = useState(todayInput);
   const [blockTime, setBlockTime] = useState(SLOT_LABELS[0]);
+  const [backupText, setBackupText] = useState("");
+  const [restoreText, setRestoreText] = useState("");
+  const generateBackup = () => {
+    setBackupText(p.exportLocalBackup());
+    p.showToast("Local backup generated");
+  };
+  const copyBackup = async () => {
+    const text = p.exportLocalBackup();
+    setBackupText(text);
+    try {
+      await navigator.clipboard?.writeText(text);
+      p.showToast("Backup copied");
+    } catch {
+      p.showToast("Backup generated");
+    }
+  };
+  const restoreBackup = () => {
+    if (p.importLocalBackup(restoreText)) setRestoreText("");
+  };
   const addBlockedDate = () => {
     if (!blockDate) return;
     p.setSettings(prev => ({...prev, blockedDates: Array.from(new Set([...(prev.blockedDates || []), blockDate]))}));
@@ -3373,6 +3455,38 @@ const OwnerSettings = (p) => {
             <ConnRow label="Stripe Test Mode Ready" status="Planned - no checkout session or PaymentIntent is created yet" />
             <ConnRow label="Stripe live mode" status="Locked" />
             <ConnRow label="Owner SMS queue" status="Local records only - no provider send call" />
+          </div>
+        )}
+
+        {developerMode && (
+          <div className="card">
+            <div className="label-up mb-2">Local Backup</div>
+            <div className="text-sm font-semibold">Save or move this browser's app data.</div>
+            <div className="text-xs text-[#9FB3C8] mt-1">Use this while Supabase is disabled. It backs up local bookings, settings, vehicles, messages, reports, and readiness records. It is not cloud sync.</div>
+            <div className="grid grid-cols-2 gap-2 mt-3">
+              <button className="btn-secondary !py-2 text-xs" onClick={generateBackup}>Generate backup</button>
+              <button className="btn-secondary !py-2 text-xs" onClick={copyBackup}>Copy backup</button>
+            </div>
+            <label className="block text-[11px] text-[#9FB3C8] mt-3 mb-1" htmlFor="local-backup-output">Backup JSON</label>
+            <textarea
+              id="local-backup-output"
+              aria-label="Backup JSON"
+              className="input min-h-[88px] resize-none font-mono text-[11px]"
+              readOnly
+              value={backupText}
+              placeholder="Generate a backup when you want to save this local demo state."
+            />
+            <label className="block text-[11px] text-[#9FB3C8] mt-3 mb-1" htmlFor="local-backup-restore">Restore backup JSON</label>
+            <textarea
+              id="local-backup-restore"
+              aria-label="Restore backup JSON"
+              className="input min-h-[88px] resize-none font-mono text-[11px]"
+              value={restoreText}
+              onChange={e=> setRestoreText(e.target.value)}
+              placeholder="Paste a backup here to restore this browser."
+            />
+            <button className="btn-primary !py-2 text-sm mt-2" onClick={restoreBackup}>Restore Local Backup</button>
+            <div className="text-[11px] text-[#9FB3C8] mt-2">Use only backups you created for this app. Real multi-device sync waits for Supabase Auth/RLS approval.</div>
           </div>
         )}
 

@@ -9,6 +9,7 @@ This app should behave like a usable localStorage prototype of The Peoples Detai
 - The app is a Vite/React frontend deployed as a static GitHub Pages preview.
 - Data is stored in browser localStorage for demo use only.
 - The app has a backend-ready adapter shape: localStorage is active for demo, while Supabase is planned/disabled until credentials, Auth, and Row Level Security are approved.
+- Developer Admin includes a local backup/restore tool so Tim can preserve or move browser demo data while Supabase remains disabled. This is not cloud sync.
 - One frontend app is split by route: `/` is the public customer booking app, `/owner` is Dane's operations app, and `/developer` is Tim/BrandNew admin.
 - Customer booking can start with a future-ready `Sign in / Create profile` choice or continue as guest. Guest confirmation can mark whether the customer wants to save info later, but no real auth is connected yet.
 - The Customer/Owner/Developer role switcher and Reset Demo controls are only visible with `?demo=1` for local/testing review.
@@ -82,7 +83,7 @@ This app should behave like a usable localStorage prototype of The Peoples Detai
 - Future Supabase Auth/RLS should match the current route split: customers can create/read their own bookings, owner can manage jobs/availability, and developer can manage pricing/integrations.
 - Stripe must start with education and test mode/sandbox only; live Stripe is not approved.
 - Real SMS to Dane should be added through a backend/provider later; the frontend preview records the owner acknowledgment state without sending SMS.
-- Developer Admin now shows launch readiness for GitHub Pages, Supabase, Auth/RLS, Stripe test mode, locked live Stripe, and local-only owner SMS queueing.
+- Developer Admin now shows launch readiness for GitHub Pages, Supabase, Auth/RLS, Stripe test mode, locked live Stripe, local backup/restore, and local-only owner SMS queueing.
 - See `docs/PRODUCTION_FOUNDATION_PLAN.md` for the backend/payment starting point.
 
 Sources checked:

@@ -41,6 +41,7 @@
 - The Supabase REST adapter can use a signed-in user's access token through `accessToken` or a fresh `getAccessToken()` callback, while public/guest calls still fall back to the anon key. No service-role key is used.
 - `src/data/appDataLayer.js` also includes a no-dependency Supabase Auth REST adapter contract for future email sign-up, password sign-in, current-user lookup, and sign-out using only the public anon key plus user access tokens.
 - `src/data/supabaseMappings.js` translates future Supabase rows into the app's current service, settings, booking, availability, message, and RPC payload shapes so turning on Supabase later does not leak database column names into the UI.
+- Developer Admin includes a local JSON backup/restore tool for the browser-local fallback state so test/demo bookings, settings, messages, reports, and readiness records can be preserved or moved before Supabase is approved.
 - Unit tests cover the extracted booking rules, Supabase mapping helpers, adapter contract, and migration readiness.
 
 ## Still Not Live
@@ -49,6 +50,7 @@
 - No Supabase Auth sign-in is wired to the frontend.
 - No Supabase Auth adapter is active in the UI yet.
 - No live Supabase user session is passed into the adapter yet.
+- Local backup/restore is manual and browser-based; it is not multi-device sync, auth, or a database.
 - No service-role key is stored anywhere in this frontend repo.
 - No real SMS provider is called.
 - No Stripe Checkout, PaymentIntent, webhook, or Connect routing is enabled.

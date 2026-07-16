@@ -116,6 +116,7 @@ Classification key:
 | Developer Admin | Edit customer service prices | works now | Open service editor from developer route only | Implemented | Keep tests |
 | Developer Admin | App cost from Dane's cut | works now | Edit the hidden $3 app cost tracked on each online purchase/deposit | Implemented | None |
 | Developer Admin | Customer card processing toggle | works now | Keep customer-paid card processing on by default, with a developer option to cover it later | Implemented | Keep tests |
+| Developer Admin | Generate/Copy/Restore local backup | works now | Export and restore browser-local app data while Supabase is disabled | Implemented | Keep e2e restore test |
 | Developer Admin | Connection rows | prototype info | Show connection status only | Works | Do not add fake connect buttons |
 
 ## Required Follow-Up Checks

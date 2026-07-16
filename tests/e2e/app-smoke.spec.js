@@ -57,6 +57,20 @@ test('developer route opens developer admin without public demo controls', async
   await expect(page.getByRole('button', { name: /reset demo/i })).toHaveCount(0);
 });
 
+test('developer can export and restore local app backup', async ({ page }) => {
+  await page.goto('/developer');
+  await page.getByRole('button', { name: 'Generate backup' }).click();
+  const backup = JSON.parse(await page.getByRole('textbox', { name: 'Backup JSON', exact: true }).inputValue());
+  expect(backup).toMatchObject({
+    app: 'The Peoples Detailing',
+    format: 'tpd_local_backup_v1',
+  });
+  backup.data.settings.companyAppFeeCents = 425;
+  await page.getByLabel('Restore backup JSON').fill(JSON.stringify(backup));
+  await page.getByRole('button', { name: 'Restore Local Backup' }).click();
+  await expect(page.getByLabel("App cost from Dane's cut")).toHaveValue('4.25');
+});
+
 test('demo flag keeps the role switcher for local testing', async ({ page }) => {
   await page.goto('/?demo=1');
   await expect(page.getByRole('button', { name: /^Customer$/i })).toBeVisible();
